@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+
+# Editor swap / backup files
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Logs
+*.log
+
+# Transient orchestrator state
+/events/*.tmp
+/inbox/*.processed/
