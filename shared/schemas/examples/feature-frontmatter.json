@@ -1,0 +1,35 @@
+{
+  "correlation_id": "FEAT-2026-0042",
+  "state": "in_progress",
+  "involved_repos": [
+    "specfuse/api",
+    "specfuse/persistence"
+  ],
+  "autonomy_default": "review",
+  "task_graph": [
+    {
+      "id": "T01",
+      "type": "implementation",
+      "depends_on": [],
+      "assigned_repo": "specfuse/persistence"
+    },
+    {
+      "id": "T02",
+      "type": "implementation",
+      "depends_on": ["T01"],
+      "assigned_repo": "specfuse/api"
+    },
+    {
+      "id": "T03",
+      "type": "qa_authoring",
+      "depends_on": [],
+      "assigned_repo": "specfuse/api"
+    },
+    {
+      "id": "T04",
+      "type": "qa_execution",
+      "depends_on": ["T02", "T03"],
+      "assigned_repo": "specfuse/api"
+    }
+  ]
+}

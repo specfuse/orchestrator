@@ -1,0 +1,10 @@
+{
+  "files": [
+    "gen-src/handlers/rate_limit.ts"
+  ],
+  "task_correlation_id": "FEAT-2026-0042/T02",
+  "tracking_issue": "specfuse/codegen#117",
+  "expiry_condition": "on closure of specfuse/codegen#117",
+  "timestamp": "2026-04-20T14:45:12Z",
+  "status": "active"
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/feature-frontmatter.schema.json",
+  "title": "Feature registry frontmatter",
+  "description": "YAML frontmatter on a /features/<id>.md file. Fields are the machine-readable contract for feature state; prose in the body is for humans. See orchestrator-architecture.md §3 and §6.1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "correlation_id",
+    "state",
+    "involved_repos",
+    "autonomy_default",
+    "task_graph"
+  ],
+  "properties": {
+    "correlation_id": {
+      "type": "string",
+      "description": "Feature-level correlation ID. Task-level IDs are not valid here.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}$"
+    },
+    "state": {
+      "type": "string",
+      "description": "Current feature state from the feature state machine in §6.1.",
+      "enum": [
+        "drafting",
+        "validating",
+        "planning",
+        "plan_review",
+        "generating",
+        "in_progress",
+        "blocked",
+        "done",
+        "abandoned"
+      ]
+    },
+    "involved_repos": {
+      "type": "array",
+      "description": "Component repositories touched by this feature, as `owner/repo` strings.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "autonomy_default": {
+      "type": "string",
+      "description": "Feature-level autonomy default; may be overridden per task during plan review.",
+      "enum": ["auto", "review", "supervised"]
+    },
+    "task_graph": {
+      "type": "array",
+      "description": "Approved task graph. Minimal v0 shape: each task has an ID, type, dependency list, and assigned repo. Expands as planning matures.",
+      "items": { "$ref": "#/$defs/task" }
+    }
+  },
+  "$defs": {
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "depends_on", "assigned_repo"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Task ID local to the feature (TNN). Combined with the feature correlation ID, this forms the task-level correlation ID.",
+          "pattern": "^T\\d{2}$"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "implementation",
+            "qa_authoring",
+            "qa_execution",
+            "qa_curation"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "description": "Task IDs within this feature that must reach `done` before this task becomes `ready`.",
+          "items": {
+            "type": "string",
+            "pattern": "^T\\d{2}$"
+          },
+          "uniqueItems": true
+        },
+        "assigned_repo": {
+          "type": "string",
+          "description": "`owner/repo` that will host this task's GitHub issue and (for implementation tasks) the resulting PR.",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

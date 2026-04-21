@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/event.schema.json",
+  "title": "Event log entry",
+  "description": "A single JSONL entry in a feature's event log. Event log semantics are defined in orchestrator-architecture.md §7.3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "timestamp",
+    "correlation_id",
+    "event_type",
+    "source",
+    "source_version",
+    "payload"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with timezone offset (e.g. 2026-04-20T14:32:05Z or 2026-04-20T10:32:05-04:00).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "Feature-level (FEAT-YYYY-NNNN) or task-level (FEAT-YYYY-NNNN/TNN) correlation ID.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}(/T\\d{2})?$"
+    },
+    "event_type": {
+      "type": "string",
+      "description": "Minimum event type set from architecture §7.3. New types must be registered in this schema before use.",
+      "enum": [
+        "feature_created",
+        "spec_validated",
+        "plan_generated",
+        "plan_approved",
+        "task_created",
+        "task_ready",
+        "task_started",
+        "task_completed",
+        "task_blocked",
+        "spec_issue_raised",
+        "override_applied",
+        "override_expired",
+        "human_escalation"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "description": "Emitter of the event: a fixed role, a component agent scoped by repo (component:<name>), or `human`.",
+      "pattern": "^(human|specs|pm|qa|config-steward|merge-watcher|component:[a-z0-9][a-z0-9-]*)$"
+    },
+    "source_version": {
+      "type": "string",
+      "description": "Agent configuration version in effect when the event was emitted. Format is semver-like but not enforced here; `human` events use the orchestration repo commit SHA or `n/a`.",
+      "minLength": 1
+    },
+    "payload": {
+      "type": "object",
+      "description": "Event-specific structured content. Per-type payload schemas will be added under /shared/schemas/events/ as they stabilize."
+    }
+  }
+}

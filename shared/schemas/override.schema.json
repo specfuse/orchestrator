@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/override.schema.json",
+  "title": "Override record",
+  "description": "A single authorized override of generated code. See orchestrator-architecture.md §9.3 for the reconciliation protocol.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "files",
+    "task_correlation_id",
+    "tracking_issue",
+    "expiry_condition",
+    "timestamp",
+    "status"
+  ],
+  "properties": {
+    "files": {
+      "type": "array",
+      "description": "Paths under the component repo's generated directory that this override modifies.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "task_correlation_id": {
+      "type": "string",
+      "description": "Task-level correlation ID (FEAT-YYYY-NNNN/TNN) of the task that required the override.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}/T\\d{2}$"
+    },
+    "tracking_issue": {
+      "type": "string",
+      "description": "GitHub issue that retires the override when closed, in `owner/repo#number` form.",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9._-]+#\\d+$"
+    },
+    "expiry_condition": {
+      "type": "string",
+      "description": "Human-readable condition under which this override is retired. Typically `on closure of <tracking_issue>` but may be broader.",
+      "minLength": 1
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the override was authorized (ISO 8601 with timezone).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["active", "expired"]
+    }
+  }
+}
