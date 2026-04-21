@@ -72,14 +72,12 @@ Merge gating (architecture §10) is enforced by GitHub branch protection, not by
 
 ## Role-specific PR submission and escalation
 
-*Skill placeholders — the PR submission skill lives at [`skills/pr-submission/SKILL.md`](skills/pr-submission/SKILL.md) and the escalation skill lives at [`skills/escalation/SKILL.md`](skills/escalation/SKILL.md). Both are filled in work unit 1.3 of the implementation plan.*
+Two skills cover the outgoing-communication surfaces of this role:
 
-Until those skills are in place, the component agent follows [`escalation-protocol.md`](../../shared/rules/escalation-protocol.md) directly for the four escalation reasons that apply to this role:
+- [`skills/pr-submission/SKILL.md`](skills/pr-submission/SKILL.md) — branch naming, commit structure with the `Feature:` trailer, PR title and description shape, and the `in_progress → in_review` handoff (push → open PR → label rotation → `task_completed` event). Read this before opening any PR.
+- [`skills/escalation/SKILL.md`](skills/escalation/SKILL.md) — the four escalation reasons that apply to this role (`spinning_detected`, `spec_level_blocker`, `override_expiry_needs_review`, `autonomy_requires_approval`), the artifacts and events each produces, the internal spinning counter (increments on each failed verification cycle, resets on a full green pass, fires at 3), and the stop discipline. Read this the moment any escalation condition is suspected.
 
-- `spec_level_blocker` — a spec contradiction, omission, ambiguity, or a task whose verification appears to require writing to a [`never-touch.md`](../../shared/rules/never-touch.md) path without the correct protocol. Task transitions to `blocked_spec`; a `spec-issue.md` is typically filed first.
-- `override_expiry_needs_review` — reconciliation of an active override has failed, or a tracking issue is ambiguous. Task transitions to `blocked_spec`; the override record stays `active` until the human decides.
-- `autonomy_requires_approval` — the task is `supervised` and the agent has reached the "propose plan, await human go" gate. The agent writes the plan as an issue comment and stops.
-- `spinning_detected` — three consecutive failed verification cycles, wall-clock threshold exceeded, or token budget exceeded (architecture §6.4). Task transitions to `blocked_human`.
+Both skills cross-reference the shared templates ([`spec-issue.md`](../../shared/templates/spec-issue.md), [`qa-regression-issue.md`](../../shared/templates/qa-regression-issue.md), [`human-escalation.md`](../../shared/templates/human-escalation.md)) rather than duplicating their structure — the templates are the shape of record.
 
 ## Anti-patterns
 
