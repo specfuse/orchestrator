@@ -1,0 +1,68 @@
+# Verify-before-report discipline
+
+Every agent in the orchestrator operates on a four-step cycle: **state intent, act, verify, report.** The sequence is not advisory — it is the contract the orchestrator relies on to trust agent-emitted events. A `task_completed` event whose claim of completion was never verified is worse than no event at all, because downstream dependency recomputation will flip other tasks to `ready` on the strength of it.
+
+This discipline applies to every operational role and to every unit of work, from writing a single file to closing a task.
+
+## The four steps
+
+### 1. State intent
+
+Before acting, state in one sentence what you are about to do and why it is the next right step. This is the agent's equivalent of writing the PR title before the diff. Its purpose is to catch mismatches early: if you cannot state the intent clearly, you are not ready to act; if the stated intent disagrees with the task's acceptance criteria, the task is not what you thought it was.
+
+The intent is addressed to the reader of the event log and — in multi-agent handoffs — to the next agent. It is not a soliloquy. Keep it factual, specific, and in the present tense ("I will add a validation check to the POST /orders handler," not "This task requires various modifications across the codebase").
+
+### 2. Act
+
+Perform the change. This is the ordinary work — editing a file, opening an issue, running a generator, writing a test plan. Stay within the scope declared in step 1. If the act expands beyond the intent — "while I was here I also fixed X" — either revise the intent and stay, or stop the act and leave X for another task. Drift between intent and action is the most common source of ambiguous PRs and is fixable only by discipline.
+
+### 3. Verify
+
+The verification step is the one agents most often skip, and the reason the discipline is named after it. "Verify" has two generic meanings and both apply unless the task explicitly narrows the scope:
+
+**Re-read the produced artifact.** After writing a file, read it back. After opening an issue, fetch it back. After committing, inspect the resulting commit. The purpose is to confirm the action landed as intended: the text is what you meant to write, the labels are what you meant to apply, the YAML frontmatter parses. This catches silent failures of the writing tool, truncation, encoding surprises, and the class of bugs where the agent thought it produced X but produced Y.
+
+**Run the declared verification commands.** Every work unit issue carries a `## Verification` section with a specific sequence of commands the agent must run (architecture §8). Run them in the declared order. The output of those commands is the evidence attached to the `task_completed` event. Generic verifications — "I assume the tests still pass" — are not verifications. The commands are the verification.
+
+Additional generic checks apply in specific situations:
+
+- Any emitted JSON or YAML must parse. An event that fails `shared/schemas/event.schema.json` is invalid; a feature frontmatter that fails `shared/schemas/feature-frontmatter.schema.json` is invalid. Verify before committing.
+- Any correlation ID must match the pattern in `correlation-ids.md`. Verify before committing.
+- Any state transition must be one your role is authorized to perform (`state-vocabulary.md`). Verify before committing.
+- Any path you are about to write must not be in `never-touch.md`. Verify before writing.
+
+If a verification check fails, the task is not done. You are now in one of three situations:
+
+1. **Correctable locally.** Go back to step 2, act on the correction, verify again. This counts as one verification cycle.
+2. **Three consecutive cycles have failed.** Spinning detection triggers; escalate per `escalation-protocol.md` with reason `spinning_detected`.
+3. **Fundamentally blocked by spec or generator.** Escalate with reason `spec_level_blocker`; do not report completion.
+
+### 4. Report structured output
+
+Report only what verification confirmed. The structured output is:
+
+- The `task_completed` (or equivalent) event appended to the feature's event log, with a payload describing what was produced and which verification commands passed.
+- Any artifact the task was supposed to produce (PR, issue, file) referenced by its stable identifier (URL, path, correlation ID).
+- A short human-facing summary for the reviewer, limited to what verification confirmed. Speculation, caveats, and "I did not test X" belong in the summary only if the task's verification scope genuinely left X untested — in which case that gap is a missed acceptance criterion, not a note.
+
+**Do not report completion before verification has passed.** This is the inviolable rule. An event that claims `task_completed` without the corresponding verification output in the payload is a correctness bug in the orchestrator, not a style issue. Dependency recomputation will act on the claim; downstream tasks will be released; humans reviewing will trust the signal. If the verification did not pass, the event does not get emitted — the task state transitions to `blocked_*` or the verification cycle continues.
+
+## What "verify" does not mean
+
+- It does not mean "I thought about it and it seems right." The check must be mechanical.
+- It does not mean "the previous step succeeded." Tools return success for the action they took, not for the property you want to guarantee.
+- It does not mean "a similar task has passed before." Nothing about a prior run's success transfers to this one.
+- It does not mean "I ran some of the verification commands." Run all of them unless the task explicitly marks one optional, in which case "optional" is still reported in the output.
+
+## Forbidden shortcuts
+
+- Reporting `task_completed` and then "let me go verify" in the same turn. Verification precedes the report; the order is part of the discipline.
+- Editing a verification command out of the task issue because it is failing. That is a `never-touch.md` violation for branch protection's downstream analog — you do not weaken the checks to unblock yourself.
+- Re-reading the artifact as a visual sanity check and then reporting without running the declared commands. Visual inspection complements the commands; it does not replace them.
+- Running the verification commands once, seeing a failure, fixing the artifact, and reporting without running them again. Every verification cycle ends with a green run of the declared commands, or the cycle is not complete.
+
+## Why this matters
+
+The orchestrator's trust model is that agent-emitted events are reliable claims. Dependency recomputation, merge gating, and human review all bank on that. When an agent skips verification, the cost is not its own — it is paid by every downstream actor that trusted the event. Distributed "I think it's fine" is how drift becomes outage.
+
+The discipline is uniform because the trust surface is uniform: no role gets to skip it, no task gets to skip it, no amount of previous success licenses skipping it this time. State intent, act, verify, report. Every time.
