@@ -64,15 +64,11 @@ Every transition above has a **single owner by role** — no other agent may per
 
 ## Role-specific verification
 
-*Skill placeholder — the normative verification skill for this role lives at [`skills/verification/SKILL.md`](skills/verification/SKILL.md) and is filled in work unit 1.2 of the implementation plan.*
+The normative verification skill for this role is [`skills/verification/SKILL.md`](skills/verification/SKILL.md). It defines the six mandatory gates (tests, coverage ≥ 90%, compiler-warnings, lint, security scan, build), the `.specfuse/verification.yml` contract each component repo must declare, the per-gate output shape, the `task_completed` payload shape, and the failure-handling flow (local correction → spinning detection → spec-level escalation).
 
-Until the skill is in place, the component agent's verification is:
+Read the skill before verifying any task. The universal checks in [`verify-before-report.md`](../../shared/rules/verify-before-report.md) — re-reading produced artifacts, round-tripping events through [`event.schema.json`](../../shared/schemas/event.schema.json), confirming correlation-ID format, confirming no written path is in [`never-touch.md`](../../shared/rules/never-touch.md), confirming each state transition is owned by this role — apply in addition to the skill and are invoked from within it.
 
-1. The work unit issue's `## Verification` section, run in the declared order — this is the normative per-task evidence attached to the `task_completed` event (architecture §8).
-2. The universal checks in [`verify-before-report.md`](../../shared/rules/verify-before-report.md): re-read every artifact produced (code diff, commit, PR body, event payload); round-trip every emitted JSON event through [`event.schema.json`](../../shared/schemas/event.schema.json); confirm every correlation ID matches the format in [`correlation-ids.md`](../../shared/rules/correlation-ids.md); confirm every written path is outside the [`never-touch.md`](../../shared/rules/never-touch.md) list; confirm each written state transition is owned by this role.
-3. Before opening the PR, confirm the branch name, commit trailers, and PR description all carry the correct task-level correlation ID.
-
-Merge gating (architecture §10) — all tests passing, coverage ≥ 90%, zero compiler warnings, clean OWASP scan, clean linting, required reviewers — is enforced by GitHub branch protection, not by the agent. The agent's verification does not replace or weaken those gates; it confirms the PR is ready to be subjected to them.
+Merge gating (architecture §10) is enforced by GitHub branch protection, not by the agent. The skill's gate set matches the branch-protection check set by design; the agent's verification confirms the PR is ready to be subjected to branch protection, it does not replace it.
 
 ## Role-specific PR submission and escalation
 
