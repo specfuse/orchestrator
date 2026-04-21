@@ -188,29 +188,49 @@ Run one real feature end-to-end across discrete Claude Code sessions, each playi
 
 ### Work unit 0.6 — Select and stage the walkthrough feature
 
-**Objective.** Choose a small, concretely-scoped feature that touches exactly two component repositories, write its specifications in `/product/`, create its feature registry entry in `/features/`, and document the expected happy path.
+**Objective.** Choose a small, concretely-scoped feature that touches exactly two component repositories; stand up (or reuse) a neutrally-owned product specs repo and two neutrally-owned component repos; write the feature's specifications in the specs repo's `/product/` subtree; create the feature registry entry in the orchestration repo's `/features/`; and document the expected happy path in a Phase 0 instrumentation file outside `/features/`.
 
-**Context preamble.** Sixth Phase 0 work unit. This is where the system moves from "configured" to "about to be exercised." The feature's scope must be small enough to walk through in a single day but large enough to genuinely exercise cross-repo coordination. Two components is the right number — one would not test coordination; three or more risks turning the walkthrough into a slog that masks the signal.
+**Context preamble.** Sixth Phase 0 work unit. This is where the system moves from "configured" to "about to be exercised." The feature's scope must be small enough to walk through in a single day but large enough to genuinely exercise cross-repo coordination. Two components is the right number — one would not test coordination; three or more risks turning the walkthrough into a slog that masks the signal. This is the first work unit that touches more than one repository, so the commit discipline (one commit per repo) and the open-source hygiene rule from 0.1 (no private-org or consumer-product names anywhere) both apply for the first time in tension with each other, and must be resolved by staging every repo under a neutral org.
 
-**Inputs.** The fully-bootstrapped orchestration repo from 0.1–0.5, plus access to (or creation of) a product specs repo and two component repos. If the component repos don't exist, stage them minimally — an empty repo with a README and a `_generated/` stub suffices for this exercise.
+**Inputs.** The fully-bootstrapped orchestration repo from 0.1–0.5. GitHub access under a neutral org — `specfuse-examples` is the suggested default; any public, non-consumer-product org owned by the operator is acceptable. If the product specs repo and the two component repos under the chosen org don't already exist, create them as part of this unit.
 
 **Acceptance criteria.**
 
-1. A product specs repo exists with the `/product/` and `/business/` top-level split per architecture §4.1.
-2. Under `/product/`, a feature specification exists — the exact format depends on your current Specfuse practice, but at minimum: an OpenAPI fragment (if relevant), a prose feature description, and a set of acceptance criteria phrased so a QA agent could later author a test plan against them.
-3. Two component repositories exist (real or staged), each with a clearly-named `_generated/` directory and hand-written code area.
-4. In the orchestration repo, `/features/FEAT-2026-0001.md` (or the next available correlation ID) exists, populated from the `feature-registry.md` template. State is `drafting`.
-5. `/events/FEAT-2026-0001.jsonl` exists with a single `feature_created` event.
-6. A companion `/features/FEAT-2026-0001-walkthrough-plan.md` (not part of the production flow — this is a Phase 0 instrumentation artifact) documents the expected happy path: which role acts at which step, what artifacts they produce, and what gates are crossed.
-7. Commit message: `feat(phase-0): stage walkthrough feature FEAT-2026-0001`.
+1. A product specs repository exists on GitHub under the chosen neutral org (e.g. `specfuse-examples/product-specs`), with the `/product/` and `/business/` top-level split per architecture §4.1. `/business/` may be empty (a `.gitkeep` suffices), but must exist so the never-touch boundary is meaningful.
+2. Under `/product/`, the feature's specification exists at these paths:
+   - `/product/specs/<feature-slug>.yaml` — an OpenAPI (or AsyncAPI/Arazzo, whichever fits) fragment describing the feature's contract. If the feature is too shallow for a spec fragment to be meaningful, a placeholder `# intentionally minimal — see feature description` is acceptable but must be called out.
+   - `/product/features/<feature-slug>.md` — prose feature description plus a numbered acceptance-criteria list phrased so a QA agent could later author a test plan against each item. These paths are Phase 0 conventions, not yet normative; 0.8 may codify or revise them based on walkthrough findings.
+3. Two component repositories exist on GitHub under the same neutral org (e.g. `specfuse-examples/sample-api`, `specfuse-examples/sample-persistence`). Each has: a README identifying the repo as a Phase 0 staged component, a clearly-named `_generated/` directory (with a `.gitkeep` and a `README.md` declaring it as the generated surface), a hand-written code area, and a root-level convention file (e.g. `specfuse.yaml`) declaring `_generated/` as the generated directory per `shared/rules/never-touch.md`.
+4. In the orchestration repo, `/features/FEAT-2026-0001.md` exists, populated from the `feature-registry.md` template. Frontmatter values: `correlation_id: FEAT-2026-0001`, `state: drafting`, `involved_repos` listing the two neutral-org component repo slugs from AC#3, `autonomy_default` chosen by the operator, and `task_graph: []`. The body sections (`Description`, `Scope`, `Out of scope`, `Related specs`) are filled in, with `Related specs` linking to the files created in AC#2. If any `/features/FEAT-2026-*.md` file already exists, resolve the collision before proceeding — do not skip forward in the ordinal space.
+5. `/events/FEAT-2026-0001.jsonl` exists with exactly one `feature_created` event. Field values: `source: human`, `source_version: n/a` (the event is hand-authored before the polling loop or any agent session exists), `correlation_id: FEAT-2026-0001`, ISO 8601 timestamp with timezone, and a `payload` containing at minimum the feature title and the feature-slug.
+6. A walkthrough plan exists at `/docs/walkthroughs/phase-0/FEAT-2026-0001-walkthrough-plan.md` (a Phase 0 instrumentation artifact, deliberately kept outside `/features/` so tooling that globs the registry does not trip over it). The plan documents the expected happy path in enough detail that 0.7 does not have to reinvent it mid-session:
+   - Per step: which role acts, what artifacts they produce, which event types they emit, which state transition they own (cite §6.1 or §6.2).
+   - For every task in the expected graph: the assigned component repo, the task type, the autonomy level, the dependencies, and the expected verification commands.
+   - Explicit statements about whether the walkthrough expects to exercise any of: an `_generated/` override (§9.3), a spec issue, a QA regression, or a spinning self-detection. If none are expected, say so — "no edge cases exercised in this feature" is a valid choice and a useful signal.
+7. Commits are one per repo, each with its own message:
+   - Orchestration repo: `feat(phase-0): stage walkthrough feature FEAT-2026-0001`.
+   - Product specs repo: `chore: initialize product specs repo and FEAT-2026-0001 specs`.
+   - Each component repo: `chore: initialize Phase 0 sample component repo`.
 
-**Do not touch.** Do not begin the walkthrough (that's 0.7). Do not attempt to run Specfuse validation yet — that's part of the walkthrough itself. Do not commit any sensitive or product-specific content to the public-bound orchestration repo; the specs live in the product specs repo.
+**Do not touch.** Do not populate `task_graph` — it stays `[]` until the PM role walks it through `planning` during 0.7. Do not begin the walkthrough itself. Do not run Specfuse validation yet — that belongs to 0.7. Do not use any real consumer-product name or private-org slug anywhere in any of the four repos (involved_repos, filenames, prose, commit trailers, event payloads). Do not place Phase 0 instrumentation files (this walkthrough plan, and by the same convention 0.7's notes and 0.8's retrospective) under `/features/` — that directory is reserved for registry files that validate against `feature-frontmatter.schema.json`; use `/docs/walkthroughs/phase-0/` for instrumentation.
 
 **Verification steps.**
 
-1. Validate the feature frontmatter against `/shared/schemas/feature-frontmatter.schema.json`.
-2. Validate the initial event against `/shared/schemas/event.schema.json`.
-3. Re-read the walkthrough plan and confirm every phase transition from architecture §6.1 is represented.
+1. Validate the feature frontmatter against the schema using the same approach 0.2 established:
+   ```sh
+   npx ajv-cli validate \
+     -s shared/schemas/feature-frontmatter.schema.json \
+     -d <(yq -o=json '.' features/FEAT-2026-0001.md)
+   ```
+   (or equivalent — the point is schema-round-trip, not the exact command.)
+2. Validate the initial event against the event schema:
+   ```sh
+   npx ajv-cli validate \
+     -s shared/schemas/event.schema.json \
+     -d events/FEAT-2026-0001.jsonl
+   ```
+3. Re-read the walkthrough plan and confirm every *feature* state transition from architecture §6.1 that the expected happy path traverses **and** every *task* state transition from §6.2 that the expected happy path traverses is represented at least once. A plan that touches only §6.1 without reaching the task-level loop has skipped the component agent's work and is incomplete.
+4. Grep all four repos for any real consumer-product or private-org name and confirm none appear. The chosen neutral-org slug is the only org-scoped string that should show up.
 
 **Suggested model.** Opus 4.7. Feature selection has outsized impact on what Phase 0 teaches you; the strongest model's judgment is worth it.
 
