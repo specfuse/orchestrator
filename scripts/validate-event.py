@@ -43,6 +43,13 @@ SCHEMA_PATH = (
     / "event.schema.json"
 )
 
+PER_TYPE_SCHEMA_DIR = (
+    Path(__file__).resolve().parent.parent
+    / "shared"
+    / "schemas"
+    / "events"
+)
+
 
 def load_validator() -> Draft202012Validator:
     if not SCHEMA_PATH.is_file():
@@ -52,6 +59,43 @@ def load_validator() -> Draft202012Validator:
         schema = json.load(f)
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
+
+
+_PER_TYPE_CACHE: dict[str, Draft202012Validator | None] = {}
+
+
+def load_per_type_validator(event_type: str) -> Draft202012Validator | None:
+    """Return a per-type payload validator if one exists, else None.
+
+    Per-type schemas are additive: an event type without a schema file in
+    PER_TYPE_SCHEMA_DIR validates against the top-level envelope alone,
+    preserving the Phase 1 freeze contract for component-agent emissions
+    whose per-type schemas have not been authored.
+    """
+    if event_type in _PER_TYPE_CACHE:
+        return _PER_TYPE_CACHE[event_type]
+
+    schema_file = PER_TYPE_SCHEMA_DIR / f"{event_type}.schema.json"
+    if not schema_file.is_file():
+        _PER_TYPE_CACHE[event_type] = None
+        return None
+
+    try:
+        with schema_file.open("r", encoding="utf-8") as f:
+            schema = json.load(f)
+    except (OSError, json.JSONDecodeError) as exc:
+        sys.stderr.write(f"error: failed to read per-type schema {schema_file}: {exc}\n")
+        sys.exit(2)
+
+    try:
+        Draft202012Validator.check_schema(schema)
+    except Exception as exc:  # jsonschema raises SchemaError, keep generic
+        sys.stderr.write(f"error: invalid per-type schema {schema_file}: {exc}\n")
+        sys.exit(2)
+
+    validator = Draft202012Validator(schema)
+    _PER_TYPE_CACHE[event_type] = validator
+    return validator
 
 
 def format_error(source: str, line_number: int, path: str, message: str) -> str:
@@ -77,6 +121,20 @@ def validate_line(
     for err in sorted(validator.iter_errors(event), key=lambda e: list(e.absolute_path)):
         path = "/".join(str(p) for p in err.absolute_path) or "(root)"
         errors.append(format_error(source, line_number, path, err.message))
+
+    # Per-type payload validation. Applied only when the top-level envelope
+    # is valid enough to name the event_type and the payload is a dict;
+    # otherwise the top-level errors above are the signal.
+    event_type = event.get("event_type") if isinstance(event, dict) else None
+    payload = event.get("payload") if isinstance(event, dict) else None
+    if isinstance(event_type, str) and isinstance(payload, dict):
+        per_type = load_per_type_validator(event_type)
+        if per_type is not None:
+            for err in sorted(per_type.iter_errors(payload), key=lambda e: list(e.absolute_path)):
+                sub_path = "/".join(str(p) for p in err.absolute_path) or "(root)"
+                path = f"payload/{sub_path}" if sub_path != "(root)" else "payload"
+                errors.append(format_error(source, line_number, path, err.message))
+
     return errors
 
 
@@ -138,7 +196,10 @@ def main() -> int:
         )
         return 1
 
-    sys.stdout.write(f"ok: {len(entries)} event(s) validated against {SCHEMA_PATH.name}\n")
+    sys.stdout.write(
+        f"ok: {len(entries)} event(s) validated against {SCHEMA_PATH.name}"
+        f" (with per-type payload schemas under {PER_TYPE_SCHEMA_DIR.name}/ where present)\n"
+    )
     return 0
 
 

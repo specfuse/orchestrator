@@ -1,12 +1,11 @@
 {
-  "timestamp": "2026-04-20T14:32:05Z",
-  "correlation_id": "FEAT-2026-0042/T07",
+  "timestamp": "2026-04-21T20:14:45Z",
+  "correlation_id": "FEAT-2026-0001/T01",
   "event_type": "task_started",
-  "source": "component:api",
-  "source_version": "0.3.1",
+  "source": "component:orchestrator-api-sample",
+  "source_version": "1.2.0",
   "payload": {
-    "issue": "specfuse/api#418",
-    "branch": "feat/FEAT-2026-0042-T07-rate-limit-headers",
-    "started_by": "component-agent"
+    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/3",
+    "branch": "feat/FEAT-2026-0001-T01-widget-quantity-ceiling"
   }
 }
