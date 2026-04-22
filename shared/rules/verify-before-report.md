@@ -26,7 +26,8 @@ The verification step is the one agents most often skip, and the reason the disc
 
 Additional generic checks apply in specific situations:
 
-- Any emitted JSON or YAML must parse. An event that fails `shared/schemas/event.schema.json` is invalid; a feature frontmatter that fails `shared/schemas/feature-frontmatter.schema.json` is invalid. Verify before committing.
+- Every event line must be piped through `scripts/validate-event.py` before it is appended to `events/*.jsonl`. The validator exits `0` on pass, `1` on schema violation (correct the event and re-validate — this counts as a verification cycle per §"Failure handling" below), and `2` on setup error (missing dependency or schema file — escalate rather than loop). An event that has not round-tripped through the validator with exit `0` must not be written to the log.
+- Any other emitted JSON or YAML must parse. A feature frontmatter that fails `shared/schemas/feature-frontmatter.schema.json` is invalid. Verify before committing.
 - Any correlation ID must match the pattern in `correlation-ids.md`. Verify before committing.
 - Any state transition must be one your role is authorized to perform (`state-vocabulary.md`). Verify before committing.
 - Any path you are about to write must not be in `never-touch.md`. Verify before writing.
