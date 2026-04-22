@@ -5,8 +5,10 @@ Machine-readable contracts that every agent reads from and writes to. The prose 
 ## Contents
 
 - `event.schema.json` — one entry in a feature's JSONL event log (`/events/FEAT-YYYY-NNNN.jsonl`). Architecture §7.3.
+- `events/` — per-event-type payload schemas, applied additively by `scripts/validate-event.py` on top of `event.schema.json`. See `events/README.md` for conventions.
 - `feature-frontmatter.schema.json` — YAML frontmatter on each `/features/<id>.md`. Architecture §3 and §6.1.
 - `override.schema.json` — one record under `/overrides/`. Architecture §9.3.
+- `template-coverage.schema.json` — per-component-repo `.specfuse/templates.yaml` declaration file. Consumed by the PM agent's template-coverage-check skill at plan time. Architecture §9.2; stub protocol at Phase 2, replaced by a live generator query in Phase 5.
 - `labels.md` — GitHub issue label taxonomy (state, type, autonomy). Not a JSON Schema: GitHub labels are not structured data the agents parse programmatically from a file, but they are a contract nonetheless.
 - `examples/` — one valid instance of each JSON schema, used both as human reference and as regression fixtures for the validator.
 

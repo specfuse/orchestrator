@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/template_coverage_checked.schema.json",
+  "title": "template_coverage_checked event payload",
+  "description": "Payload shape for the `template_coverage_checked` event emitted by the PM agent after a successful template coverage check on a feature's task graph. Absence of the event on a feature that reached `plan_review` indicates coverage escalated — the `human_escalation` event at feature level is the gap signal, not a separate `template_coverage_gap` event.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "involved_repos",
+    "task_count"
+  ],
+  "properties": {
+    "involved_repos": {
+      "type": "array",
+      "description": "The component repos whose `.specfuse/templates.yaml` were read during the check. Duplicates the feature frontmatter's `involved_repos` at check time for event-log self-containment.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "task_count": {
+      "type": "integer",
+      "description": "Number of tasks in the feature's task graph at check time. A task with empty `required_templates` counts — its coverage was trivially satisfied, but it was still walked.",
+      "minimum": 1
+    }
+  }
+}
