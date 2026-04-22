@@ -50,6 +50,12 @@ The PM agent does not write to component-repo code paths, does not write to `/pr
 
 *Placeholder for v0.1. The full PM-agent verification list is out of scope for this Phase 0 draft.* Until expanded, PM-agent verification is the work unit's declared `## Verification` section plus the universal checks in [`verify-before-report.md`](../../shared/rules/verify-before-report.md): re-read every issue body after creation, round-trip the feature frontmatter through [`feature-frontmatter.schema.json`](../../shared/schemas/feature-frontmatter.schema.json), round-trip every emitted event through [`event.schema.json`](../../shared/schemas/event.schema.json), and confirm each task graph has no orphaned `depends_on` references and no cycles. Before flipping any `pending → ready`, confirm every `depends_on` target is actually `done` by inspecting the labels on the dependency issues — not by trusting a cached view of state. Before transitioning `in_progress → done` on a feature, confirm every task on the feature carries a `done` label.
 
+## Phase 2 specification inputs
+
+Requirements the Phase 2 work unit that authors the PM agent's production skills must honor on day one. These are inherited contracts, not suggestions — they codify lessons from Phase 1 walkthroughs that would regress if not designed in from the start.
+
+- [`issue-drafting-spec.md`](issue-drafting-spec.md) — the issue-drafting skill must re-verify every claim about target-repo state against the repo at draft time and capture the verification in a durable surface. Specification-level response to Finding 3 of the Phase 1 walkthrough retrospective (WU 1.9).
+
 ## Role-specific escalation
 
 The PM agent escalates — per [`escalation-protocol.md`](../../shared/rules/escalation-protocol.md) — on:
