@@ -32,6 +32,7 @@
         "feature_created",
         "spec_validated",
         "task_graph_drafted",
+        "plan_ready",
         "plan_generated",
         "plan_approved",
         "task_created",
