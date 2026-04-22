@@ -484,33 +484,273 @@ See [`docs/walkthroughs/phase-1/retrospective.md`](walkthroughs/phase-1/retrospe
 
 ### Phase 2 objective
 
-Automate task-graph generation and GitHub issue creation from an approved feature spec. The specs phase remains manual (the human drafts specs with chat-based Claude assistance). Once a feature spec is validated, the PM agent produces the task graph, collaborates with the human on work unit prompts, and opens issues once the plan is approved. Dependency recomputation on task completion is automated. The PM agent also performs template-coverage checks against the generator during planning.
+Automate task-graph generation and GitHub issue creation from an approved feature spec. The specs phase remains manual (the human drafts specs with chat-based Claude assistance). Once a feature spec is validated, the PM agent produces the task graph, collaborates with the human on work unit prompts, and opens issues once the plan is approved. Dependency recomputation on task completion is automated. The PM agent performs template-coverage checks at planning time via a stub protocol (real generator integration is deferred to Phase 5 per the right-to-left phasing).
 
 ### Phase 2 known prerequisites
 
-- Phase 1 complete and component agent config frozen.
+- Phase 1 complete and component agent config frozen at v1.5.0 (declared 2026-04-22).
 - Work unit issue body template at v1 (locked contract).
 - Shared schemas for feature frontmatter, event log, and labels stable.
-- Access to (and a protocol for querying) the Specfuse generator for template coverage checks.
+- `scripts/validate-event.py` and `scripts/read-agent-version.sh` available as part of the frozen baseline — the PM agent reuses them verbatim on the emission path.
+- `agents/pm/issue-drafting-spec.md` (from WU 1.9) — the inherited forward contract WU 2.4 must honor on day one.
+- A stub template-coverage protocol is acceptable; the real generator-query integration is deferred to Phase 5.
 
 ### Phase 2 deliverables
 
-- PM agent `CLAUDE.md`, skills, and rules at production quality.
-- Plan-review UX: a diffable, editable markdown representation of the task graph that the human reviews and modifies before approval.
-- Dependency recomputation logic — the PM agent listens for `task_completed` events and flips newly-unblocked tasks from `pending` to `ready`, updating the corresponding GitHub issue labels.
-- Template coverage query integration with the generator.
-- A Phase 2 walkthrough exercising the full specs-to-issues pipeline on a real feature.
-- Phase 2 retrospective.
+- PM agent `CLAUDE.md`, skills, and rules at production v1 quality.
+- A task-decomposition skill that turns a validated feature spec into a task graph in `/features/FEAT-YYYY-NNNN.md` frontmatter.
+- A plan-review UX skill producing a diffable, editable markdown representation of the task graph for the human to review and modify before approval.
+- An issue-drafting skill that honors `agents/pm/issue-drafting-spec.md` on day one — every claim about target-repo state re-verified at draft time.
+- A dependency-recomputation skill that listens for `task_completed` events and flips newly-unblocked tasks from `pending` to `ready`, updating GitHub labels and emitting `task_ready`. Absorbs Phase 1 deferred Finding 5 (per-type `task_started` payload schema with `branch: string | null`, establishing the pattern under `/shared/schemas/events/`).
+- A template-coverage-check skill implementing a stub protocol (component repos declare their template needs in a convention file; PM reads at planning time and escalates on gaps). Real generator integration scoped to Phase 5.
+- A Phase 2 walkthrough exercising the full specs-to-issues pipeline on two features (happy-path + edge-case).
+- A Phase 2 retrospective and post-retrospective fix ladder analogous to WU 1.6–1.12.
+- Phase 1 deferred Finding 6 (shared-rules re-read discipline at role-switch) absorbed into WU 2.1.
 
 ### Phase 2 acceptance criteria
 
 - The PM agent, given a validated feature spec, produces a task graph that correctly identifies implementation and QA tasks, their dependencies, and their target component repos.
 - The human can edit the task graph as a file (dependencies, prompts, autonomy overrides) and the PM agent re-ingests the edit as the new source of truth.
-- Upon approval, the PM agent opens conforming GitHub issues in the correct repos, each with a work-unit-issue-template-compliant body.
-- When a task reaches `done`, the PM agent recomputes dependencies and flips ready-tasks correctly, without duplicate issue creation.
-- Template coverage gaps are identified at planning time, not discovered mid-implementation.
+- Upon approval, the PM agent opens conforming GitHub issues in the correct repos, each with a work-unit-issue-template-compliant body whose every claim about repo state was verified at drafting time per `issue-drafting-spec.md`.
+- When a task reaches `done`, the PM agent recomputes dependencies and flips ready-tasks correctly, without duplicate issue creation and without trusting any cached view of GitHub labels.
+- Template coverage gaps are identified at planning time via the stub protocol, not discovered mid-implementation.
 
-*Detailed work unit prompts deferred until Phase 1 completion, as they depend on lessons learned from running the component agent against real tasks. Key design decisions that Phase 1 will inform: the exact format of the task graph markdown; how the PM agent discovers the target component repo for each task; how the PM agent talks to the generator.*
+### Work unit 2.1 — PM agent config v1
+
+**Objective.** Elevate the Phase 0 v0.2.0 PM agent `CLAUDE.md` to production v1 quality, incorporating Phase 1 learnings, the inherited forward contract from WU 1.9, and the Phase 1 deferred Finding 6 (shared-rules re-read discipline at role-switch).
+
+**Context preamble.** First Phase 2 work unit. The v0.2.0 config in `agents/pm/CLAUDE.md` is a Phase 0 draft plus the WU 1.9 "Phase 2 specification inputs" pointer. This unit is the rewrite — the placeholder sections filled in, the skills referenced by name, and the verification/escalation clauses tightened against Phase 2's actual surface. The PM agent is the role most likely to follow or precede another agent role in the same human session (planning → issue creation → component review), making it the natural home for the Finding 6 absorption.
+
+**Inputs.** `agents/pm/CLAUDE.md` v0.2.0, `agents/pm/issue-drafting-spec.md`, `docs/walkthroughs/phase-1/retrospective.md` (especially Finding 6 and the freeze declaration), `orchestrator-architecture.md` §5 and §6.3, every file under `/shared/rules/`.
+
+**Acceptance criteria.**
+
+1. `agents/pm/CLAUDE.md` rewritten to v1.0.0 quality, with: one-paragraph role definition; bullet list of every entry transition the role owns (feature-level and task-level per architecture §6.3); explicit artifact outputs (task graph in feature frontmatter, task issues in component repos, work unit prompts co-authored with the human, event log entries, dependency recomputation discipline, human-escalation inbox files); a role-specific verification clause that references the four Phase 2 skills; and a role-specific escalation clause enumerating the PM-relevant conditions.
+2. Finding 6 absorbed. The fix is a clause in `agents/pm/CLAUDE.md` stating that `/shared/rules/*` must be re-read unconditionally at the start of every task, including after role-switches within the same session. The clause names the failure mode it prevents. If the author judges the shared surface (`shared/rules/verify-before-report.md` or a new `shared/rules/role-switch-hygiene.md`) to be a better home, the shared-surface edit must be justified in the commit message against the Phase 1 freeze — the retrospective's explicit carve-out for Finding 6 provides that justification.
+3. `agents/pm/rules/` populated with any role-specific rules surfaced by Phase 1 walkthroughs or by the design of the Phase 2 skills. If no role-specific rules are needed at v1, leave the `.gitkeep` and justify the decision in the commit message rather than creating empty placeholders.
+4. `agents/pm/README.md` exists, summarizing the role for a cold reader (one paragraph + pointer to `CLAUDE.md` + current version).
+5. `agents/pm/version.md` bumped to `1.0.0` with a meaningful changelog entry citing this work unit, the Finding 6 absorption, and the Phase 2 skill set the config now references.
+6. The "Phase 2 specification inputs" section in `CLAUDE.md` is preserved. It points to `agents/pm/issue-drafting-spec.md` and is structured as an extensible list so subsequent Phase 2 WUs can append additional inherited specs if any emerge.
+7. Commit message: `feat(pm): v1 PM agent configuration`.
+
+**Do not touch.** Do not write the Phase 2 skills themselves (they are 2.2–2.6). Do not modify the frozen component agent surface. Do not edit `agents/pm/issue-drafting-spec.md` — it is an inherited contract and any change to it requires the same level of architectural justification as a shared-rule amendment. Do not create empty skill files under `agents/pm/skills/` — those land in their own WUs.
+
+**Verification steps.**
+
+1. Open `agents/pm/CLAUDE.md` and verify every architecture §6.3 transition the PM agent owns appears exactly once, with no contradictions against shared rules.
+2. Re-read `docs/walkthroughs/phase-1/retrospective.md` §Finding 6 and confirm the absorbed clause addresses the failure mode as described.
+3. Run `scripts/read-agent-version.sh pm` and confirm output is `1.0.0`.
+4. Confirm no shared rules were silently duplicated into the role config (the §5.3 test applied in reverse).
+
+**Suggested model.** Opus 4.7. This config is re-read on every PM-agent invocation across Phase 2+.
+
+### Work unit 2.2 — Task decomposition skill
+
+**Objective.** Produce the skill that turns a validated feature spec into a complete task graph persisted in the feature registry frontmatter — the first skill in the PM pipeline.
+
+**Context preamble.** Second Phase 2 work unit. The PM config v1 from 2.1 references this skill as a placeholder. The skill is the entry point for every feature after specs validation: it reads the product specs, identifies implementation and QA tasks (QA subtypes per architecture §6.2), assigns each to a component repo, infers dependencies, and sets autonomy levels. The output task graph is the load-bearing internal contract of Phase 2 — every downstream skill (plan-review, issue-drafting, dependency-recomputation, template-coverage) consumes it.
+
+**Inputs.** PM config v1 from 2.1, `shared/schemas/feature-frontmatter.schema.json`, `shared/schemas/labels.md`, `shared/templates/work-unit-issue.md`, `shared/templates/feature-registry.md`, example product specs from the Phase 0/1 neutral-org repos.
+
+**Acceptance criteria.**
+
+1. `agents/pm/skills/task-decomposition/SKILL.md` v1.0 exists, describing step by step: how the agent reads the feature's spec files from the product specs repo; how it identifies implementation vs. QA tasks and assigns QA subtypes; how it infers the target component repo for each task (the inference rules are documented explicitly — the skill does not guess); how it sets autonomy levels (feature-level default plus per-task override); and how it constructs the `depends_on` edges.
+2. The output task graph is written to the feature frontmatter at `/features/FEAT-YYYY-NNNN.md` and validates against `shared/schemas/feature-frontmatter.schema.json` with no orphan `depends_on` references and no cycles. The skill's verification section mandates a cycle check and an orphan check before writing.
+3. The skill emits a `task_graph_drafted` event on completion. The `shared/schemas/event.schema.json` enum is extended in this WU to include the new type (additive change — no existing events are affected). Events are validated via `scripts/validate-event.py` before appending.
+4. A worked example in the skill shows a task graph for a small realistic feature (two component repos, one implementation task per repo, one `qa-authoring` task, one `qa-execution` task, dependencies correctly wired).
+5. The skill does not validate template coverage — that is WU 2.6's concern, called as a subsequent pipeline step by the PM `CLAUDE.md` orchestration. The skill also does not draft issue bodies — that is WU 2.4.
+6. Commit message: `feat(pm): task decomposition skill v1`.
+
+**Do not touch.** Do not draft issue bodies (2.4). Do not implement the plan-review UX (2.3). Do not modify `shared/schemas/feature-frontmatter.schema.json` beyond what is strictly needed to support the task graph output — over-specification risks breaking existing Phase 1 consumers.
+
+**Verification steps.**
+
+1. Round-trip the worked example's task graph through `shared/schemas/feature-frontmatter.schema.json` using `ajv` or equivalent.
+2. Run a cycle-detection check on the worked example and confirm it passes.
+3. Confirm `task_graph_drafted` events validate through `scripts/validate-event.py`.
+4. Read the inference rules for target-repo assignment and autonomy level: can a PM agent given an arbitrary spec produce a reproducible answer? If two reasonable readings of the rules yield different graphs, tighten the rules.
+
+**Suggested model.** Opus 4.7. The task graph shape is a hard contract for every downstream skill in Phase 2.
+
+### Work unit 2.3 — Plan-review UX skill
+
+**Objective.** Produce the skill that materializes the task graph as a human-editable markdown document for the `planning → plan_review` stage, and re-ingests any edits the human commits back into the feature frontmatter as the new source of truth.
+
+**Context preamble.** Third Phase 2 work unit. The plan-review step is the human's primary decision point on a feature. The design constraint: the human must be able to edit one file to adjust the task graph (dependencies, autonomy overrides, work unit prompts) and have the PM agent faithfully ingest the edit. The state transition `plan_review → generating` is owned by the human (per the single-owner invariants in `shared/rules/state-vocabulary.md`); this skill prepares the diffable surface the human operates on and handles the round-trip, but it does not itself flip state into `generating`.
+
+**Inputs.** Task decomposition skill from 2.2, `shared/schemas/feature-frontmatter.schema.json`, `shared/templates/feature-registry.md`.
+
+**Acceptance criteria.**
+
+1. `agents/pm/skills/plan-review/SKILL.md` v1.0 exists, describing: the canonical markdown representation of a task graph as a human reviews it (propose and document a format — e.g. a summary table plus per-task prose sections, with machine-parseable fenced YAML blocks where needed); how the skill emits it from the feature frontmatter into a review file under `/features/FEAT-YYYY-NNNN-plan.md` (or equivalent — propose and justify the path); how the skill detects and re-ingests human edits; and how the skill emits `plan_ready` on entry to `plan_review`.
+2. Re-ingest discipline: the skill does not cache any portion of the plan across edits — it re-reads the plan file, re-validates the resulting graph against `feature-frontmatter.schema.json`, and either updates the feature frontmatter or escalates `spec_level_blocker` if the edit is malformed (unresolvable cycle, orphan dep, unknown repo, unknown autonomy level).
+3. The skill explicitly does not own `plan_review → generating` — that transition is the human's. The skill emits `plan_ready`, updates the feature state to `plan_review`, and waits for an external trigger (a `plan_approved` event emitted when the human signals via label or a separate file). The trigger-detection loop itself is outside this skill's scope.
+4. A worked example shows a draft plan, a non-trivial human edit that adjusts one dependency, retargets a task to a different repo, and tightens a work unit prompt, and the skill's re-ingest output with the resulting feature frontmatter re-validating cleanly.
+5. Events (`plan_ready`, and any others the skill introduces) validate through `scripts/validate-event.py`; the event schema enum is extended in this WU if needed.
+6. Commit message: `feat(pm): plan review UX skill v1`.
+
+**Do not touch.** Do not flip feature state to `generating` from within the skill (the human owns that transition). Do not modify the task decomposition skill output shape — consume it as the upstream contract. Do not draft issue bodies (2.4).
+
+**Verification steps.**
+
+1. Walk through the worked example and confirm the re-ingested feature frontmatter re-validates against the schema.
+2. Confirm the plan markdown format is diffable — `git diff` on a realistic edit produces readable output, not a wholesale replacement.
+3. Confirm the skill has clear exit criteria: `plan_ready` emitted, feature state flipped to `plan_review`, wait for external trigger, do not loop.
+
+**Suggested model.** Opus 4.7. The plan-review surface is the human's primary feature-level interaction; format clarity is a UX-quality decision that compounds across every feature.
+
+### Work unit 2.4 — Issue-drafting skill
+
+**Objective.** Produce the skill that drafts GitHub issue bodies for every task in an approved plan and opens them against the correct component repos — the Phase 2 WU with the heaviest inherited contract from Phase 1 (WU 1.9 forward spec `agents/pm/issue-drafting-spec.md`).
+
+**Context preamble.** Fourth Phase 2 work unit — the hardest in the phase. The inherited contract is not optional: every factual claim about target-repo state in an issue body must be re-verified at draft time, not from any earlier observation in the session or from the feature registry. The failure mode this prevents (WU 1.5 Task B, symmetry-assertion proved false mid-execution) is a first-class escalation cost if reintroduced. The skill is the PM agent's outgoing contract with every downstream component agent; quality here compounds across every task in every feature.
+
+**Inputs.** PM config v1, task decomposition skill v1, plan-review UX skill v1, `agents/pm/issue-drafting-spec.md` (inherited contract — read in full before writing), `shared/templates/work-unit-issue.md` v1, `shared/schemas/labels.md`, `shared/schemas/event.schema.json`.
+
+**Acceptance criteria.**
+
+1. `agents/pm/skills/issue-drafting/SKILL.md` v1.0 exists and implements every clause of `agents/pm/issue-drafting-spec.md` §Discipline:
+   - **Per-claim verification**: every assertion in the issue body about target-repo state is paired with a verification action (command, file read, grep) taken at draft time. The skill's format makes the verification log visible.
+   - **No transitive trust**: the skill explicitly forbids inferring "X is still true" from an earlier observation in the same session or from the feature registry.
+   - **Reformulate-or-escalate**: when a claim cannot be verified, the skill either reformulates to what *is* verifiable, or escalates `spec_level_blocker`. The skill does not ship hedged claims.
+2. Evidence logging per `issue-drafting-spec.md` §Evidence logging: the skill designates the durable surface where verifications are recorded (transcript, Context paragraph, or event payload). The choice is explicit, documented in the skill, and used consistently for every issue the skill produces. Silent drafting is forbidden.
+3. The skill opens GitHub issues against the correct component repo, title `[FEAT-YYYY-NNNN/TNN] <summary>`, body conforming to `shared/templates/work-unit-issue.md` v1, labels `state:pending` plus the applicable `type:*` and `autonomy:*` entries per `shared/schemas/labels.md`.
+4. The skill emits a `task_created` event per issue (new event type — extend `shared/schemas/event.schema.json` enum) referencing the issue's `owner/repo#number`, title, task-level correlation ID, autonomy, and target repo. For tasks whose `depends_on` array is empty, the skill additionally flips `state:pending → state:ready` and emits `task_ready` in the same pass (no-dep tasks are the only case the issue-drafting skill itself owns the ready-flip; all other ready-flips are WU 2.5's responsibility). Events validate through `scripts/validate-event.py`.
+5. A worked example in the skill shows: a draft issue body with three claims about repo state; three verification actions taken at draft time; the resulting issue body with the verification evidence recorded on the chosen surface; and the resulting `task_created` (and, for the no-dep task, `task_ready`) event emissions.
+6. Commit message: `feat(pm): issue drafting skill v1`.
+
+**Do not touch.** Do not modify `agents/pm/issue-drafting-spec.md` — it is an inherited contract. Do not modify `shared/templates/work-unit-issue.md` (any template adjustment emerging from this WU's design process is deferred to the retrospective 2.8). Do not write the dependency-recomputation skill (that is 2.5). Do not re-verify claims that `issue-drafting-spec.md` scopes out (orchestrator-internal state — event log, feature registry, labels — has its own verification disciplines).
+
+**Verification steps.**
+
+1. Read the skill against `agents/pm/issue-drafting-spec.md` clause by clause and confirm every requirement is implemented, not paraphrased-away. If any clause is implicit, make it explicit.
+2. Walk the worked example against a real component repo (the Phase 1 sample repo is acceptable) and confirm every verification command actually runs and produces the cited output.
+3. Confirm the evidence-logging surface is the same across all three claims in the example — if the skill mixes surfaces, tighten.
+4. Round-trip the `task_created` and `task_ready` event payloads through `scripts/validate-event.py`.
+5. Confirm issue bodies produced by the worked example round-trip against `shared/templates/work-unit-issue.md` v1 — every mandatory section present, frontmatter complete.
+
+**Suggested model.** Opus 4.7 — mandatory. This is the highest-stakes skill in Phase 2; the contract it honors prevents the dominant Phase 1 PM failure mode.
+
+### Work unit 2.5 — Dependency recomputation skill (absorbs Finding 5)
+
+**Objective.** Produce the skill that listens for `task_completed` events and flips newly-unblocked `pending` tasks to `ready`, updating GitHub labels and emitting `task_ready` events. Absorb Phase 1 deferred Finding 5 by formalizing a per-type payload schema for `task_started` with `branch: string | null`, establishing the pattern under `/shared/schemas/events/`.
+
+**Context preamble.** Fifth Phase 2 work unit. This is the one skill that operates outside the initial feature-planning flow — it runs continuously (or via a polling trigger) as tasks complete and unblocks downstream ones. The correctness bar is idempotence: re-running the skill against the same event log must not produce duplicate `task_ready` events or duplicate GitHub label flips. The skill reads labels from GitHub directly (not a local cache) per the single-owner state-transition invariant. Finding 5 is absorbed here because per-type event payload schemas are the relevant territory, and the PM agent is the first role that both consumes (`task_completed`) and emits (`task_ready`) events at scale.
+
+**Inputs.** PM config v1, issue-drafting skill v1 (for the shape of `task_created` and the no-dep `task_ready`), `shared/schemas/event.schema.json`, `scripts/validate-event.py`, `shared/rules/verify-before-report.md` §3, `docs/walkthroughs/phase-1/retrospective.md` §Finding 5.
+
+**Acceptance criteria.**
+
+1. `agents/pm/skills/dependency-recomputation/SKILL.md` v1.0 exists describing: the trigger (a new `task_completed` event on any feature's event log); the recomputation algorithm (walk every `pending` task on the feature, read GitHub labels of every `depends_on` target via a live query — not a cache — and if all are `state:done` flip the task to `state:ready` and emit `task_ready`); the idempotence discipline (before flipping, confirm the task is still `state:pending` on GitHub — if already `state:ready`, skip; if in any other state, escalate `spec_level_blocker`); and the label-write discipline (remove `state:pending`, add `state:ready`, verify the result via re-read before emitting `task_ready`).
+2. Finding 5 absorbed. `shared/schemas/events/` directory created. `shared/schemas/events/task_started.schema.json` defines the `task_started` payload shape with `branch` typed as `string | null`. `shared/rules/verify-before-report.md` §3 extended to describe the per-type payload validation discipline: agents validate events against the top-level event schema *and* against the per-type payload schema when one exists at `shared/schemas/events/<event_type>.schema.json`. The `shared/rules/verify-before-report.md` edit is architecturally authorized by the Phase 1 retrospective's carve-out for Finding 5 — the commit message states this.
+3. `scripts/validate-event.py` extended to apply the per-type payload schema when one exists, without altering its behavior for event types that have no per-type schema. The additive extension preserves the Phase 1 freeze contract for the component agent's existing emissions — no component-agent event shape changes, no component `version.md` bump required.
+4. A worked example in the skill shows a three-task feature (T01, T02 depending on T01, T03 depending on T01 and T02): T01 completes, T02 flips from `pending` to `ready` with a `task_ready` emission, T03 stays `pending`.
+5. A second worked example exercises idempotence: the same `task_completed` event replayed produces no duplicate `task_ready` and no duplicate label flip.
+6. The skill escalates `spec_level_blocker` on malformed dependency state — a `depends_on` target that no longer exists on GitHub, a cycle appearing post-hoc, labels in an unexpected state. The escalation is on the feature, not on the individual task, because the graph itself is incoherent.
+7. Commit message: `feat(pm): dependency recomputation skill v1; refactor(schemas): per-type event payload schemas with task_started precedent (closes Finding 5)`.
+
+**Do not touch.** Do not alter `scripts/validate-event.py` behavior for event types without a per-type schema — the Phase 1 freeze contract for the component agent depends on this. Do not modify component agent emission patterns (frozen). Do not bump `agents/component/version.md` — the component role's emissions are additively still valid.
+
+**Verification steps.**
+
+1. Run `scripts/validate-event.py` against a Phase 1 `task_started` event and confirm it still passes (additive extension preserved).
+2. Run `scripts/validate-event.py` against a new `task_started` event with `branch: null` and confirm it passes the new per-type schema.
+3. Run `scripts/validate-event.py` against a malformed `task_started` event (e.g. `branch: 42`) and confirm it fails with a useful message.
+4. Replay the idempotence worked example end-to-end and confirm no duplicate events and no duplicate labels.
+5. Re-read `shared/rules/verify-before-report.md` §3 and confirm the per-type discipline is described in terms the PM, QA, and specs roles can absorb when their phases arrive.
+
+**Suggested model.** Opus 4.7. Idempotence under replay is a subtle invariant; the per-type schema pattern set here governs every future event type across every future role.
+
+### Work unit 2.6 — Template-coverage check skill (stub protocol)
+
+**Objective.** Produce the skill that checks, at planning time, whether the Specfuse generator has templates for every surface the feature's task graph requires — using a stub protocol until the real generator-query integration is built in Phase 5.
+
+**Context preamble.** Sixth Phase 2 work unit. The Phase 2 acceptance criterion "template coverage gaps identified at planning time" is satisfiable without a real generator query: a stub in which each involved component repo declares its own template coverage in a convention file is sufficient to catch the "discovered mid-implementation" failure mode. The right-to-left phasing places the real generator feedback loop in Phase 5; this stub is the Phase 2 expedient. The declaration-file convention established here will likely persist even after Phase 5 replaces the query mechanism, so the choice is made carefully.
+
+**Inputs.** PM config v1, task decomposition skill v1, `agents/component/skills/verification/SKILL.md` v1.1 (for the existing `.specfuse/verification.yml` convention — informs the path choice without modifying the frozen file).
+
+**Acceptance criteria.**
+
+1. `agents/pm/skills/template-coverage-check/SKILL.md` v1.0 exists, describing: the stub protocol (where and how component repos declare their template coverage); the schema of the declaration file; how the skill cross-references the task graph against the declarations; and the escalation clause (`spec_level_blocker` on any unresolved gap — including missing declaration files).
+2. The chosen declaration path is documented with a brief rationale (a new file such as `.specfuse/templates.yaml`, or an additive section in `.specfuse/verification.yml`). Whichever path is chosen, it must not require editing the frozen `agents/component/skills/verification/SKILL.md` — additive only.
+3. `shared/schemas/template-coverage.schema.json` exists and defines the declaration-file structure. A worked example declaration validates against it.
+4. The skill has a `## Deferred integration` section naming Phase 5 as the place where the stub is replaced by a real generator query, and describing the expected shape of that future integration in enough detail that the Phase 5 WU inherits a concrete brief (not a re-discovery pass).
+5. Two worked examples: a feature that passes coverage (all templates declared across all involved repos), and a feature that fails (one declared-missing template in one repo; skill produces the `spec_level_blocker` escalation with a clear message).
+6. Events (`template_coverage_checked`, `template_coverage_gap`, or equivalent — extend `shared/schemas/event.schema.json` enum as needed) validate through `scripts/validate-event.py`.
+7. Commit message: `feat(pm): template coverage check skill v1 (stub protocol)`.
+
+**Do not touch.** Do not modify the frozen `agents/component/skills/verification/SKILL.md` or rename the `.specfuse/verification.yml` convention — additive only. Do not implement a real generator query — that is Phase 5. Do not silently treat absence of a declaration file as coverage — absence is a `spec_level_blocker` so the human either adds the declaration or abandons the task.
+
+**Verification steps.**
+
+1. Validate the worked declaration file against `shared/schemas/template-coverage.schema.json`.
+2. Walk both worked examples and confirm the gap-case produces a well-formed escalation with an actionable message.
+3. Re-read the `## Deferred integration` section and confirm the Phase 5 WU brief is concrete enough that the Phase 5 author does not have to re-derive it.
+
+**Suggested model.** Opus 4.7. The declaration-file convention established here will outlast the stub itself — precision in the convention pays back in Phase 5.
+
+### Work unit 2.7 — Phase 2 walkthrough
+
+**Objective.** Exercise the PM agent end-to-end on two real features — one happy-path, one edge-case — validating that the Phase 2 skills 2.2–2.6 compose into a working specs-to-issues pipeline. Analogous to WU 1.5.
+
+**Context preamble.** Seventh Phase 2 work unit. This is the empirical validation of everything 2.1–2.6 produced. Like WU 1.5, it is a multi-session human-driven exercise; the prompt here is instructions to the human operator. The two-features shape was chosen deliberately — one feature would not stress the pipeline, three would turn the walkthrough into a slog that masks the signal. The edge case deliberately targets one of the high-risk surfaces (plan re-ingest, template coverage gap, dependency recomputation replay) based on which feels most under-tested at walkthrough time.
+
+**Inputs.** Full PM agent config and skills v1. Phase 1 sample component repos (`Bontyyy/orchestrator-api-sample` and a second staged repo — stand up one under the neutral org if none exists). The neutral-org product specs repo from Phase 0. Two feature specs drafted by the human ahead of the walkthrough.
+
+**Acceptance criteria.**
+
+1. **Feature 1 (happy path)** — validated spec, straightforward task graph (two component repos, one implementation task per repo, one `qa-authoring` and one `qa-execution` task), no edits during plan review, all templates present in the coverage declaration. Expected end state: plan drafted, human approves without edit, issues opened in both component repos, first `task_completed` triggers `task_ready` on the next task, feature reaches `in_progress` cleanly. Produces `docs/walkthroughs/phase-2/feature-1-log.md`.
+2. **Feature 2 (edge case)** — pick ONE at walkthrough time:
+   - **Plan-review re-ingest stress**: human edits the plan non-trivially (adds a task, retargets a dependency, tightens a work unit prompt); skill re-ingests faithfully.
+   - **Template coverage gap**: one component repo missing a required template; stub escalates `spec_level_blocker` at planning time, not mid-implementation.
+   - **Dependency recomputation replay**: a `task_completed` event is re-delivered; skill is idempotent (no duplicate `task_ready`, no duplicate label flip).
+   Produces `docs/walkthroughs/phase-2/feature-2-log.md`.
+3. Logs are honest — friction, workarounds, surprises are recorded, not sanitized. Per-section: what worked, what did not, what was ambiguous, what config or skill needed a tweak.
+4. Any config or skill changes prompted by the walkthrough are committed as they happen, with `agents/pm/version.md` bumps and changelog entries.
+5. Every event emitted across both features validates through `scripts/validate-event.py` without exception.
+6. Commit messages per feature: `chore(phase-2): walkthrough feature 1 complete` and `chore(phase-2): walkthrough feature 2 complete`.
+
+**Do not touch.** Do not change architectural decisions during the walkthrough; if an architectural problem surfaces, log it and proceed with a workaround — it is a retrospective input. Do not modify the frozen component agent surface. Do not silently edit shared rules to make an issue go away — if a shared rule needs adjusting, surface it as a retrospective finding.
+
+**Verification steps.**
+
+1. Each feature reaches either the expected end state or a clearly documented stop with a rationale.
+2. Both feature event logs are syntactically valid JSONL (`while read line; do echo "$line" | jq .; done`) and pass `scripts/validate-event.py` line by line.
+3. Both walkthrough logs have concrete per-section observations, not generic prose.
+4. Correlation IDs thread through: feature registry, event log, issue titles, branch names (for downstream component-agent work), commits, PRs.
+
+**Suggested model.** For agent sessions playing the production PM role: whichever model the `agents/pm/CLAUDE.md` v1 targets for production (default: Sonnet 4.6). For the human's orchestration and note-taking session: Opus 4.7.
+
+### Work unit 2.8 — Phase 2 retrospective
+
+**Objective.** Triage findings from the Phase 2 walkthrough into Fix-in-Phase-2, Defer-to-Phase-3+, and (where applicable) Won't-fix-with-rationale categories. Produce the concrete fix work plan for the Phase 2 fixes. Do not execute the fixes here — each becomes its own post-retrospective WU per the WU 1.6–1.12 pattern.
+
+**Context preamble.** Eighth Phase 2 work unit. Structurally identical to WU 1.6: the retrospective is the decision artifact; fixes land as independent post-retrospective WUs. A freeze declaration is not issued here — it is issued by the last Phase 2 WU after the fix ladder merges, analogous to WU 1.12.
+
+**Inputs.** Both walkthrough logs from 2.7, current state of `/agents/pm/`, the three Phase 1 deferred findings (Finding 5 closed by WU 2.5, Finding 6 by WU 2.1; Finding 8 is a Phase 3+ carry independent of this retrospective).
+
+**Acceptance criteria.**
+
+1. `docs/walkthroughs/phase-2/retrospective.md` exists, structured like `docs/walkthroughs/phase-1/retrospective.md`: identity, objective, walkthrough outcome, triage criteria, findings table, per-finding sections, Fix-in-Phase-2 work plan, Deferred-to-Phase-3+ list with named homes, loose ends, outcome.
+2. The triage criteria explicitly mirror the Phase 1 pattern: does it gate Phase 3? is there 2-feature evidence? does the cost of deferring exceed the cost of fixing now? A finding qualifies for Fix-in-Phase-2 if any of these holds.
+3. The Fix-in-Phase-2 work plan names each follow-up WU (2.9, 2.10, …, 2.N-1) with its scope and a one-sentence rationale. Each fix is independently landable.
+4. The deferred list records any new Phase 2 carry-items with an explicit home phase. Finding 8 from Phase 1 is also listed if still open, with its Phase 3+ home reaffirmed.
+5. The Phase 2 freeze declaration is explicitly *not* recorded here — it is the scope of the last WU in the fix ladder. The retrospective ends with a pointer to that future WU.
+6. Commit message: `chore(phase-2): retrospective and fix plan`.
+
+**Do not touch.** Do not execute the fix items here — the retrospective is triage only. Do not retroactively edit Phase 1 artifacts. Do not declare the freeze.
+
+**Verification steps.**
+
+1. Open `docs/walkthroughs/phase-1/retrospective.md` and confirm the Phase 2 retro follows the same section structure — a reader familiar with Phase 1 should recognize the shape.
+2. Confirm every Fix-in-Phase-2 finding has a named follow-up WU with scope.
+3. Confirm the deferred list has explicit carry-forward homes.
+
+**Suggested model.** Sonnet 4.6. Retrospective synthesis against a concrete log; Opus is overkill.
+
+### Addendum — post-retrospective Phase 2 fixes
+
+Following the WU 1.6–1.12 pattern: the retrospective (2.8) produces a fix ladder (2.9, 2.10, …) with each fix independently landable in any order; a final WU (2.N) records the Phase 2 freeze declaration. The specific number and scope of these WUs is determined by 2.8's triage and is not pre-specified here. At the end of the ladder, the PM agent config is declared frozen for Phase 3 consumption, analogous to the Phase 1 freeze declaration of 2026-04-22.
 
 ---
 
