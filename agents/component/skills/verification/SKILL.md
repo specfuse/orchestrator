@@ -150,7 +150,7 @@ The event itself must validate against [`event.schema.json`](../../../../shared/
 Before emitting the event, the agent re-runs the universal checks from [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md):
 
 - Every correlation ID in the payload and the event itself matches the pattern in [`correlation-ids.md`](../../../../shared/rules/correlation-ids.md).
-- The JSON parses and validates against the schema.
+- The event JSON is piped through [`scripts/validate-event.py`](../../../../scripts/validate-event.py) and the validator exits `0` before the line is appended to `events/FEAT-YYYY-NNNN.jsonl`. Exit `1` (schema violation) sends the event back to construction and counts as a failed verification cycle; exit `2` (setup error) escalates per `verify-before-report.md` §3.
 - No secret-looking value appears anywhere in the payload (see [`security-boundaries.md`](../../../../shared/rules/security-boundaries.md) §"Log hygiene").
 
 ## Failure handling
@@ -224,4 +224,5 @@ Had cycle 2 also failed, the agent would still have had one cycle left before sp
 
 ## Version
 
+- `1.1` — WU 1.7: tightened pre-emission checks to require `scripts/validate-event.py` exit `0` before appending the `task_completed` event. Exit `1` loops back as a failed verification cycle; exit `2` escalates. Finding 1 of the Phase 1 walkthrough retrospective.
 - `1.0` — Phase 1 initial.

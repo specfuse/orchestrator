@@ -139,7 +139,7 @@ Every escalation touches three surfaces: the inbox file (live work queue), the i
 
 1. Rotate the issue label to the new `state:*` value.
 2. Write the inbox file and any companion artifact (spec issue comment, plan comment).
-3. Append the accompanying events to the feature event log.
+3. Construct each accompanying event (`task_blocked`, `human_escalation`, and when applicable `spec_issue_raised`) and pipe every line through [`/scripts/validate-event.py`](../../../../scripts/validate-event.py). Append to the feature event log only once the validator exits `0` for every line. Exit `1` sends the event back to construction; exit `2` (setup error) is itself a `spec_level_blocker` — do not loop.
 4. Commit with a message that mentions the task correlation ID in the body (headline is a simple `chore(escalation): raise <reason> for FEAT-YYYY-NNNN/TNN`).
 
 If step 1 or 3 fails, the escalation is in an inconsistent state. The agent stops and — if possible — writes a follow-up `human-escalation.md` with reason `spec_level_blocker` referencing the failed step. It does not invent a recovery.
@@ -198,4 +198,5 @@ The agent:
 
 ## Version
 
+- `1.1` — WU 1.7: the escalation event flow (§"Event emission: what goes where" step 3) now requires every event line to exit `0` from `scripts/validate-event.py` before the append. Finding 1 of the Phase 1 walkthrough retrospective.
 - `1.0` — Phase 1 initial.

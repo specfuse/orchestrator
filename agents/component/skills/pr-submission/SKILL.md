@@ -145,7 +145,7 @@ The transition happens **at the same logical moment** as the PR being opened. Or
 1. Push the branch to `origin` (with upstream tracking).
 2. Open the PR via `gh pr create` or equivalent, using the title and description above.
 3. Rotate the task issue's label: remove `state:in-progress`, add `state:in-review`.
-4. Append a `task_completed` event to `/events/FEAT-YYYY-NNNN.jsonl` with the payload shape from [`../verification/SKILL.md`](../verification/SKILL.md) §"Reporting", including the `pr_url` returned by step 2.
+4. Construct the `task_completed` event with the payload shape from [`../verification/SKILL.md`](../verification/SKILL.md) §"Reporting", including the `pr_url` returned by step 2. Pipe the event line through [`/scripts/validate-event.py`](../../../../scripts/validate-event.py); only append to `/events/FEAT-YYYY-NNNN.jsonl` once the validator exits `0`. On exit `1`, correct the event and re-validate (counts as a failed verification cycle per `verify-before-report.md` §3); on exit `2`, escalate.
 5. Stop.
 
 Steps 2, 3, and 4 are a logical unit. The event is the durable record of the handoff; the label is what other agents filter on; the PR is what the human reviews. If any one of the three fails to land, the task is in an inconsistent state and the agent escalates with `spec_level_blocker` — it does not retry partially-applied transitions on its own.
@@ -176,11 +176,12 @@ Task `FEAT-2026-0042/T07` adds the email validation described earlier. The agent
    - Title: `feat(api): reject POST /orders with missing email`.
    - Body: the shape in §"PR description" above, first line `FEAT-2026-0042/T07`, Summary one paragraph, Task pointing at the task issue, Verification echoing the green gates, "Spec issues raised: none", "Overrides applied: none".
 5. Label rotation on the task issue: `state:in-progress` → `state:in-review`.
-6. Event append on `/events/FEAT-2026-0042.jsonl`: `task_completed`, source `component:api`, payload containing `pr_url`, `branch`, and the `verification` object with all six gates `pass`.
+6. Event append on `/events/FEAT-2026-0042.jsonl`: `task_completed`, source `component:api`, payload containing `pr_url`, `branch`, and the `verification` object with all six gates `pass`. The line is piped through `scripts/validate-event.py` and the validator exits `0` before the append.
 7. Stop.
 
 From here, the human reviewer works against the PR. If they request changes, the task stays in `state:in-review`; the agent may continue pushing correction commits on the same branch (each with the `Feature:` trailer) until the reviewer approves and the merge watcher closes the loop.
 
 ## Version
 
+- `1.1` — WU 1.7: the `task_completed` append in the `in_progress → in_review` transition is now gated on `scripts/validate-event.py` exiting `0`. Finding 1 of the Phase 1 walkthrough retrospective.
 - `1.0` — Phase 1 initial.

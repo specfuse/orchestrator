@@ -463,6 +463,20 @@ Automate the component agent role. PM, specs, and QA remain human-driven. The hu
 
 **Suggested model.** Sonnet 4.6. Retrospective synthesis.
 
+### Addendum — post-retrospective Phase 1 fixes (WUs 1.7–1.11)
+
+The WU 1.6 retrospective (merged 2026-04-22) deviated from this plan's original framing of WU 1.6 as both triage and fix-closure: the retrospective was scoped to triage alone, and the five "Fix in Phase 1" findings it surfaced are carried by five subsequent work units, any of which can be landed independently in any order before the Phase 1 freeze declared in WU 1.6 acceptance criterion #4.
+
+See [`docs/walkthroughs/phase-1/retrospective.md`](walkthroughs/phase-1/retrospective.md) §"Fix-in-Phase-1 work plan" for the full per-finding rationale. Summary:
+
+- **WU 1.7 — Event schema validation harness (Finding 1).** Ship `scripts/validate-event.py` (Draft 2020-12 validator against `shared/schemas/event.schema.json`) and tighten `shared/rules/verify-before-report.md` §3 plus the three component skills to require validator exit `0` before any `events/*.jsonl` append.
+- **WU 1.8 — `source_version` runtime read (Finding 2).** Establish a shared convention (documented discipline, or a small helper script) that every event's `source_version` is read from `agents/<role>/version.md` at emission time, not eye-cached.
+- **WU 1.9 — PM issue-drafting "verify against repo" requirement (Finding 3).** Add a specification note, under `/agents/pm/` or in a shared rule, that the PM agent's issue-drafting skill (Phase 2) must re-verify every claim about target-repo state against the repo at draft time and log the verification step in the drafting transcript.
+- **WU 1.10 — Spec-issue routing for specs-less features (Finding 4).** Amend `agents/component/skills/escalation/SKILL.md` §2 (or the features registry README) so that features without a product specs repo route spec issues to the orchestrator repository.
+- **WU 1.11 — `source: component:<name>` convention (Finding 7).** Clarify in `shared/schemas/event.schema.json` description fields (or a shared rule) that `<name>` is the bare component repo name, no owner prefix.
+
+Phase 2 (PM agent automation) begins only after all five have landed and the Phase 1 freeze declaration of WU 1.6 acceptance criterion #4 is recorded.
+
 ---
 
 ## Phase 2 — PM agent automation
