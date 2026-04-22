@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/template-coverage.schema.json",
+  "title": "Template coverage declaration",
+  "description": "Schema for the per-component-repo `.specfuse/templates.yaml` file. Declares which Specfuse generator template tokens the repo supports, consumed by the PM agent's template-coverage-check skill (Phase 2 WU 2.6) at plan time. This is a stub protocol that Phase 5 replaces with a real generator query — see `agents/pm/skills/template-coverage-check/SKILL.md` §Deferred integration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provided_templates"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Version of this declaration-file contract. Bumped on breaking changes to the schema. Phase 2 stub is v1.",
+      "const": 1
+    },
+    "provided_templates": {
+      "type": "array",
+      "description": "List of generator template tokens this component repo supports. Tokens are free-form kebab-case strings (no central registry at v1); matching against feature task graph `required_templates` is exact-string. An empty list declares the repo provides no generator templates — a task on this repo with any `required_templates` will fail coverage.",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$"
+      },
+      "uniqueItems": true
+    }
+  }
+}

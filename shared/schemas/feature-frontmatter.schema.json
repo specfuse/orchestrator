@@ -92,6 +92,15 @@
           "type": "string",
           "description": "Per-task autonomy override. If absent, the task inherits the feature-level `autonomy_default`. Set by the PM agent during task decomposition when safety policy requires a stricter level than the feature default (e.g. `qa_execution` is never `auto`), or by the human during plan review.",
           "enum": ["auto", "review", "supervised"]
+        },
+        "required_templates": {
+          "type": "array",
+          "description": "Generator template tokens this task requires from its `assigned_repo`. Consumed by the PM agent's template-coverage-check skill (Phase 2 WU 2.6) to cross-reference against the repo's `.specfuse/templates.yaml` declaration. Tokens are free-form kebab-case strings; matching is exact-string. Absent or empty is treated as 'no generator templates needed for this task' and trivially satisfies coverage. Populated by the human during drafting or `plan_review`; the task-decomposition skill does not infer it at v1.",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "uniqueItems": true
         }
       }
     }

@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "provided_templates": [
+    "api-controller",
+    "api-request-validator",
+    "persistence-port",
+    "persistence-adapter",
+    "test-plan",
+    "test-runner"
+  ]
+}
