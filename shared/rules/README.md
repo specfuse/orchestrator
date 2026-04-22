@@ -12,6 +12,7 @@ Prose lives here; the machine contracts it references live in [`/shared/schemas/
 - [`override-registry.md`](override-registry.md) — how overrides to generated code are authorized, recorded, reconciled, and retired, per architecture §9.3. Reconciliation is the owning component agent's responsibility in the initial model.
 - [`escalation-protocol.md`](escalation-protocol.md) — how agents raise inbox files for human attention: the closed enum of reasons, the state-machine effects, and the expected human response loop.
 - [`verify-before-report.md`](verify-before-report.md) — the four-step discipline every agent follows: state intent, act, verify, report structured output. Reporting completion without verification is forbidden.
+- [`role-switch-hygiene.md`](role-switch-hygiene.md) — re-read `/shared/rules/*` unconditionally at the start of every task, including at role-switches within a single session. Prerequisite to the four-step cycle in `verify-before-report.md`.
 - [`security-boundaries.md`](security-boundaries.md) — read and write surfaces, secrets handling, and the response when a task appears to require privileged access.
 
 ## How these files are used
