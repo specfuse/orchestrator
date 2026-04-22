@@ -87,6 +87,11 @@
           "type": "string",
           "description": "`owner/repo` that will host this task's GitHub issue and (for implementation tasks) the resulting PR.",
           "minLength": 1
+        },
+        "autonomy": {
+          "type": "string",
+          "description": "Per-task autonomy override. If absent, the task inherits the feature-level `autonomy_default`. Set by the PM agent during task decomposition when safety policy requires a stricter level than the feature default (e.g. `qa_execution` is never `auto`), or by the human during plan review.",
+          "enum": ["auto", "review", "supervised"]
         }
       }
     }
