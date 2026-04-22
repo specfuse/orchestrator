@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/task_started.schema.json",
+  "title": "task_started event payload",
+  "description": "Payload shape for the `task_started` event emitted by component and QA agents when a task issue transitions ready → in_progress. Formalizes the `branch: string | null` shape observed in Phase 1 walkthroughs: the nullable case covers tasks that escalate before cutting a feature branch (Task C pattern, Phase 1 retrospective Finding 5).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "issue_url",
+    "branch"
+  ],
+  "properties": {
+    "issue_url": {
+      "type": "string",
+      "pattern": "^https://github\\.com/[^/]+/[^/]+/issues/\\d+$",
+      "description": "Full URL of the GitHub issue whose state just flipped to state:in-progress. Must be an `https://github.com/<owner>/<repo>/issues/<number>` URL. Stable identifier for the task in the target component repo."
+    },
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Name of the feature branch cut for this task, rooted in the target component repo. `null` when the task escalated before a branch was cut (no-code tasks, `spec_level_blocker` raised at pickup, `autonomy_requires_approval` gating branch creation). A string value is the branch name exactly as it appears on the remote (no `refs/heads/` prefix)."
+    }
+  }
+}
