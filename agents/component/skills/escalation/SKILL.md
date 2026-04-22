@@ -54,7 +54,7 @@ Both events go on the same commit as the inbox file write. The transition happen
 
 **Artifacts.**
 
-1. If the trigger is a spec or generator problem, file a `spec-issue.md` against the product specs repo or the Specfuse generator project (template at [`spec-issue.md`](../../../../shared/templates/spec-issue.md)). The filing agent does not propose a fix beyond what the template's "Suggested resolution" section asks for.
+1. If the trigger is a spec or generator problem, file a `spec-issue.md` against the product specs repo or the Specfuse generator project (template at [`spec-issue.md`](../../../../shared/templates/spec-issue.md)). For features that have no product specs repo attached — walkthrough, bootstrap, or legacy features — file the spec issue against the orchestrator repository itself. The filing agent does not propose a fix beyond what the template's "Suggested resolution" section asks for.
 2. Whether or not a spec issue was filed, write a `human-escalation.md` at `/inbox/human-escalation/<task-correlation-id>-spec.md`. The "Agent state" section links the spec issue (or explains why none was filed — e.g., cross-repo scope), names what the agent tried, and points at the offending path or spec reference. The "Decision requested" section asks the human: (a) is the escalation correctly routed; (b) should the task be split or reshaped; (c) should it be abandoned while the spec-level fix lands.
 
 **State transition.** `in_progress → blocked_spec`. Label: `state:in-progress` → `state:blocked-spec`.
@@ -198,5 +198,6 @@ The agent:
 
 ## Version
 
+- `1.2` — WU 1.10: clarified `spec_level_blocker` routing when the feature has no product specs repo (walkthrough, bootstrap, legacy) — the spec issue is filed against the orchestrator repository itself. Finding 4 of the Phase 1 walkthrough retrospective.
 - `1.1` — WU 1.7: the escalation event flow (§"Event emission: what goes where" step 3) now requires every event line to exit `0` from `scripts/validate-event.py` before the append. Finding 1 of the Phase 1 walkthrough retrospective.
 - `1.0` — Phase 1 initial.
