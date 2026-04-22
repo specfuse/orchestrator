@@ -463,19 +463,20 @@ Automate the component agent role. PM, specs, and QA remain human-driven. The hu
 
 **Suggested model.** Sonnet 4.6. Retrospective synthesis.
 
-### Addendum — post-retrospective Phase 1 fixes (WUs 1.7–1.11)
+### Addendum — post-retrospective Phase 1 fixes (WUs 1.7–1.12)
 
-The WU 1.6 retrospective (merged 2026-04-22) deviated from this plan's original framing of WU 1.6 as both triage and fix-closure: the retrospective was scoped to triage alone, and the five "Fix in Phase 1" findings it surfaced are carried by five subsequent work units, any of which can be landed independently in any order before the Phase 1 freeze declared in WU 1.6 acceptance criterion #4.
+The WU 1.6 retrospective (merged 2026-04-22) deviated from this plan's original framing of WU 1.6 as both triage and fix-closure: the retrospective was scoped to triage alone, and the five "Fix in Phase 1" findings it surfaced were carried by five subsequent work units, independently landable in any order. A sixth work unit (WU 1.12) records the freeze declaration required by WU 1.6 acceptance criterion #4 once the five fixes are merged.
 
-See [`docs/walkthroughs/phase-1/retrospective.md`](walkthroughs/phase-1/retrospective.md) §"Fix-in-Phase-1 work plan" for the full per-finding rationale. Summary:
+See [`docs/walkthroughs/phase-1/retrospective.md`](walkthroughs/phase-1/retrospective.md) §"Fix-in-Phase-1 work plan" for the full per-finding rationale, and §"Phase 1 freeze declaration" for the freeze itself. Summary:
 
-- **WU 1.7 — Event schema validation harness (Finding 1).** Ship `scripts/validate-event.py` (Draft 2020-12 validator against `shared/schemas/event.schema.json`) and tighten `shared/rules/verify-before-report.md` §3 plus the three component skills to require validator exit `0` before any `events/*.jsonl` append.
-- **WU 1.8 — `source_version` runtime read (Finding 2).** Establish a shared convention (documented discipline, or a small helper script) that every event's `source_version` is read from `agents/<role>/version.md` at emission time, not eye-cached.
-- **WU 1.9 — PM issue-drafting "verify against repo" requirement (Finding 3).** Add a specification note, under `/agents/pm/` or in a shared rule, that the PM agent's issue-drafting skill (Phase 2) must re-verify every claim about target-repo state against the repo at draft time and log the verification step in the drafting transcript.
-- **WU 1.10 — Spec-issue routing for specs-less features (Finding 4).** Amend `agents/component/skills/escalation/SKILL.md` §2 (or the features registry README) so that features without a product specs repo route spec issues to the orchestrator repository.
-- **WU 1.11 — `source: component:<name>` convention (Finding 7).** Clarify in `shared/schemas/event.schema.json` description fields (or a shared rule) that `<name>` is the bare component repo name, no owner prefix.
+- ✅ **WU 1.7 — Event schema validation harness (Finding 1).** Shipped `scripts/validate-event.py` (Draft 2020-12 validator against `shared/schemas/event.schema.json`) and tightened `shared/rules/verify-before-report.md` §3 plus the three component skills to require validator exit `0` before any `events/*.jsonl` append. PR #8.
+- ✅ **WU 1.8 — `source_version` runtime read (Finding 2).** Shipped `scripts/read-agent-version.sh` and tightened `shared/rules/verify-before-report.md` §3 to require every event's `source_version` be read from `agents/<role>/version.md` at emission time. PR #9.
+- ✅ **WU 1.9 — PM issue-drafting "verify against repo" requirement (Finding 3).** Added `agents/pm/issue-drafting-spec.md` as a forward specification constraining the Phase 2 PM issue-drafting skill. PR #11.
+- ✅ **WU 1.10 — Spec-issue routing for specs-less features (Finding 4).** Amended `agents/component/skills/escalation/SKILL.md` §2 to route specs-less features' spec issues against the orchestrator repository. PR #10.
+- ✅ **WU 1.11 — `source: component:<name>` convention (Finding 7).** Clarified in `shared/schemas/event.schema.json` that `<name>` is the bare component repo name, no owner prefix. PR #10.
+- ✅ **WU 1.12 — Phase 1 freeze declaration.** Recorded in `docs/walkthroughs/phase-1/retrospective.md` §"Phase 1 freeze declaration"; cross-referenced from `agents/component/CLAUDE.md` header and `agents/component/version.md` subtitle. Component agent v1.5.0 is the Phase 2 baseline.
 
-Phase 2 (PM agent automation) begins only after all five have landed and the Phase 1 freeze declaration of WU 1.6 acceptance criterion #4 is recorded.
+**Phase 1 frozen as of 2026-04-22.** Phase 2 (PM agent automation) can now begin from the corrected configuration and the documented deferred list.
 
 ---
 

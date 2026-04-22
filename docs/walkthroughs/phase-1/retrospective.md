@@ -174,3 +174,31 @@ No Task C follow-up is outstanding.
 ## Outcome
 
 WU 1.6 concludes Phase 1's decision work. The walkthrough validated the v1 component agent across the three shapes the plan called for; the retrospective sorted the resulting findings into five Phase 1 fixes and three Phase 2+ defers, with explicit rationales and a concrete work plan. Phase 1 is ready to freeze once the five Fix-in-Phase-1 items ship; Phase 2 (PM agent automation) starts from the corrected configuration and the documented deferred list rather than from a cold re-discovery pass.
+
+## Phase 1 freeze declaration
+
+**Declared on 2026-04-22 as part of WU 1.12.**
+
+All five Fix-in-Phase-1 items identified by the WU 1.6 triage have shipped to `main`:
+
+| # | Finding | WU | PR |
+|---|---|---|---|
+| 1 | Event schema validation harness | WU 1.7 | [#8](https://github.com/clabonte/orchestrator/pull/8) |
+| 2 | `source_version` runtime read | WU 1.8 | [#9](https://github.com/clabonte/orchestrator/pull/9) |
+| 3 | PM issue-drafting "verify against repo" requirement | WU 1.9 | [#11](https://github.com/clabonte/orchestrator/pull/11) |
+| 4 | Spec-issue routing for specs-less features | WU 1.10 | [#10](https://github.com/clabonte/orchestrator/pull/10) |
+| 7 | `source: component:<name>` convention | WU 1.11 | [#10](https://github.com/clabonte/orchestrator/pull/10) |
+
+With the five items landed, the component agent configuration is declared frozen for Phase 2 consumption:
+
+> **Component agent v1.5.0 is the baseline Phase 2 depends on. Changes to this config during Phase 2 require architectural justification.**
+
+The freeze applies to the operational surface of the component role: [`agents/component/CLAUDE.md`](../../../agents/component/CLAUDE.md), the three role skills (`verification/SKILL.md` v1.1, `pr-submission/SKILL.md` v1.1, `escalation/SKILL.md` v1.2), and the shared substrate the role consumes ([`shared/rules/*`](../../../shared/rules/), [`shared/schemas/*`](../../../shared/schemas/), [`shared/templates/*`](../../../shared/templates/)). The scripts added in WUs 1.7 and 1.8 ([`scripts/validate-event.py`](../../../scripts/validate-event.py), [`scripts/read-agent-version.sh`](../../../scripts/read-agent-version.sh)) are part of the frozen baseline because the shared rule and role skills reference them by path.
+
+The freeze does **not** cover:
+
+- The PM, QA, specs, config-steward, or merge-watcher role configs. Those remain Phase 0 v0.1 drafts (PM currently at v0.2.0 after WU 1.9's forward specification addition) pending their respective phases.
+- The three findings deferred to Phase 2+ by this retrospective (Findings 5, 6, 8). They are scheduled carry-items, not part of the frozen surface.
+- The `scripts/` directory as a whole — future scripts may land without contradicting the freeze, so long as they do not alter the behavior of the two scripts the component role depends on.
+
+Phase 2 (PM agent automation) can now start. The Fix-in-Phase-1 items and their rationales above are the contract Phase 2 inherits.

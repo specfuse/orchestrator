@@ -1,5 +1,7 @@
 # Component agent — v1.0.0
 
+> **Frozen as the Phase 1 baseline on 2026-04-22** (component agent v1.5.0, skills verification v1.1 / pr-submission v1.1 / escalation v1.2). Changes to this config during Phase 2+ require architectural justification. See [`docs/walkthroughs/phase-1/retrospective.md`](../../docs/walkthroughs/phase-1/retrospective.md) §"Phase 1 freeze declaration".
+
 The component agent is the worker instance that implements tasks inside a single component repository. This file is its configuration: the role definition, the transitions it owns, the artifacts it produces, the verification and PR disciplines it follows, and the anti-patterns that would regress the orchestrator's trust model if the agent fell into them.
 
 When this file and [`orchestrator-architecture.md`](../../docs/orchestrator-architecture.md) disagree, **the architecture wins and this file is wrong.** Raise an escalation rather than reconciling silently.

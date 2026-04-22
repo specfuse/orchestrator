@@ -2,6 +2,8 @@
 
 Current version: **1.5.0**
 
+**Frozen as the Phase 1 baseline on 2026-04-22 (WU 1.12).** Changes during Phase 2+ require architectural justification. Source of record: [`docs/walkthroughs/phase-1/retrospective.md`](../../docs/walkthroughs/phase-1/retrospective.md) §"Phase 1 freeze declaration".
+
 ## Changelog
 
 - `1.5.0` — WU 1.10: escalation skill `spec_level_blocker` clause now specifies that features without a product specs repo (walkthrough, bootstrap, legacy) route spec issues to the orchestrator repository itself. Bumped `skills/escalation/SKILL.md` (→ 1.2). No other files in this role touched. Closes Finding 4 of the Phase 1 walkthrough retrospective.
