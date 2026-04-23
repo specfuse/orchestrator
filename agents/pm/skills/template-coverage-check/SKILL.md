@@ -1,4 +1,4 @@
-# PM agent — template coverage check skill (v1.0, stub protocol)
+# PM agent — template coverage check skill (v1.1, stub protocol)
 
 ## Purpose
 
@@ -19,7 +19,7 @@ Out of scope (belongs elsewhere):
 
 - Real generator-backed coverage checks. Deferred to Phase 5 per §"Deferred integration".
 - Inferring `required_templates` from feature specs or task types. Phase 5 territory; v1 reads what the frontmatter carries.
-- Populating `required_templates` on task graph entries — the task-decomposition skill (WU 2.2) does not set this field at v1. The human adds it during drafting or during `plan_review` re-ingest. The template-coverage-check skill is a consumer of the field, not its author.
+- **DO NOT populate `required_templates` even if absent.** The task-decomposition skill deliberately does not set this field at v1. The human adds it during drafting or during `plan_review` re-ingest. If any task in the feature's task graph is missing `required_templates` at check time (field absent — not the same as an explicit empty array `[]`), the skill MUST escalate `spec_level_blocker` rather than infer the field; populating it from task-type or repo heuristics silently breaks the human-in-the-loop contract of `plan_review`. The template-coverage-check skill is a consumer of the field, not its author. See §"Pre-flight check — absent `required_templates`" for mechanical enforcement.
 - Negotiating with the generator to add missing templates. A gap is escalated to the human, who decides whether to add a template, reshape the task, or abandon the feature.
 - Re-running automatically on every plan-review re-ingest. The skill runs once in the `planning → plan_review` flow; if the human later adds `required_templates` during `plan_review`, the operator re-invokes the skill before the human approves the plan. This skill does not self-schedule.
 - Writing to any component repo. The skill is strictly read-only against component repos.
@@ -32,7 +32,7 @@ Per invocation:
 2. `/features/<feature_correlation_id>.md` — the feature registry file. The skill reads the frontmatter's `task_graph`, `involved_repos`, and `state` (confirms `state == "planning"` before running; re-runs during `plan_review` also permitted but the caller is responsible for invocation).
 3. Each `assigned_repo`'s `.specfuse/templates.yaml`, fetched live from the repo's default branch. The skill uses the GitHub API (or a deployment-chosen equivalent — `curl` on `raw.githubusercontent.com`, a local clone, etc.); the contract below is "read a fresh copy per check", not "cache".
 4. [`/shared/schemas/template-coverage.schema.json`](../../../../shared/schemas/template-coverage.schema.json) — the declaration-file schema, authored in this WU.
-5. [`/shared/schemas/feature-frontmatter.schema.json`](../../../../shared/schemas/feature-frontmatter.schema.json) — its task $defs gained an optional `required_templates: [string]` field in this WU. The skill reads the field; absent or empty means "no generator templates needed for this task".
+5. [`/shared/schemas/feature-frontmatter.schema.json`](../../../../shared/schemas/feature-frontmatter.schema.json) — its task $defs gained an optional `required_templates: [string]` field in this WU. The skill reads the field. **Field absent** means the human has not yet populated this task — the pre-flight check (Step 2.5) escalates before coverage evaluation begins. **Explicit empty array `[]`** means the human explicitly set no templates needed — trivially covered, included in `task_count`.
 6. [`/shared/schemas/event.schema.json`](../../../../shared/schemas/event.schema.json) — the event contract. `template_coverage_checked` was added to the enum in this WU; its per-type payload schema lives at [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json).
 7. This skill and [`../../CLAUDE.md`](../../CLAUDE.md) — re-read per invocation per [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md).
 
@@ -113,9 +113,43 @@ Read `/features/<feature_correlation_id>.md`. Parse the frontmatter. Confirm:
 
 If the frontmatter fails to parse or any check fails, return an error to the invoker without emitting. This is an upstream bug, not a coverage gap — no escalation, no event.
 
+### Step 2.5 — Pre-flight check: `required_templates` field presence
+
+Before enumerating the coverage demand, walk every task in the task graph and check whether the `required_templates` field is **present** — regardless of its value.
+
+**Critical semantic distinction:**
+
+- **Field absent** (key does not exist in the task object at all): the human has never populated this field. This is a contract violation — it means the human has not completed their required input for this task before coverage-check was invoked. **Escalate immediately.**
+- **Explicit empty array `[]`** (key present, value is an empty list): the human populated the field and declared that this task needs no generator templates. This is valid and expected — `qa_execution` and `qa_curation` tasks conventionally carry `required_templates: []` because execution and curation do not generate code via template. **Do not escalate for this.**
+
+```yaml
+# Field absent — escalate (human has not populated)
+- id: T03
+  type: implementation
+  assigned_repo: owner/repo-a
+  # required_templates key is missing entirely
+
+# Explicit empty array — do NOT escalate (human deliberately set to empty)
+- id: T05
+  type: qa_execution
+  assigned_repo: owner/repo-a
+  required_templates: []
+```
+
+**Procedure:**
+
+1. Collect the set of tasks where the `required_templates` key is absent from the task object.
+2. If that set is **non-empty**: the skill immediately escalates `spec_level_blocker`. Do NOT proceed to Step 3. Do NOT emit `template_coverage_checked`.
+   - Compose the escalation file at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` per [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md). The "Agent state" section names every task with a missing `required_templates` field as a bulleted list: `- T03 (implementation on owner/repo-a): required_templates field absent — human must populate before coverage check`. The "Decision requested" section asks the human to populate `required_templates` on each named task — either with a list of needed tokens, or with an explicit `[]` if the task genuinely needs no generator output — and then re-invoke the coverage check.
+   - Construct and append the `human_escalation` event per §"Escalation on gap" below.
+   - Return escalation to the invoker. The invoker does not proceed with plan-review Phase A.
+3. If that set is **empty**: all tasks have the field present (possibly as `[]`). Proceed to Step 3.
+
+This pre-flight check is **mechanical enforcement** of the imperative stated in §"Out of scope". Both are present by design: the imperative is voice/intent guidance to the skill reader against a future session's helpfulness bias; the pre-flight check is the runtime gate that stops the skill even if the reader missed the Out-of-scope clause.
+
 ### Step 3 — Enumerate coverage demand
 
-Build the list of `(task_id, assigned_repo, required_tokens)` tuples from the task graph. Skip tasks whose `required_templates` is absent or empty — they are trivially covered. The remaining set is the **demand**.
+Build the list of `(task_id, assigned_repo, required_tokens)` tuples from the task graph. Skip tasks whose `required_templates` is empty (`[]`) — they are trivially covered (the field is present but the human declared no generator templates needed). The remaining set is the **demand**.
 
 If the demand is empty (no task requires any template), the feature trivially satisfies coverage. Skip to step 6 with `gaps = []`.
 
@@ -265,9 +299,17 @@ Universal checks from [`/shared/rules/verify-before-report.md`](../../../../shar
 - No write to any component repo, `/product/`, `/overrides/`, or component-repo code paths.
 - No path written is in [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md).
 
-### Before returning from an escalation invocation
+### Before returning from an escalation invocation (pre-flight — absent `required_templates`)
 
-- At least one gap was collected during the walk.
+- At least one task was found with the `required_templates` field entirely absent (not `[]` — absent).
+- Escalation file written at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` naming every task with the absent field.
+- `human_escalation` event passed validation (exit 0), was appended, and was re-read.
+- No `template_coverage_checked` was emitted. Skill exited before Step 3.
+- Feature state is unchanged.
+
+### Before returning from an escalation invocation (coverage gap — Step 6 path)
+
+- At least one gap was collected during the coverage walk (Steps 3–5).
 - Escalation file written at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` with every gap enumerated and the human's options spelled out.
 - `human_escalation` event passed validation (exit 0), was appended, and was re-read.
 - No `template_coverage_checked` was emitted.
@@ -334,6 +376,8 @@ provided_templates:
 Step 1 — intent: "I will check template coverage for FEAT-2026-0053."
 
 Step 2 — read frontmatter. `task_graph` is non-empty (3 tasks), `involved_repos` is `[clabonte/persistence-sample, clabonte/api-sample]`. Proceed.
+
+Step 2.5 — pre-flight check: every task has `required_templates` present. T01 → `[persistence-port, persistence-adapter]`, T02 → `[api-controller, api-request-validator]`, T03 → `[test-plan]`. No task is missing the field. Proceed.
 
 Step 3 — demand:
 
@@ -404,7 +448,9 @@ provided_templates:
 
 ### Walk (deltas from example 1)
 
-Steps 1–3 identical.
+Steps 1–2.5 identical (pre-flight check passes — all tasks have `required_templates` present).
+
+Steps 2.5–3 identical.
 
 Step 4 — fetch declarations. Both fetch cleanly, both schema-validate.
 
@@ -535,7 +581,7 @@ No blank-sheet re-design is expected. The Phase 5 WU's budget is changing the **
 
 ## What this skill does not do
 
-- It does **not** populate `required_templates` on the task graph. The task-decomposition skill (WU 2.2) does not infer it; the human owns it during drafting or `plan_review`.
+- It does **not** populate `required_templates` on the task graph — and it is **prohibited from doing so even if the field is absent**. The task-decomposition skill deliberately does not set this field; the human owns it during drafting or `plan_review`. If a task is missing the field at check time, the skill escalates `spec_level_blocker` (Step 2.5) rather than inferring the field.
 - It does **not** query the generator. A stub at v1, a live call at Phase 5; today, all template authority flows through `.specfuse/templates.yaml`.
 - It does **not** modify feature frontmatter, component repos, `/product/`, `/overrides/`, or any code path.
 - It does **not** flip feature state. The invoker chains to plan-review Phase A on success; the skill itself does not transition.
