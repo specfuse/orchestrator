@@ -793,7 +793,203 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 - On first QA execution failure, a structured regression issue is opened against the implementation task; on repeat failure, escalation to human occurs.
 - QA regression curation — maintaining a growing suite of passing tests — is handled and does not grow unbounded.
 
-*Detailed work unit prompts deferred until Phase 2 completion.*
+### Work unit 3.1 — QA agent config v1
+
+**Objective.** Elevate the Phase 0 v0.1.0 QA agent `CLAUDE.md` to production v1 quality, incorporating Phase 1 and Phase 2 learnings, the QA role's longitudinal cadence, and the cross-task regression semantics (Q4 of the Phase 3 ladder).
+
+**Context preamble.** First Phase 3 work unit. The v0.1.0 config in `agents/qa/CLAUDE.md` is a Phase 0 draft — role definition, entry transitions, output artifacts, and a v0.1 verification/escalation stub are all present but unreviewed against production requirements. The QA agent differs from the component and PM agents in three ways that shape this rewrite: (a) its work is longitudinal — a feature traverses qa-authoring → qa-execution → regression → curation over multiple cycles, not one shot; (b) it fans out to three repos (test plans to specs repo, regression issues to component repos, events to orchestration repo); (c) it introduces cross-task coordination — a qa-execution failure produces follow-on work on an implementation task without violating single-owner state transitions. WU 3.1 codifies (a)–(c) so the four skill WUs 3.2–3.5 inherit a stable role surface.
+
+**Inputs.** `agents/qa/CLAUDE.md` v0.1.0, `agents/pm/CLAUDE.md` v1.6.0 (reference for production-quality role config shape), `agents/component/CLAUDE.md` v1.5.0 (second reference for frozen role config shape), `shared/rules/role-switch-hygiene.md`, `shared/rules/escalation-protocol.md`, `shared/rules/state-vocabulary.md`, architecture §6.3 (transition ownership) and §6.4 (spinning detection / regression semantics), `docs/walkthroughs/phase-2/retrospective.md` §"Phase 2 freeze declaration" (carry-items F2.10 + P1 Finding 8).
+
+**Acceptance criteria.**
+
+1. `agents/qa/CLAUDE.md` rewritten to v1.0.0 quality, with: one-paragraph role definition; bullet list of every entry transition the role owns (per architecture §6.3); explicit artifact outputs across the three output surfaces; a role-specific verification clause that references the four Phase 3 skills by name (the skill names are fixed here as part of the config surface); and a role-specific escalation clause enumerating QA-relevant conditions including the qa-execution repeat-failure escalation from architecture §6.4.
+2. **Cross-task regression semantics clause (Q4).** The config documents, in its own top-level section `## Cross-task regression semantics`, that on a qa-execution failure the QA agent **does not** transition the implementation task under test — it files a structured regression artifact and a NEW `implementation` task is created through the inbox (see WU 3.4 for the specific mechanism). The config states this as an invariant: QA never writes labels or state to a task it does not own, even when QA-detected failures imply follow-on implementation work.
+3. **Role-switch hygiene inherited.** The config references `shared/rules/role-switch-hygiene.md` explicitly (the shared rule was added in WU 2.1 and is already load-bearing — no QA-specific override).
+4. `agents/qa/rules/` populated with any role-specific rules surfaced by the design of Phase 3 skills, or left empty with `.gitkeep` + justification in the commit message. No speculative rules.
+5. `agents/qa/README.md` exists, summarizing the role for a cold reader (one paragraph + pointer to `CLAUDE.md` + current version).
+6. `agents/qa/version.md` bumped to `1.0.0` with a meaningful changelog entry citing this work unit, the Q4 semantics commitment, and the Phase 3 skill set the config references.
+7. Commit message: `feat(qa): v1 QA agent configuration`.
+
+**Do not touch.** Do not write the Phase 3 skills themselves (they are 3.2–3.5). Do not modify the frozen component agent surface (v1.5.0) or frozen PM agent surface (v1.6.0). Do not create skill stubs under `agents/qa/skills/` — those land in their own WUs. Do not edit `shared/templates/qa-regression-issue.md` — v0.1 is deliberate; any adjustment emerging from this config work is deferred to WU 3.4 where the regression skill defines its contract.
+
+**Verification steps.**
+
+1. Open `agents/qa/CLAUDE.md` and verify every architecture §6.3 transition the QA agent owns appears exactly once, with no contradictions against shared rules.
+2. Confirm the `## Cross-task regression semantics` section states the invariant unambiguously — a reader who has not yet read WU 3.4 understands that QA does not flip implementation task state.
+3. Run `scripts/read-agent-version.sh qa` and confirm output is `1.0.0`.
+4. Confirm no shared rules were silently duplicated into the role config.
+
+**Suggested model.** Opus 4.7. This config is re-read on every QA-agent invocation across Phase 3+.
+
+### Work unit 3.2 — QA authoring skill + test-plan stub schema
+
+**Objective.** Produce the skill that turns a validated feature spec into an executable test plan file under `/product/test-plans/`, paired with a stub schema defining the minimum machine-readable test plan shape — the first skill in the QA pipeline.
+
+**Context preamble.** Second Phase 3 work unit. The QA config v1 from 3.1 references this skill as a placeholder. The skill reads a feature's product specs (acceptance criteria, OpenAPI operations if applicable), emits a test plan file under `/product/test-plans/FEAT-YYYY-NNNN.md` with a test ID for each covered behavior, and validates the file against a **stub schema** at `shared/schemas/test-plan.schema.json`. Real integration with Arazzo / OpenAPI Step and the Specfuse generator is deferred to Phase 4+ (specs-agent-driven plan authoring) and Phase 5 (generator-emitted skeletons) per right-to-left phasing. The stub is what Phase 3 can validate concretely; the `## Deferred integration` section makes the Phase 4/5 brief concrete.
+
+**Inputs.** QA config v1 from 3.1, architecture §4.3 (test plan location), `shared/schemas/feature-frontmatter.schema.json` (acceptance-criteria fields where present), example product specs from the Phase 1/2 neutral-org repos, `shared/schemas/template-coverage.schema.json` (pattern reference for a Phase 2 stub schema).
+
+**Acceptance criteria.**
+
+1. `agents/qa/skills/qa-authoring/SKILL.md` v1.0 exists, describing step by step: how the agent reads the feature's acceptance criteria from the product specs repo; how it enumerates the behaviors a test plan must cover (one test per behavior by default, per the WU 2.10 same-behavior gate precedent); how it emits a plan file to `/product/test-plans/FEAT-YYYY-NNNN.md`; how it validates the file against the stub schema before reporting; and how it emits a `test_plan_authored` event on completion.
+2. `shared/schemas/test-plan.schema.json` defines the stub structure: a plan has a `feature_correlation_id`, a `tests` array with per-test objects having at minimum `test_id` (stable string, used by `qa-regression` to point at the failing test), `covers` (reference to the acceptance-criteria fragment it validates), `commands` (the executable step list), and `expected` (the success predicate). Additional fields may be added additively in later phases.
+3. A `## Deferred integration` section names Phase 4 (specs-agent-driven richer plans, likely Arazzo-backed) and Phase 5 (generator-emitted skeletons) as the places where the stub is extended or replaced. The section describes the expected shape of the Phase 4/5 integration in enough detail that the future WU inherits a concrete brief.
+4. The `shared/schemas/event.schema.json` enum is extended additively with `test_plan_authored`. Per-type payload schema under `shared/schemas/events/test_plan_authored.schema.json` — even if minimal — because WU 2.5 established the per-type precedent.
+5. A worked example in the skill: a small feature with two acceptance criteria → a test plan file with two tests covering them, validating cleanly against the stub schema.
+6. Commit message: `feat(qa): qa-authoring skill v1 + test-plan stub schema`.
+
+**Do not touch.** Do not implement qa-execution (3.3), regression (3.4), or curation (3.5). Do not reach into the Specfuse generator or Arazzo tooling — stub only. Do not emit test plans into any path other than `/product/test-plans/` — architecture §4.3 is the canonical location.
+
+**Verification steps.**
+
+1. Round-trip the worked example's plan file through `shared/schemas/test-plan.schema.json` using `ajv` or equivalent.
+2. Confirm `test_plan_authored` events validate through `scripts/validate-event.py`.
+3. Read the `## Deferred integration` section and confirm the Phase 4/5 brief is concrete enough that the Phase 4/5 author does not have to re-derive it.
+
+**Suggested model.** Opus 4.7. The test-plan schema shape outlives the stub — precision here pays back across Phase 4+5.
+
+### Work unit 3.3 — QA execution skill
+
+**Objective.** Produce the skill that reads a test plan, runs the declared commands against the component repo(s) under test, and emits structured per-test events (`qa_execution_completed` on all-pass, `qa_execution_failed` with failing-test details otherwise) — the engine that turns authored plans into empirical signal.
+
+**Context preamble.** Third Phase 3 work unit. The skill operates on a pickup cadence — a ready `qa_execution` task — but its output (failing events) triggers the WU 3.4 regression pipeline. The correctness bar is idempotence under replay: running the same plan against the same commit twice must not produce contradictory events or duplicate regression signals downstream. The skill does not build the component under test — it assumes the component agent's verification has already produced buildable artifacts. **Q6 check (Phase 1 Finding 8):** if, during this WU's authoring, the author determines that `--no-build` stales in `agents/component/skills/verification/SKILL.md` v1.1 create a risk of QA executing against stale artifacts, surface the finding as a new Phase 3 fix-ladder item (authorized carve-out from the Phase 1 freeze, analogous to WU 2.5's carve-out for Finding 5). If no risk surfaces, Finding 8 remains on the carry list for Phase 5.
+
+**Inputs.** QA config v1 from 3.1, qa-authoring skill + test-plan schema from 3.2, `shared/schemas/event.schema.json`, `scripts/validate-event.py`, `shared/rules/verify-before-report.md`, architecture §6.4 (regression-vs-escalation rule).
+
+**Acceptance criteria.**
+
+1. `agents/qa/skills/qa-execution/SKILL.md` v1.0 exists describing: the pickup trigger (a `ready` qa_execution task); plan file resolution (locate the plan in the product specs repo using the feature correlation ID); per-test execution loop (run `commands`, evaluate against `expected`, record stdout/stderr/exit status); the aggregation rules (all-pass → `qa_execution_completed`; any failure → `qa_execution_failed` with a `failed_tests` array naming each `test_id` and its first-signal evidence); and the idempotence discipline (before emitting, confirm no prior completed/failed event for the same `(task_correlation_id, commit_sha)` exists — if it does, skip and report).
+2. **Q6 finding check.** The WU explicitly inspects `agents/component/skills/verification/SKILL.md` v1.1 and records in the commit message whether Finding 8's `--no-build` stale-artifact risk applies to qa-execution. If it applies, the scope is documented as a follow-on Phase 3 fix WU (do not fix in 3.3 itself); if it does not, the carry decision is reaffirmed.
+3. Per-type payload schemas: `shared/schemas/events/qa_execution_completed.schema.json` and `shared/schemas/events/qa_execution_failed.schema.json` define the payload contracts. The `event_type` enum is extended additively.
+4. A worked example: a test plan with three tests; first execution all-pass → `qa_execution_completed` with commit SHA; second execution after a hypothetical code regression → `qa_execution_failed` with one entry in `failed_tests` naming the failing test's `test_id` and its first-signal output; third execution replayed against the same commit → no new event, skill reports idempotent-skip.
+5. The skill explicitly does not file the regression issue on failure — that is WU 3.4's concern, triggered by the `qa_execution_failed` event.
+6. Events validate through `scripts/validate-event.py`.
+7. Commit message: `feat(qa): qa-execution skill v1 (+ Finding 8 disposition)`.
+
+**Do not touch.** Do not file regression issues (3.4). Do not curate the regression suite (3.5). Do not modify the frozen component agent verification skill — the Q6 outcome is either "carried further" or "surfaced for a follow-on authorized WU", never silently edited here. Do not cache plan files or build artifacts — always resolve fresh from the specs repo at execution time.
+
+**Verification steps.**
+
+1. Walk the worked example end-to-end and confirm the event shapes validate per-type.
+2. Replay the idempotence case and confirm no duplicate events.
+3. Confirm the `failed_tests` array's structure is consumable by WU 3.4's regression-filing logic as-is — the skill author prototypes the shape with WU 3.4's upcoming contract in mind.
+4. Re-read the Q6 disposition in the commit message and confirm it is a concrete statement, not a hedge.
+
+**Suggested model.** Opus 4.7. Idempotence under replay plus cross-WU contract shape with 3.4 are both subtle invariants.
+
+### Work unit 3.4 — QA regression skill + `escalation_resolved` event (closes F2.10)
+
+**Objective.** Produce the skill that reacts to `qa_execution_failed` events by filing a structured regression artifact that spawns a new `implementation` task on the component repo under test (Q4 semantics), handles first-failure vs. repeat-failure per architecture §6.4, and introduces the `escalation_resolved` event type as the Phase 3 absorption of carry-item F2.10.
+
+**Context preamble.** Fourth Phase 3 work unit — the contract-heaviest WU in the phase. Two contracts are established simultaneously: (a) Q4 cross-task semantics (a QA-detected failure on a `done` implementation task produces a NEW `implementation` task, not a flip of the original's state — preserving the single-owner invariant); (b) F2.10 `escalation_resolved` event, which retires the orphan inbox file from the Phase 2 walkthrough as its first application. Getting either wrong regresses Phase 2's design (Q4 breaks state ownership, F2.10 leaves inbox files orphaned indefinitely). Both land in one WU because they are cohesive — Q4 creates the occasion for escalation resolution, and F2.10 formalizes it.
+
+**Inputs.** QA config v1 from 3.1 (esp. the `## Cross-task regression semantics` section), qa-execution skill from 3.3 (for the shape of `qa_execution_failed`), `shared/templates/qa-regression-issue.md` v0.1 (v0.2 may emerge here), `shared/rules/escalation-protocol.md`, `shared/rules/state-vocabulary.md`, architecture §6.4, `docs/walkthroughs/phase-2/retrospective.md` §"Finding F2.10" + §"Loose ends", `inbox/human-escalation/FEAT-2026-0005-plan-review-cycle.md` (the orphan this WU retires).
+
+**Acceptance criteria.**
+
+1. `agents/qa/skills/qa-regression/SKILL.md` v1.0 exists describing: the trigger (a new `qa_execution_failed` event on any feature's event log); the first-failure path — **file a new `implementation` task via `inbox/qa-regression/<FEAT>-<TESTID>.md`** (new inbox type, convention documented in the skill) referencing the failing `test_id`, the failing execution event, the implementation task correlation ID it regresses against, and a reproduction brief; emit `qa_regression_filed`; the repeat-failure path — if an open regression-fix task for the same `(implementation_task_correlation_id, test_id)` already exists and has had a linked fix attempt (signaled by a `task_completed` event), **escalate `spinning_detected` on the original implementation task** per architecture §6.4; the resolution path — on a subsequent `qa_execution_completed` whose commit SHA post-dates an outstanding regression-fix task for the same test, emit `qa_regression_resolved` and `escalation_resolved` (if the regression had been escalated).
+2. **Q4 invariant.** The skill never writes labels or state to the implementation task under test. All follow-on implementation work flows through a new task via the inbox. The skill's verification step confirms this invariant every run.
+3. **F2.10 absorption.** `escalation_resolved` added to the `event.schema.json` enum. Per-type payload schema at `shared/schemas/events/escalation_resolved.schema.json` with fields linking back to the original escalation event (`resolved_escalation_event_ts`, `resolution_kind` discriminator covering at least `qa_regression_resolved` and `human_resolved`). The event is designed as substrate — the `human_resolved` variant retires the Phase 2 orphan inbox file (`FEAT-2026-0005-plan-review-cycle.md`) in this WU's commit as the first application, with the retirement itself recorded as an `escalation_resolved` entry on that feature's event log. Commit message states the F2.10 absorption explicitly.
+4. Per-type payload schemas for `qa_regression_filed` and `qa_regression_resolved` land additively alongside.
+5. `shared/templates/qa-regression-issue.md` bumped to v0.2 if and only if fields are required that v0.1 lacks. Version bump justified in the commit message against the Phase 3 scope (the template is not yet frozen, so adjustments here do not violate any freeze).
+6. A worked example covering the full loop: qa_execution_failed → regression-fix task filed via inbox → component agent fixes → qa_execution_completed (new commit) → qa_regression_resolved + escalation_resolved emitted.
+7. A second worked example covering the repeat-failure path: qa_execution_failed → regression-fix task filed → component agent's fix attempt records task_completed → re-execution fails → `spinning_detected` escalation on the original implementation task, NOT a second regression-fix task.
+8. Commit message: `feat(qa): qa-regression skill v1 + escalation_resolved event (closes F2.10)`.
+
+**Do not touch.** Do not flip labels or state on the implementation task under test (Q4 invariant). Do not modify `shared/rules/escalation-protocol.md` in ways that regress Phase 2's escalation contract — additions are additive only. Do not implement curation (3.5). Do not retroactively edit event logs older than the orphan-retirement application — the orphan is retired by emitting a new event, not by rewriting history.
+
+**Verification steps.**
+
+1. Walk both worked examples end-to-end and confirm every emitted event validates per-type through `scripts/validate-event.py`.
+2. Confirm the orphan inbox file `FEAT-2026-0005-plan-review-cycle.md` is retired in this WU's commit with a corresponding `escalation_resolved` event appended to `events/FEAT-2026-0005.jsonl`.
+3. Confirm the Q4 invariant: grep the skill for any mention of writing labels or state to the implementation task under test — there should be none.
+4. Re-read `docs/walkthroughs/phase-2/retrospective.md` §"Finding F2.10" and confirm the absorbed clause addresses the failure mode as described (no machine-readable resolution signal, inbox file orphaned).
+
+**Suggested model.** Opus 4.7 — mandatory. The Q4 invariant and the F2.10 substrate are both load-bearing across every future phase.
+
+### Work unit 3.5 — QA curation skill
+
+**Objective.** Produce the skill that maintains the regression suite against unbounded growth — deduplicating overlapping tests, consolidating coverage across features, retiring obsolete tests whose covered behavior has been spec-removed — emitted via a structured `regression_suite_curated` event.
+
+**Context preamble.** Fifth Phase 3 work unit. The Phase 3 acceptance criterion "QA regression curation — maintaining a growing suite of passing tests — is handled and does not grow unbounded" is satisfiable with an explicit curation cadence: on each `qa_curation` task pickup, the skill scans the suite for dedup candidates, spec-removal orphans, and failure-clustered consolidation opportunities, and proposes structural changes the human approves in review. Unlike 3.2–3.4, this skill operates on the suite as a whole, not on a single feature — its task-correlation scope is the repo or suite directory it targets.
+
+**Inputs.** QA config v1 from 3.1, qa-authoring skill from 3.2 (for the test-plan schema it operates over), qa-regression skill from 3.4 (for the regression-filed events whose spawned tests contribute to suite growth), architecture §4.3, examples of realistic regression suites from Phase 0/1/2 repos where available.
+
+**Acceptance criteria.**
+
+1. `agents/qa/skills/qa-curation/SKILL.md` v1.0 exists describing: the pickup trigger (a ready `qa_curation` task); the scan passes (dedup detection by `covers` overlap, orphan detection by spec removal, consolidation candidates by failure-pattern clustering over the event log); the proposal format (a markdown curation report attached to the task's PR, not direct destructive edits — human reviews before merge); the verification step (the curation PR's diff does not alter test plan files in ways that make any open regression-fix task unresolvable); and the `regression_suite_curated` event emitted on PR merge.
+2. **Bounded-growth discipline.** The skill documents an explicit scan budget — one curation pass per `qa_curation` task pickup is not expected to traverse the entire suite if the suite exceeds a threshold (threshold TBD in this WU; propose and justify). The skill's verification confirms the task terminates in bounded time.
+3. Per-type payload schema at `shared/schemas/events/regression_suite_curated.schema.json`.
+4. A worked example: a suite with two overlapping tests covering the same acceptance criterion → the skill produces a consolidation PR merging them into one, emits the curated event on merge.
+5. A second worked example: a suite with one orphan test whose covered criterion was removed from the spec → retirement PR, curated event, no open-regression conflict.
+6. Commit message: `feat(qa): qa-curation skill v1`.
+
+**Do not touch.** Do not destructively edit test plan files inline — all curation changes flow through a reviewable PR. Do not retire a test whose `test_id` is referenced by any open `qa_regression_filed` event that has no matching `qa_regression_resolved` — that would hide an in-flight regression. Do not modify the test-plan stub schema from 3.2 — any structural change is deferred to Phase 4+.
+
+**Verification steps.**
+
+1. Walk both worked examples end-to-end and confirm the curated events validate.
+2. Confirm the "open regression protection" rule is exercised — attempt to retire a test with an open regression-filed event in the worked example, confirm the skill refuses.
+3. Re-read the bounded-growth scan-budget justification and confirm it is defensible, not hand-waved.
+
+**Suggested model.** Opus 4.7. The bounded-growth discipline affects every future QA pass.
+
+### Work unit 3.6 — Phase 3 walkthrough
+
+**Objective.** Exercise the QA agent end-to-end on two real features, validating that the Phase 3 skills 3.2–3.5 compose into a working authoring → execution → regression → curation loop. Analogous to WU 2.7.
+
+**Context preamble.** Sixth Phase 3 work unit. This is the empirical validation of everything 3.1–3.5 produced. Like WU 2.7, it is a multi-session human-driven exercise; the prompt here is instructions to the human operator. The two-features shape is deliberately inherited from Phase 2 — one would not stress the longitudinal cadence, three would turn the walkthrough into noise. Feature 2 exercises the full regression loop, which is the highest-contract path in Phase 3.
+
+**Inputs.** Full QA agent config and skills v1. Phase 1/2 sample component repos (`Bontyyy/orchestrator-api-sample` plus any additional repo used in Phase 2). The neutral-org product specs repo from Phase 0, extended with two features' acceptance criteria drafted by the human ahead of the walkthrough. The full set of frozen PM and component agent surfaces — Phase 3 produces QA tasks those roles consume and whose events QA reacts to.
+
+**Acceptance criteria.**
+
+1. **Feature 1 (happy path)** — validated spec, qa-authoring produces a test plan cleanly, qa-execution passes first-try against the merged implementation, feature reaches `done` with no regression filed. Produces `docs/walkthroughs/phase-3/feature-1-log.md`.
+2. **Feature 2 (regression cycle)** — primary candidate: qa-execution fails first-try, qa-regression files a new implementation task via the inbox, component agent picks it up and fixes, re-execution passes, `qa_regression_resolved` + `escalation_resolved` events emitted, qa-curation consolidates if the regression exposed a consolidation opportunity. Backup candidate (only if regression cycle is impractical): qa-curation stress — a suite growing past threshold with dedup/orphan opportunities. Chosen at walkthrough time. Produces `docs/walkthroughs/phase-3/feature-2-log.md`.
+3. Logs are honest — friction, workarounds, surprises are recorded, not sanitized.
+4. Any config or skill changes prompted by the walkthrough are committed as they happen, with `agents/qa/version.md` bumps and changelog entries.
+5. Every event emitted across both features validates through `scripts/validate-event.py` without exception.
+6. **Cross-task-flow audit.** The walkthrough explicitly verifies that the Q4 invariant held across Feature 2 — no implementation task the QA did not own had its state or labels mutated by QA actions.
+7. Commit messages per feature: `chore(phase-3): walkthrough feature 1 complete` and `chore(phase-3): walkthrough feature 2 complete`.
+
+**Do not touch.** Do not change architectural decisions during the walkthrough; if an architectural problem surfaces, log it and proceed with a workaround — it is a retrospective input. Do not modify the frozen component or PM agent surfaces. Do not silently edit shared rules to make an issue go away — if a shared rule needs adjusting, surface it as a retrospective finding.
+
+**Verification steps.**
+
+1. Each feature reaches either its expected end state or a clearly documented stop with a rationale.
+2. Both feature event logs are syntactically valid JSONL and pass `scripts/validate-event.py` line by line.
+3. Both walkthrough logs have concrete per-section observations, not generic prose.
+4. The Q4 audit in Feature 2's log is a specific enumeration, not a blanket assertion.
+
+**Suggested model.** For agent sessions playing the production QA role: whichever model `agents/qa/CLAUDE.md` v1 targets for production (default: Sonnet 4.6). For the human's orchestration and note-taking session: Opus 4.7.
+
+### Work unit 3.7 — Phase 3 retrospective
+
+**Objective.** Triage findings from the Phase 3 walkthrough into Fix-in-Phase-3, Defer-to-Phase-4+, and Won't-fix-with-rationale categories. Produce the concrete fix work plan. Do not execute fixes here — each becomes its own post-retrospective WU per the WU 1.6–1.12 / 2.8 pattern.
+
+**Context preamble.** Seventh Phase 3 work unit. Structurally identical to WU 1.6 and WU 2.8: the retrospective is the decision artifact; fixes land as independent post-retrospective WUs. A freeze declaration is not issued here — it is issued by the last Phase 3 WU after the fix ladder merges, analogous to WU 1.12 and WU 2.15.
+
+**Inputs.** Both walkthrough logs from 3.6, current state of `/agents/qa/`, the two Phase 2+ carry-items (F2.10 closed by WU 3.4; Phase 1 Finding 8 conditional-closed or carried-further by WU 3.3 per its Q6 disposition).
+
+**Acceptance criteria.**
+
+1. `docs/walkthroughs/phase-3/retrospective.md` exists, structured like Phase 2's retrospective: identity, objective, walkthrough outcome, triage criteria, findings table, per-finding sections, Fix-in-Phase-3 work plan, Deferred-to-Phase-4+ list with named homes, loose ends, outcome.
+2. Triage criteria mirror Phase 2's: does it gate Phase 4? is there 2-feature evidence (or a 1-feature finding elevated by cost-of-defer reasoning)? does the cost of deferring exceed the cost of fixing now? A finding qualifies for Fix-in-Phase-3 if any of these holds.
+3. The Fix-in-Phase-3 work plan names each follow-up WU (3.8, 3.9, …, 3.N-1) with its scope and a one-sentence rationale. Each fix is independently landable.
+4. The deferred list records any new Phase 3 carry-items with an explicit home phase. Phase 1 Finding 8 is listed either as closed-in-this-phase (via the WU 3.3 conditional absorption if triggered) or re-affirmed as Phase 4+/5 carry.
+5. The Phase 3 freeze declaration is explicitly *not* recorded here — it is the scope of the last WU in the fix ladder. The retrospective ends with a pointer to that future WU.
+6. Commit message: `chore(phase-3): retrospective and fix plan`.
+
+**Do not touch.** Do not execute fix items here — the retrospective is triage only. Do not retroactively edit Phase 1 or Phase 2 artifacts. Do not declare the freeze.
+
+**Verification steps.**
+
+1. Open `docs/walkthroughs/phase-2/retrospective.md` and confirm Phase 3's retro follows the same section structure — a reader familiar with Phase 2 should recognize the shape.
+2. Confirm every Fix-in-Phase-3 finding has a named follow-up WU with scope.
+3. Confirm the deferred list has explicit carry-forward homes.
+
+**Suggested model.** Sonnet 4.6. Retrospective synthesis against a concrete log; Opus is overkill.
 
 ---
 
