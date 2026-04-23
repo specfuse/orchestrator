@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-04-23T18:42:00Z",
+  "correlation_id": "FEAT-2026-0061",
+  "event_type": "qa_execution_failed",
+  "source": "qa",
+  "source_version": "1.2.0",
+  "payload": {
+    "task_correlation_id": "FEAT-2026-0061/T04",
+    "commit_sha": "def56789abcdef0123456789abcdef0123456789",
+    "plan_path": "/product/test-plans/FEAT-2026-0061.md",
+    "test_count": 3,
+    "failed_tests": [
+      {
+        "test_id": "widgets-export-rate-limit-enforced-429",
+        "first_signal": "HTTP 200 returned on 101st request; expected 429 Too Many Requests.",
+        "exit_code": 0
+      }
+    ],
+    "total_duration_seconds": 4.7
+  }
+}

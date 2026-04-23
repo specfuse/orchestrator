@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-23T18:10:00Z",
+  "correlation_id": "FEAT-2026-0061",
+  "event_type": "qa_execution_completed",
+  "source": "qa",
+  "source_version": "1.2.0",
+  "payload": {
+    "task_correlation_id": "FEAT-2026-0061/T04",
+    "commit_sha": "abc1234567890abcdef1234567890abcdef12345",
+    "plan_path": "/product/test-plans/FEAT-2026-0061.md",
+    "test_count": 3,
+    "total_duration_seconds": 4.2
+  }
+}

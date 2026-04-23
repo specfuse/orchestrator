@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/qa_execution_failed.schema.json",
+  "title": "qa_execution_failed event payload",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.3 as the QA execution failure signal. Pairs with qa_execution_completed.schema.json. Idempotence key is (task_correlation_id, commit_sha): the qa-execution skill refuses to emit a second event with the same pair. Downstream consumer WU 3.4 (qa-regression) keys its first-failure vs. repeat-failure decision on this event plus the existence of prior regression artifacts for the same (implementation_task_correlation_id, test_id) pair; the implementation_task_correlation_id is resolved by WU 3.4 from the feature task graph (SOT = feature registry), NOT carried in this payload, per WU 3.3 §'Decisions' D3.",
+  "description": "Payload shape for the `qa_execution_failed` event emitted by the QA agent on any qa-execution run where one or more tests failed. The event is the machine-readable signal downstream regression handling keys off; the original implementation task's state is untouched (cross-task regression invariant — see agents/qa/CLAUDE.md §'Cross-task regression semantics').",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_correlation_id",
+    "commit_sha",
+    "plan_path",
+    "test_count",
+    "failed_tests"
+  ],
+  "properties": {
+    "task_correlation_id": {
+      "type": "string",
+      "description": "Task-level correlation ID of the qa_execution task that produced this event. Together with `commit_sha`, forms the idempotence key.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}/T\\d{2}$"
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Git commit SHA of the assigned repo's `main` HEAD at execution time. 40-char full SHA; short SHAs are rejected.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "plan_path": {
+      "type": "string",
+      "description": "Path to the test plan file that was executed, relative to the product specs repo root.",
+      "pattern": "^/product/test-plans/FEAT-\\d{4}-\\d{4}\\.md$"
+    },
+    "test_count": {
+      "type": "integer",
+      "description": "Number of tests in the plan's `tests` array at execution time. The pass count is `test_count - len(failed_tests)` and is derivable, not duplicated.",
+      "minimum": 1
+    },
+    "failed_tests": {
+      "type": "array",
+      "description": "One entry per test that did not pass. Order follows the order tests appear in the plan file (stable, not evidence-severity-sorted).",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "test_id",
+          "first_signal"
+        ],
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "description": "The `test_id` of the failing test, matching the `test_id` field in the plan file's `tests[]` entry. Stability is load-bearing here: qa-regression (WU 3.4) keys regression artifacts on `(implementation_task_correlation_id, test_id)`, and the test_id match is how the repeat-failure path distinguishes new failures from known-open regressions.",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1
+          },
+          "first_signal": {
+            "type": "string",
+            "description": "Short human-readable excerpt that substantiates the failure — the most load-bearing line from stdout, stderr, or the exit-code summary. Long outputs must be truncated to an excerpt here; the full output may be referenced from the verification trail but is not inlined. Secrets must be redacted per `shared/rules/security-boundaries.md` §'Log hygiene'.",
+            "minLength": 1
+          },
+          "exit_code": {
+            "type": "integer",
+            "description": "Optional exit code of the last command run for this test, when the failure is signalled by a non-zero exit. Omitted when the failure is detected by predicate mismatch against a command that returned `0`."
+          },
+          "stderr_excerpt": {
+            "type": "string",
+            "description": "Optional excerpt of stderr from the failing command, when stderr carries signal distinct from stdout. Same redaction discipline as `first_signal`.",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "total_duration_seconds": {
+      "type": "number",
+      "description": "Wall-clock seconds for the full per-test loop. Optional on failures: a run that crashed partway may legitimately lack a duration.",
+      "minimum": 0
+    }
+  }
+}
