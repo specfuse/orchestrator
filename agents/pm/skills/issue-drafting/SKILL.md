@@ -1,4 +1,4 @@
-# PM agent — issue-drafting skill (v1.0)
+# PM agent — issue-drafting skill (v1.1)
 
 ## Purpose
 
@@ -105,6 +105,8 @@ Read the feature registry's frontmatter and the target task's `task_graph` entry
 ### Step 3 — Draft the body against the template
 
 Shape the §Context, §Acceptance criteria, §Do not touch, §Verification, and §Escalation triggers sections of the body from the plan-review work unit prompt, using [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) as the structural contract. Fill the YAML frontmatter block (`correlation_id`, `task_type`, `autonomy`, `component_repo`, `depends_on`, `generated_surfaces`) from the task graph entry.
+
+**Upstream task narration:** for any task whose `depends_on` is non-empty, name the upstream tasks in prose in the `## Context` section — both the machine-readable YAML `depends_on` field and a human-readable prose mention are required. For example: "This task depends on T01 (persistence port implementation) and T03 (authored test plan) — see `depends_on` in the frontmatter above."
 
 As each sentence or bullet is written, **identify and enumerate** every factual claim about target-repo state it contains, per the category table above. Hold this list in working memory; it drives step 4.
 
