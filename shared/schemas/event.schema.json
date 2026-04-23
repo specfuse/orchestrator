@@ -44,7 +44,8 @@
         "spec_issue_raised",
         "override_applied",
         "override_expired",
-        "human_escalation"
+        "human_escalation",
+        "feature_state_changed"
       ]
     },
     "source": {
