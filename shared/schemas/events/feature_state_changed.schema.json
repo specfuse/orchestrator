@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/feature_state_changed.schema.json",
+  "title": "feature_state_changed event payload",
+  "description": "Payload shape for the `feature_state_changed` event emitted by the PM agent (and, for the `plan_review → generating` transition, indirectly on behalf of the human approval gate) on every feature-level state transition the PM agent owns. Feature state vocabulary mirrors `shared/schemas/feature-frontmatter.schema.json` §state enum — the canonical machine-readable source. Added in Phase 2 WU 2.9 to close the event-log gap surfaced in findings F1.1 and F2.9.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "from_state",
+    "to_state",
+    "trigger"
+  ],
+  "properties": {
+    "from_state": {
+      "type": "string",
+      "description": "Feature state before the transition. Must be a value from the feature state machine in `state-vocabulary.md` and `feature-frontmatter.schema.json`.",
+      "enum": [
+        "drafting",
+        "validating",
+        "planning",
+        "plan_review",
+        "generating",
+        "in_progress",
+        "blocked",
+        "done",
+        "abandoned"
+      ]
+    },
+    "to_state": {
+      "type": "string",
+      "description": "Feature state after the transition. Must be a value from the feature state machine in `state-vocabulary.md` and `feature-frontmatter.schema.json`.",
+      "enum": [
+        "drafting",
+        "validating",
+        "planning",
+        "plan_review",
+        "generating",
+        "in_progress",
+        "blocked",
+        "done",
+        "abandoned"
+      ]
+    },
+    "trigger": {
+      "type": "string",
+      "description": "Names the action or event that caused this state transition. Freeform string at v1; examples: `plan_ready`, `plan_approved`, `first_round_issues_opened`, `all_tasks_done`, `human_escalation:spec_level_blocker`. Future versions may constrain this to a closed enum per-transition pair.",
+      "minLength": 1
+    }
+  }
+}

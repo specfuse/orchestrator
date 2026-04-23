@@ -20,6 +20,9 @@ This is deliberate. Phase 1 froze the component agent's emission patterns (`task
 ## Current per-type schemas
 
 - [`task_started.schema.json`](task_started.schema.json) — `payload.branch` is `string | null` (the nullable case covers tasks that escalate before cutting a branch, per Phase 1 retrospective Finding 5). Authored 2026-04-22 in WU 2.5 as the first per-type schema precedent.
+- [`template_coverage_checked.schema.json`](template_coverage_checked.schema.json) — `payload.involved_repos` (array of repo strings) + `payload.task_count` (integer). Authored 2026-04-22 in WU 2.6.
+- [`feature_state_changed.schema.json`](feature_state_changed.schema.json) — `payload.from_state`, `payload.to_state` (enum over feature state vocabulary), `payload.trigger` (freeform string). Authored 2026-04-23 in WU 2.9; closes finding F1.1.
+- [`human_escalation.schema.json`](human_escalation.schema.json) — `payload.summary` (prose), `payload.reason` (enum: `spinning_detected`, `autonomy_requires_approval`, `spec_level_blocker`, `override_expiry_needs_review`), `payload.inbox_file` (optional path), `payload.cycle_members` (optional array of task IDs). Authored 2026-04-23 in WU 2.9; closes finding F2.8. Historical payloads (FEAT-2026-0005 line 4) validated before authoring.
 
 ## When to add a new per-type schema
 
