@@ -1,4 +1,4 @@
-# PM agent — task decomposition skill (v1.0)
+# PM agent — task decomposition skill (v1.1)
 
 ## Purpose
 
@@ -94,6 +94,14 @@ Per architecture §6.2, QA has three subtypes:
 - `qa_execution` — the QA agent executes an authored plan against the delivered code. One `qa_execution` task per corresponding `qa_authoring` task. They pair 1:1.
 - `qa_curation` — the QA agent reviews whether any existing regression suite entry should be added, updated, or retired in light of the feature. **One `qa_curation` task per feature**, not per implementation task. Assigned to the repo that hosts the dominant regression suite for the feature (if ambiguous, pick the repo with the most implementation tasks, and escalate `spec_level_blocker` if still ambiguous — do not guess).
 
+#### Feature scope overrides
+
+**The feature's `## Scope` section can explicitly constrain `qa_authoring` cardinality.** When it does — for example, "one authored test plan covering both behaviors" on a feature with two observable-behavior implementation tasks — honor the feature's stated shape and collapse the default per-behavior count to the number the feature names. The skill's default rule (one `qa_authoring` per implementation task that changes observable behavior) applies only when the feature's `## Scope` section does not address `qa_authoring` cardinality.
+
+The override is one-directional: the feature can only collapse the count (fewer `qa_authoring` tasks than the default), not expand it. A feature scope that is silent on `qa_authoring` always uses the default.
+
+*Example:* a two-repo feature with two behaviors names "one authored test plan covering both behaviors" in its `## Scope` section. The default rule would produce two `qa_authoring` tasks (one per behavior), but the explicit scope constraint collapses the count to one — resulting in one `qa_authoring` task on the primary-behavior repo, one `qa_execution` paired with it, and one `qa_curation`. Read the feature's `## Scope` before counting `qa_authoring` tasks; when in doubt whether a scope clause is constraining cardinality, treat it as constraining and produce the collapsed count.
+
 QA task repo assignment:
 
 - `qa_authoring` and `qa_execution` are assigned to the **same repo** as the implementation task they pair with. If an implementation task spans two repos (per step 3's rare case), the QA tasks pair with the primary repo (the one where the user-facing behavior is observable — typically the API or frontend side).
@@ -107,7 +115,13 @@ The skill constructs dependencies using these rules, each applied independently:
 
 1. **Implementation → implementation** (capability chain). If capability B builds on capability A (A's output is B's input), the `implementation` task for B depends on the `implementation` task for A. The capability chain is derived from the spec's `## Scope` ordering, explicit Arazzo workflow steps, and OpenAPI `$ref` chains. If the chain is ambiguous from the spec, the skill escalates `spec_level_blocker` — it does not guess ordering.
 2. **qa_authoring** — no dependencies on implementation tasks. Test plans are authored from the spec in parallel with implementation.
-3. **qa_execution** — depends on (a) all `implementation` tasks on the same repo as itself, AND (b) the matched `qa_authoring` task for the same behavior.
+3. **qa_execution** — depends on (a) the `implementation` tasks **for the same behavior** as its matched `qa_authoring`, AND (b) the matched `qa_authoring` task itself. The scope is the behavior, not the whole repo.
+
+   *Same-behavior identification:* the feature's `### Behavior N` headings and `## Task routing` section map each behavior to its implementation task(s). Read those to determine which implementation tasks realize the behavior the `qa_execution` covers; only those tasks go into `depends_on`. When the feature has only one behavior implemented on a given repo, this rule collapses to "all implementation tasks on that repo" and is identical to the prior whole-repo reading.
+
+   *Cross-repo implementation tasks mocked at the test boundary:* when the feature's narrative or `## Task routing` section states that the test-side repo mocks the cross-repo component (e.g. "the API side mocks the persistence port"), the cross-repo implementation task is NOT added to `qa_execution.depends_on`. The mock boundary is identified by reading the feature's behavioral description and the implementation task's stated contract; do not infer it from repo names alone.
+
+   *Worked example — two behaviors on the same repo:* a feature with Behavior 1 (impl on api-repo: T02) and Behavior 2 (impl on api-repo: T03), each with its own `qa_authoring` (T04 for B1, T06 for B2) and `qa_execution` (T05 for B1, T07 for B2), produces: `T05.depends_on = [T02, T04]` (not `[T02, T03, T04]`) and `T07.depends_on = [T03, T06]` (not `[T02, T03, T06]`). Each `qa_execution` waits only for its own behavior's implementation to land, not for the unrelated behavior.
 4. **qa_curation** — depends on every `qa_execution` task on the feature. Curation runs after all execution is green.
 5. **No cross-feature dependencies.** `depends_on` only contains task IDs (`TNN`) within the same feature. A capability that genuinely depends on another feature's work is a **staging problem** — escalate `spec_level_blocker` so the specs/human can serialize the two features.
 
@@ -136,6 +150,8 @@ Before writing, the skill runs these checks against the draft graph in memory:
 3. **Orphan check.** Every `TNN` appearing in any `depends_on` array matches a task `id` in the graph.
 4. **Assigned-repo sanity.** Every task's `assigned_repo` is a member of `involved_repos`. A task assigned to a repo not declared in `involved_repos` means the decomposition is reaching outside the feature's declared footprint — escalate `spec_level_blocker`.
 5. **QA pairing.** Every `qa_execution` task has exactly one matching `qa_authoring` task on its same repo, and vice versa (unless the implementation task is an internal refactor with no observable behavior, in which case both QA tasks are absent by design).
+
+Note on the orphan check (check 3): the failure shape is asymmetric by edit direction. Adding a task risks orphans only on the new task's own `depends_on` entries — typically under the human's immediate attention during plan editing. Removing a task risks orphans in any surviving task's `depends_on` array, which may be far from the human's focus at the moment of the edit. The same check catches both directions; the asymmetry is worth keeping in mind when reviewing a plan-review edit that removes tasks.
 
 If any check fails, the skill **does not write** the graph. It either corrects the draft (re-entering step 3–6) or escalates `spec_level_blocker`. It does not ship a partially-validated graph.
 
@@ -168,7 +184,7 @@ After all checks pass:
 
 - `task_count` — integer, the number of tasks in the written `task_graph`.
 - `involved_repos` — the `involved_repos` array from the feature frontmatter at emission time. Duplicated into the payload so a downstream consumer reading the event log without pulling the feature file can still reason about scope.
-- `decomposition_pass` — 1 on first decomposition; incremented by 1 on each re-decomposition (spec change after planning).
+- `decomposition_pass` — 1 on first decomposition; incremented by 1 on each re-decomposition (spec change after planning). **This counter is not persisted in the feature frontmatter.** It is derived at emission time by counting the number of prior `task_graph_drafted` events already present in `/events/<correlation_id>.jsonl` for this feature (plus 1). On the first decomposition pass, the event log contains zero prior `task_graph_drafted` events for the feature, so `decomposition_pass` is 1. On each subsequent re-decomposition, count the existing `task_graph_drafted` events before appending the new one.
 
 The payload is deliberately minimal. The task graph itself lives in the feature frontmatter and is not duplicated into the event — events reference state, they do not replicate it. Per-type payload schemas under `/shared/schemas/events/` are a Phase 2+ item (see WU 2.5, absorbing Finding 5); until then, this shape is documented here and must remain stable.
 
@@ -265,7 +281,7 @@ The API endpoint is user-observable (new HTTP response), so it gets `qa_authorin
 - T01 (persistence port) → no deps. Capability chain puts it before T02.
 - T02 (API handler) → depends on T01. The handler consumes the port.
 - T03 (qa_authoring) → no deps. Authored from the spec in parallel with implementation.
-- T04 (qa_execution) → depends on [T01, T02, T03]. All implementation tasks on the same repo plus the authored plan.
+- T04 (qa_execution) → depends on [T01, T02, T03]. T03 is the matched `qa_authoring`. T02 (api-sample) and T01 (persistence-sample) are both the implementation tasks for the same capability the test covers — the API endpoint behavior directly invokes the persistence port, so the test must wait for both. The feature narrative does not describe a mock boundary on the test side, so T01 is included. (If the feature had stated "API tests mock the persistence port", T01 would be excluded per the cross-repo mock carve-out in step 5 rule 3.)
 - T05 (qa_curation) → depends on [T04]. Runs after execution is green.
 
 Cycle check: topological order is `T01 → T02 → T04 → T05`, with T03 in parallel. No cycles. Orphan check: all `TNN` in `depends_on` arrays match a task `id`. Clean.
