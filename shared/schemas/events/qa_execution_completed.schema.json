@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/qa_execution_completed.schema.json",
+  "title": "qa_execution_completed event payload",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.3 as the QA execution success signal. Pairs with qa_execution_failed.schema.json. Idempotence key is (task_correlation_id, commit_sha): the qa-execution skill refuses to emit a second event with the same pair. Downstream consumers (qa-regression in WU 3.4, qa-curation in WU 3.5) key off this event to confirm a plan has been exercised against a specific commit without regression.",
+  "description": "Payload shape for the `qa_execution_completed` event emitted by the QA agent on an all-pass qa-execution run. The event's envelope carries a feature-level correlation_id; the payload's `task_correlation_id` narrows to the specific qa_execution task that produced the signal, and `commit_sha` pins the commit the plan was run against.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_correlation_id",
+    "commit_sha",
+    "plan_path",
+    "test_count"
+  ],
+  "properties": {
+    "task_correlation_id": {
+      "type": "string",
+      "description": "Task-level correlation ID of the qa_execution task that produced this event. Together with `commit_sha`, forms the idempotence key.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}/T\\d{2}$"
+    },
+    "commit_sha": {
+      "type": "string",
+      "description": "Git commit SHA of the assigned repo's `main` HEAD at execution time. For cross-repo features, each qa_execution task carries its own `commit_sha` (the SHA of the repo it is assigned to). 40-char full SHA; short SHAs are rejected to keep the idempotence key unambiguous across history.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "plan_path": {
+      "type": "string",
+      "description": "Path to the test plan file that was executed, relative to the product specs repo root. Architecture §4.3 fixes `/product/test-plans/` as the canonical location.",
+      "pattern": "^/product/test-plans/FEAT-\\d{4}-\\d{4}\\.md$"
+    },
+    "test_count": {
+      "type": "integer",
+      "description": "Number of tests in the plan's `tests` array at execution time. On success all of them passed; the count is duplicated from the plan for event-log self-containment so a consumer reading the event log without pulling the plan file can reason about coverage breadth.",
+      "minimum": 1
+    },
+    "total_duration_seconds": {
+      "type": "number",
+      "description": "Wall-clock seconds for the full per-test loop. Optional — a run whose duration cannot be measured (e.g., retried after a crash before the skill captured the end timestamp) may omit the field rather than fabricate a value.",
+      "minimum": 0
+    }
+  }
+}
