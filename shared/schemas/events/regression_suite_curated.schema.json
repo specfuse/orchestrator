@@ -1,0 +1,101 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/regression_suite_curated.schema.json",
+  "title": "regression_suite_curated event payload",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.5 as the Phase 3 qa-curation skill's output signal. Emitted by the qa-curation skill in its post-merge invocation mode, after a curation PR against `/product/test-plans/*.md` in the product specs repo has landed on main. The envelope `correlation_id` is task-level on the `qa_curation` task that produced the PR (not feature-level — curation spans features; `affected_feature_correlation_ids` carries the fanout). Not emitted on PR draft, not emitted while the PR is open — the merged-ness of the diff is the trigger. `refused_candidates` is load-bearing for audit: it records candidates the skill's open-regression protection or other safety checks rejected, making the refusal an active decision rather than an absence. `scope: \"mixed\"` is legal when a single PR bundles more than one curation kind (typical when a stalest-first scan surfaces a handful of orphans and one consolidation in the same pass).",
+  "description": "Payload shape for the `regression_suite_curated` event emitted by the QA agent when a curation PR against `/product/test-plans/` lands. The envelope `correlation_id` is task-level on the `qa_curation` task (FEAT-YYYY-NNNN/TNN). The payload identifies the PR, classifies the scope of changes, enumerates the test_ids touched and the features whose plans changed, and (optionally) records the scan cost and any candidates the skill refused to act on (e.g., a retirement blocked by an open `qa_regression_filed` without a matching `qa_regression_resolved`). Consumers of this event are primarily auditors: no v1 skill reacts to it. Phase 4 may introduce consumers (e.g., a cross-feature regression-intelligence layer).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "curation_pr_url",
+    "scope",
+    "affected_test_ids",
+    "affected_feature_correlation_ids"
+  ],
+  "properties": {
+    "curation_pr_url": {
+      "type": "string",
+      "description": "URL of the merged curation PR against the product specs repo (e.g. `https://github.com/clabonte/specs/pull/42`). The PR branch name follows the `qa-curation/<qa_curation_task_correlation_id>` convention the skill uses (e.g. `qa-curation/FEAT-2026-0070-T05`). The PR body carries the human-readable curation report; this event is the machine-readable record.",
+      "pattern": "^https://github\\.com/[^/\\s]+/[^/\\s]+/pull/\\d+$",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "string",
+      "description": "Discriminator for the kind of curation work the PR performed. `dedup` = two or more tests with overlapping `covers` were merged; `retire_orphan` = tests whose covered acceptance-criterion fragment was removed from the feature spec were retired; `consolidate` = tests clustered together by co-failure pattern were merged behind one test_id; `rename` = one or more test_ids were renamed (modeled as retire-old + add-new for protection purposes — see the skill's `## The curation procedure` §Step 3); `mixed` = the PR bundled more than one of the above kinds. `mixed` is the common case for a stalest-first scan that encounters heterogeneous candidates in a single pass.",
+      "enum": [
+        "dedup",
+        "retire_orphan",
+        "consolidate",
+        "rename",
+        "mixed"
+      ]
+    },
+    "affected_test_ids": {
+      "type": "array",
+      "description": "Ordered list of every `test_id` touched by the merged PR. For `dedup` and `consolidate`, includes both the input test_ids (merged away) and the output test_id (the merged-into identifier). For `retire_orphan`, the retired test_ids. For `rename`, both old and new test_ids. For `mixed`, the union across sub-changes. Duplicates are not expected but not schema-forbidden — the skill emits stable, deduplicated order.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]*$",
+        "minLength": 1
+      }
+    },
+    "affected_feature_correlation_ids": {
+      "type": "array",
+      "description": "Feature-level correlation IDs whose `/product/test-plans/FEAT-YYYY-NNNN.md` file was modified by the merged PR. At least one; more than one when a cross-feature consolidation merges tests from multiple plans. A consumer reading this event can locate every plan-file diff via `git log --follow -- product/test-plans/FEAT-YYYY-NNNN.md` scoped to the PR's merge commit.",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^FEAT-\\d{4}-\\d{4}$"
+      }
+    },
+    "scan_summary": {
+      "type": "object",
+      "description": "Optional audit-trail object recording the scan cost of the pass. Included when the skill wants to assert the bounded-growth discipline held under the scan-budget threshold; omitted on tiny passes where the budget was not a factor. `plans_scanned` is the count of plan files the skill read during the drafting pass; `regression_events_consulted` is the count of event-log lines consulted during the open-regression protection checks.",
+      "additionalProperties": false,
+      "properties": {
+        "plans_scanned": {
+          "type": "integer",
+          "description": "Number of `/product/test-plans/*.md` files the skill read during the drafting pass. Bounded by the skill's scan-budget threshold (v1 = 50).",
+          "minimum": 0
+        },
+        "regression_events_consulted": {
+          "type": "integer",
+          "description": "Number of feature event-log lines the skill read during per-candidate open-regression protection checks across the pass. The skill re-reads each feature event log end-to-end per candidate (no caching across candidates), so this count can exceed the event-log file size when multiple candidates are checked against the same feature.",
+          "minimum": 0
+        }
+      }
+    },
+    "refused_candidates": {
+      "type": "array",
+      "description": "Candidates the skill identified but refused to act on in this PR. Primary source: open-regression protection — a retirement, rename, or consolidation was blocked because the old `test_id` had an open `qa_regression_filed` without a matching `qa_regression_resolved`. Included for audit: the refusal is a deliberate safety-check outcome, and omitting it would hide the fact that the skill did not blindly trust the candidate list. Empty (or omitted) when no candidates were refused.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "test_id",
+          "feature_correlation_id",
+          "reason"
+        ],
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "description": "The candidate `test_id` the skill refused to touch in this pass.",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1
+          },
+          "feature_correlation_id": {
+            "type": "string",
+            "description": "Feature-level correlation ID of the plan that contains the refused test_id.",
+            "pattern": "^FEAT-\\d{4}-\\d{4}$"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Short prose explanation of why the candidate was refused. Typical values reference the protection rule concretely, e.g. `\"open qa_regression_filed without matching qa_regression_resolved\"` or `\"open-regression protection: filed event at <ts> on <impl_task>\"`. Free-form to admit future refusal kinds without a schema change, but must be specific enough to locate the source evidence (not just \"blocked\").",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
