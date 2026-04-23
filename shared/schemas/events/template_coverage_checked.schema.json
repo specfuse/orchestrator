@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/events/template_coverage_checked.schema.json",
   "title": "template_coverage_checked event payload",
+  "$comment": "Provenance (WU 2.14, F2.4): authored 2026-04-22 in WU 2.6. Fields: involved_repos (required, array), task_count (required, integer). WU 2.11 extended the plan-review skill to re-emit this event on every successful Phase B re-ingest, making Phase B success observable in the audit trail.",
   "description": "Payload shape for the `template_coverage_checked` event emitted by the PM agent after a successful template coverage check on a feature's task graph. Absence of the event on a feature that reached `plan_review` indicates coverage escalated — the `human_escalation` event at feature level is the gap signal, not a separate `template_coverage_gap` event.",
   "type": "object",
   "additionalProperties": false,

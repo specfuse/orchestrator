@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/events/human_escalation.schema.json",
   "title": "human_escalation event payload",
+  "$comment": "Provenance (WU 2.14, F2.4): authored 2026-04-23 in WU 2.9; closes finding F2.8. Fields: summary (required), reason (required, enum: spinning_detected|autonomy_requires_approval|spec_level_blocker|override_expiry_needs_review), inbox_file (optional), cycle_members (optional array of task IDs). The human_escalation event_type itself was in the Phase 1 baseline enum; this per-type payload schema is the Phase 2 WU 2.9 addition.",
   "description": "Payload shape for the `human_escalation` event appended to the feature event log when any agent raises an escalation per `shared/rules/escalation-protocol.md`. The `reason` field is the discriminator; its values are the closed set from `escalation-protocol.md` §\"When to escalate\". Design choice: flat schema with `cycle_members` optional across all reasons (rather than `oneOf`/`if-then-else`) — simpler at v1 while still capturing the structured-payload intent of finding F2.8. `cycle_members` is semantically reserved for `reason: spec_level_blocker` on dependency-cycle escalations and `reason: spinning_detected` on cycle-driven spinning, but is not mechanically excluded from other reasons at v1. Added in Phase 2 WU 2.9.",
   "type": "object",
   "additionalProperties": false,
