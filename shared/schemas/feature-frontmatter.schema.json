@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/feature-frontmatter.schema.json",
   "title": "Feature registry frontmatter",
+  "$comment": "Additive history (WU 2.14, F2.4): Phase 1 baseline schema — correlation_id, state, involved_repos, autonomy_default, task_graph (tasks: id, type, depends_on, assigned_repo, autonomy). Phase 2 additions: optional required_templates array on task objects (WU 2.6) — generator template tokens the task needs from its assigned_repo; populated by the human during drafting or plan_review, never by the task-decomposition skill at v1.",
   "description": "YAML frontmatter on a /features/<id>.md file. Fields are the machine-readable contract for feature state; prose in the body is for humans. See orchestrator-architecture.md §3 and §6.1.",
   "type": "object",
   "additionalProperties": false,

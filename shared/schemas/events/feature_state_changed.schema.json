@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/events/feature_state_changed.schema.json",
   "title": "feature_state_changed event payload",
+  "$comment": "Provenance (WU 2.14, F2.4): authored 2026-04-23 in WU 2.9; closes findings F1.1 + F2.9. Fields: from_state (required, enum), to_state (required, enum), trigger (required, freeform string). The event_type itself was also added to event.schema.json enum in WU 2.9.",
   "description": "Payload shape for the `feature_state_changed` event emitted by the PM agent (and, for the `plan_review → generating` transition, indirectly on behalf of the human approval gate) on every feature-level state transition the PM agent owns. Feature state vocabulary mirrors `shared/schemas/feature-frontmatter.schema.json` §state enum — the canonical machine-readable source. Added in Phase 2 WU 2.9 to close the event-log gap surfaced in findings F1.1 and F2.9.",
   "type": "object",
   "additionalProperties": false,

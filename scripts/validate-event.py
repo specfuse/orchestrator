@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 """Validate orchestrator event log entries against shared/schemas/event.schema.json.
 
-Usage:
-    # Single event on stdin (one JSON object, trailing newline optional):
+Supported invocation patterns (only two):
+
+    # Stdin — pipe a single event or a JSONL file:
     echo '{"timestamp": "...", ...}' | python3 scripts/validate-event.py
+    cat events/FEAT-2026-0001.jsonl | python3 scripts/validate-event.py
+    python3 scripts/validate-event.py --stdin   # explicit alias for stdin (same behaviour)
 
-    # Multiple events on stdin (JSONL, one event per line, blank lines ignored):
-    cat candidate-events.jsonl | python3 scripts/validate-event.py
-
-    # A committed events file (same JSONL format):
+    # File — pass a path to a .jsonl file:
     python3 scripts/validate-event.py --file events/FEAT-2026-0001.jsonl
+
+Any other form (positional arguments, --event, --input, --file /dev/stdin, etc.)
+is rejected with an error pointing at the two supported patterns above.
 
 Exit codes:
     0 — every event validated successfully
@@ -164,16 +167,51 @@ def iter_lines_from_stdin() -> list[tuple[int, str]]:
     return lines
 
 
+_UNSUPPORTED_HINT = (
+    "Supported invocation patterns:\n"
+    "  cat events/FEAT-XXXX-NNNN.jsonl | scripts/validate-event.py          # stdin\n"
+    "  scripts/validate-event.py --stdin                                      # stdin (explicit)\n"
+    "  scripts/validate-event.py --file events/FEAT-XXXX-NNNN.jsonl          # file\n"
+)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Validate events against shared/schemas/event.schema.json.",
+        epilog=_UNSUPPORTED_HINT,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
         "--file",
         type=Path,
-        help="Path to a .jsonl file of events. If omitted, events are read from stdin.",
+        metavar="PATH",
+        help="Path to a .jsonl file of events to validate.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--stdin",
+        action="store_true",
+        default=False,
+        help="Explicitly read events from stdin (same behaviour as omitting --file).",
+    )
+
+    # Reject unsupported positional arguments before parsing flags.
+    # argparse would otherwise accept them silently.
+    known, unknown = parser.parse_known_args()
+    if unknown:
+        sys.stderr.write(
+            f"error: unsupported argument(s): {' '.join(unknown)}\n\n"
+            + _UNSUPPORTED_HINT
+        )
+        return 2
+
+    args = known
+
+    if args.file is not None and args.stdin:
+        sys.stderr.write(
+            "error: --file and --stdin are mutually exclusive.\n\n"
+            + _UNSUPPORTED_HINT
+        )
+        return 2
 
     validator = load_validator()
 
@@ -181,6 +219,7 @@ def main() -> int:
         source = str(args.file)
         entries = iter_lines_from_file(args.file)
     else:
+        # Both explicit --stdin and the no-flag default route here.
         source = "<stdin>"
         entries = iter_lines_from_stdin()
 

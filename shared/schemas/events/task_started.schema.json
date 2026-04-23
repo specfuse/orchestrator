@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/events/task_started.schema.json",
   "title": "task_started event payload",
+  "$comment": "Provenance (WU 2.14, F2.4): authored 2026-04-22 in WU 2.5 as the first per-type schema precedent. Fields: issue_url (required), branch (required, string|null — nullable for pre-branch escalation per Phase 1 Finding 5).",
   "description": "Payload shape for the `task_started` event emitted by component and QA agents when a task issue transitions ready → in_progress. Formalizes the `branch: string | null` shape observed in Phase 1 walkthroughs: the nullable case covers tasks that escalate before cutting a feature branch (Task C pattern, Phase 1 retrospective Finding 5).",
   "type": "object",
   "additionalProperties": false,

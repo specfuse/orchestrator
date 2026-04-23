@@ -158,7 +158,7 @@ If the demand is empty (no task requires any template), the feature trivially sa
 For each unique `assigned_repo` in the demand, fetch `<assigned_repo>/.specfuse/templates.yaml` from the repo's default branch. Recommended command:
 
 ```sh
-gh api repos/<owner>/<repo>/contents/.specfuse/templates.yaml?ref=main \
+gh api 'repos/<owner>/<repo>/contents/.specfuse/templates.yaml?ref=main' \
   --jq '.content' | base64 --decode
 ```
 
@@ -390,11 +390,11 @@ Step 3 — demand:
 Step 4 — fetch declarations:
 
 ```sh
-gh api repos/clabonte/persistence-sample/contents/.specfuse/templates.yaml?ref=main \
+gh api 'repos/clabonte/persistence-sample/contents/.specfuse/templates.yaml?ref=main' \
   --jq '.content' | base64 --decode
 # → schema_version: 1 ; provided_templates: [persistence-port, persistence-adapter, migration]
 
-gh api repos/clabonte/api-sample/contents/.specfuse/templates.yaml?ref=main \
+gh api 'repos/clabonte/api-sample/contents/.specfuse/templates.yaml?ref=main' \
   --jq '.content' | base64 --decode
 # → schema_version: 1 ; provided_templates: [api-controller, api-request-validator, api-response-serializer, test-plan, test-runner]
 ```
