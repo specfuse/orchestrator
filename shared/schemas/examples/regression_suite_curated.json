@@ -1,0 +1,28 @@
+{
+  "timestamp": "2026-04-23T22:45:00Z",
+  "correlation_id": "FEAT-2026-0070/T05",
+  "event_type": "regression_suite_curated",
+  "source": "qa",
+  "source_version": "1.4.0",
+  "payload": {
+    "curation_pr_url": "https://github.com/clabonte/specs-sample/pull/17",
+    "scope": "retire_orphan",
+    "affected_test_ids": [
+      "widgets-export-legacy-v1-content-type"
+    ],
+    "affected_feature_correlation_ids": [
+      "FEAT-2026-0060"
+    ],
+    "scan_summary": {
+      "plans_scanned": 7,
+      "regression_events_consulted": 42
+    },
+    "refused_candidates": [
+      {
+        "test_id": "widgets-export-rate-limit-enforced-429",
+        "feature_correlation_id": "FEAT-2026-0061",
+        "reason": "open qa_regression_filed at 2026-04-23T18:44:00Z on FEAT-2026-0061/T02 without matching qa_regression_resolved"
+      }
+    ]
+  }
+}
