@@ -1,4 +1,4 @@
-# PM agent — issue-drafting skill (v1.1)
+# PM agent — issue-drafting skill (v1.2)
 
 ## Purpose
 
@@ -32,7 +32,7 @@ The skill reads, in order, per task it drafts:
 
 1. The feature registry file at `/features/<feature_correlation_id>.md` — the `task_graph` entry for the target task (`id`, `type`, `depends_on`, `assigned_repo`, optional per-task `autonomy`), plus `involved_repos` and `autonomy_default` for fallback.
 2. The plan-review file at `/features/<feature_correlation_id>-plan.md` — the `### Work unit prompt` section for the target task, which is the free-form prose the issue-drafting skill reshapes into the five-section `work-unit-issue.md` structure.
-3. [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) — the template whose five mandatory `##` sections the body must match. Frozen at v1; the skill does not extend it with additional top-level sections.
+3. [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) — the template whose five mandatory `##` sections the body must match. Now at v1.1 (WU 2.13); includes the optional `deliverable_repo` frontmatter field and optional `## Deliverables` section added in that WU.
 4. [`/shared/templates/work-unit-issue.example.md`](../../../../shared/templates/work-unit-issue.example.md) — the fully-worked example, used as a shape reference for tone and section fill.
 5. [`/shared/schemas/labels.md`](../../../../shared/schemas/labels.md) — the label taxonomy (`state:*`, `type:*`, `autonomy:*`).
 6. [`/shared/schemas/event.schema.json`](../../../../shared/schemas/event.schema.json) — the event contract. Both `task_created` and `task_ready` are already in the `event_type` enum; no schema extension is required.
@@ -107,6 +107,8 @@ Read the feature registry's frontmatter and the target task's `task_graph` entry
 Shape the §Context, §Acceptance criteria, §Do not touch, §Verification, and §Escalation triggers sections of the body from the plan-review work unit prompt, using [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) as the structural contract. Fill the YAML frontmatter block (`correlation_id`, `task_type`, `autonomy`, `component_repo`, `depends_on`, `generated_surfaces`) from the task graph entry.
 
 **Upstream task narration:** for any task whose `depends_on` is non-empty, name the upstream tasks in prose in the `## Context` section — both the machine-readable YAML `depends_on` field and a human-readable prose mention are required. For example: "This task depends on T01 (persistence port implementation) and T03 (authored test plan) — see `depends_on` in the frontmatter above."
+
+**`deliverable_repo` and `## Deliverables`:** for tasks whose primary deliverable lives outside `component_repo` (typically `qa_authoring` and `qa_curation` tasks whose test plan or curation record is committed to the orchestrator repo), set `deliverable_repo` in the YAML frontmatter and populate an optional `## Deliverables` section (placed between `## Context` and `## Acceptance criteria`) naming each artifact by its relative path from `deliverable_repo`'s root. For implementation tasks, omit both — the defaults suffice (deliverable is the edited source in `component_repo`, already covered by `§Verification`'s build/test commands). When `deliverable_repo` is set and a `## Deliverables` section is present, `§Verification` commands that read or script-check the deliverable file run from `deliverable_repo`'s root; commands that build or test the component still run from `component_repo`'s root — annotate each command block with the repo it runs against.
 
 As each sentence or bullet is written, **identify and enumerate** every factual claim about target-repo state it contains, per the category table above. Hold this list in working memory; it drives step 4.
 
@@ -219,7 +221,7 @@ The skill's durable evidence surface is an inline prose block appended to the en
 ### Why this surface
 
 - **Visible at review time.** A reviewer opens the issue on GitHub, reads the §Context, sees exactly what was verified and how. No separate artifact to fetch.
-- **Compatible with the frozen template.** No new `##` top-level section is added; the block lives inside the existing §Context. [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) v1 is frozen against top-level additions; any template adjustment emerging from this skill's design is explicitly deferred to the Phase 2 retrospective (WU 2.8).
+- **Compatible with the template contract.** The evidence block lives inside the existing `§Context` section; it does not require a new top-level `##` section. The v1.1 template adds an optional `## Deliverables` section (WU 2.13) as the only authorized top-level extension; the evidence block predates that and is unaffected by it.
 - **Single surface, not mixed.** The spec requires a single designated surface. The event `task_created.payload` carries only `verification_count` (an integer metadata pointer), not the claims themselves — duplicating evidence across §Context prose and event payload would be mixed surfaces, and the spec forbids silent diffs between them.
 
 ### What does NOT belong in this block
@@ -355,7 +357,7 @@ The skill performs the universal checks from [`/shared/rules/verify-before-repor
 - The §Context evidence block is present, non-empty, and uses the format declared in §"Evidence logging".
 - No hedge (`should be`, `I think`, `per convention`, `typically`, or semantic equivalent) appears in any claim in the body.
 - The issue's title exactly matches `[FEAT-YYYY-NNNN/TNN] <summary>`.
-- The issue's body round-trips against [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) — all five mandatory `##` sections present, no additional `##` top-level sections, YAML frontmatter complete.
+- The issue's body round-trips against [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) v1.1 — all five mandatory `##` sections present, optional `## Deliverables` section present only when `deliverable_repo` is set, YAML frontmatter complete (`deliverable_repo` included when applicable, omitted otherwise).
 - The issue carries exactly one `state:*`, one `type:*`, and one `autonomy:*` label.
 - `task_created` passed `scripts/validate-event.py` (exit 0) and is the last — or second-to-last, if `task_ready` follows — line of the feature's event log.
 - `source_version` on every emitted event was produced by `scripts/read-agent-version.sh pm` at emission time.
@@ -612,13 +614,255 @@ ls tests/OrchestratorApiSample.Tests/WidgetsControllerTests.cs
 
 …and apply step 5's reformulate branch (claim is scope-informing and contradicted, not load-bearing on a cancellation) to rewrite the body so controller-level tests are *included* rather than excluded. The mid-task scope correction never happens because the scope was correct at drafting time. That is the failure mode this skill prevents, and it prevents it by doing exactly what `issue-drafting-spec.md` §Discipline mandates: verify at drafting time, record the evidence on a durable surface, reformulate-or-escalate on contradiction.
 
+## Worked example — FEAT-2026-0004/T03 (Python stack + `deliverable_repo`)
+
+This second example reconstructs how the issue-drafting skill drafts a `qa_authoring` task targeting `Bontyyy/orchestrator-persistence-sample` (Python stack). It was generated from the real Phase 2 WU 2.7 Feature 1 walkthrough, documented in [`/docs/walkthroughs/phase-2/feature-1-log.md`](../../../../docs/walkthroughs/phase-2/feature-1-log.md) §Step 5. The example is deliberately chosen to also showcase the `deliverable_repo` + `## Deliverables` fields added in WU 2.13: the test plan deliverable lives in the orchestrator repo, not in the component repo where the issue is filed.
+
+### Why a second example
+
+The first worked example (FEAT-2026-0002/T01, above) uses the .NET stack (`dotnet test`, `*.cs` conventions, `IWidgetRepository` Protocol shape). Python target repos require different verification mechanics: `pytest`, `mypy --strict`, `ruff`, `pyproject.toml` for coverage config, Protocol classes rather than C# interfaces. A second concrete example eliminates the mental translation tax for any invocation targeting a Python repo, and simultaneously validates that `deliverable_repo` + `## Deliverables` are used coherently by the skill.
+
+### Input state
+
+Frontmatter entry from `/features/FEAT-2026-0004.md`:
+
+```yaml
+task_graph:
+  - id: T03
+    type: qa_authoring
+    depends_on: []
+    assigned_repo: Bontyyy/orchestrator-api-sample
+    required_templates: [test-plan]
+```
+
+(Note: `assigned_repo` is the API repo — the issue is filed there as the feature's primary repo. The deliverable, however, lives in the orchestrator repo. `depends_on: []` → skill owns the `pending → ready` flip.)
+
+Work unit prompt from `/features/FEAT-2026-0004-plan.md` (approved):
+
+> Author the test plan for FEAT-2026-0004, covering both behaviors: (1) the persistence port's `list_by_quantity_above_async` method on `orchestrator-persistence-sample` (Python), and (2) the API endpoint `GET /widgets?min_quantity=N` on `orchestrator-api-sample` (.NET). The test plan is filed under `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md` in the orchestrator repo. The qa_execution task (T04) will execute these cases; the test plan is the only deliverable of T03.
+
+### Step 1 — Intent
+
+"I will draft and open the work-unit issue for FEAT-2026-0004/T03 on Bontyyy/orchestrator-api-sample, and flip it to `state:ready` on creation (`depends_on: []`). Because the deliverable lives in the orchestrator repo, I will set `deliverable_repo: clabonte/orchestrator` and include a `## Deliverables` section."
+
+### Step 2 — Inputs read
+
+Task graph entry, plan-review prompt (above), this skill, `issue-drafting-spec.md`. **Target repos not yet read.**
+
+### Step 3 — Draft with claim enumeration
+
+The skill shapes the body against `work-unit-issue.md` v1.1. Because the deliverable is a file committed to the orchestrator repo, it sets `deliverable_repo: clabonte/orchestrator` in the frontmatter and populates a `## Deliverables` section naming the test plan path.
+
+Claims enumerated:
+
+1. **File-existence claim (component repo)** — no test plan for FEAT-2026-0004 currently exists on `orchestrator-api-sample`.
+2. **File-existence claim (component repo)** — no `docs/` directory exists on `orchestrator-api-sample`.
+3. **Convention claim (component repo)** — the existing regression suite lives at `tests/OrchestratorApiSample.Tests/`.
+4. **Tooling-command claim (component repo)** — verification contract declares `dotnet test` and coverage threshold 0.90.
+
+### Step 4 — Per-claim verification
+
+Four actions, each against a freshly-fetched `main` on the respective repos:
+
+```sh
+# Claim 1 — no test plan file exists
+find . -name "FEAT-2026-0004*"
+# → no matches found (on orchestrator-api-sample main)
+
+# Claim 2 — no docs/ directory
+ls docs/
+# → directory does not exist on orchestrator-api-sample main
+
+# Claim 3 — regression suite location
+ls tests/OrchestratorApiSample.Tests/
+# → present; contains WidgetServiceTests.cs, WidgetsControllerTests.cs
+
+# Claim 4 — verification tooling
+cat .specfuse/verification.yml
+# → tests.command: "dotnet test --no-build --nologo --verbosity normal"
+#   coverage.minimum_line_coverage: 0.90
+```
+
+### Step 5 — Reconcile
+
+All four claims verified and match the draft. No reformulation, no escalation. Proceed.
+
+### Step 6 — Append evidence to §Context
+
+```
+**Drafted 2026-04-22T00:00:00Z; verified at draft time:**
+
+1. No FEAT-2026-0004 test plan file on api-sample: `find . -name "FEAT-2026-0004*"` on main → no matches found.
+2. Regression suite location: `ls tests/OrchestratorApiSample.Tests/` → present, contains `WidgetServiceTests.cs` and `WidgetsControllerTests.cs`; no test plan file there.
+3. No `docs/` directory on api-sample: `ls docs/` → directory does not exist on main.
+4. Verification tooling: `cat .specfuse/verification.yml` → `tests.command: "dotnet test --no-build --nologo --verbosity normal"`; `coverage.minimum_line_coverage: 0.90`.
+```
+
+### Full drafted body
+
+```markdown
+---
+correlation_id: FEAT-2026-0004/T03
+task_type: qa_authoring
+autonomy: review
+component_repo: Bontyyy/orchestrator-api-sample
+deliverable_repo: clabonte/orchestrator
+depends_on: []
+generated_surfaces: []
+---
+
+## Context
+
+This task authors the test plan covering both behaviors of **FEAT-2026-0004**: (1) the persistence port's quantity-filtered widget listing (T01, on `Bontyyy/orchestrator-persistence-sample`) and (2) the API endpoint for quantity-filtered listing (T02, on `Bontyyy/orchestrator-api-sample`). Feature registry: `features/FEAT-2026-0004.md`.
+
+The test plan is a product-level artifact committed to the orchestrator repo under `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md`. This issue is filed on `Bontyyy/orchestrator-api-sample` (the feature's primary API repo); the deliverable, however, is written to the orchestrator repo (`deliverable_repo: clabonte/orchestrator`). The QA agent performing this task writes to the orchestrator repo, not to this repo's code paths.
+
+No test plan file for FEAT-2026-0004 currently exists on this repo. No `docs/` directory exists on this repo. The existing regression suite lives at `tests/OrchestratorApiSample.Tests/` and must not be modified by this task.
+
+**Drafted 2026-04-22T00:00:00Z; verified at draft time:**
+
+1. No FEAT-2026-0004 test plan file on api-sample: `find . -name "FEAT-2026-0004*"` on main → no matches found.
+2. Regression suite location: `ls tests/OrchestratorApiSample.Tests/` → present, contains `WidgetServiceTests.cs` and `WidgetsControllerTests.cs`; no test plan file there.
+3. No `docs/` directory on api-sample: `ls docs/` → directory does not exist on main.
+4. Verification tooling: `cat .specfuse/verification.yml` → `tests.command: "dotnet test --no-build --nologo --verbosity normal"`; `coverage.minimum_line_coverage: 0.90`.
+
+## Deliverables
+
+- `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md` — authored test plan covering widget quantity-filtered listing acceptance criteria for both the persistence port behavior (T01) and the API endpoint behavior (T02). Committed to the orchestrator repo (`deliverable_repo: clabonte/orchestrator`), not to this component repo.
+
+## Acceptance criteria
+
+1. File `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md` exists in the **orchestrator repo** (not in this repo).
+2. The plan covers the persistence-port behavior (T01): at minimum, happy path (widgets returned strictly above threshold), boundary (threshold=0 filters zero-quantity widgets), and empty-repo case (`[]` returned).
+3. The plan covers the API endpoint behavior (T02): at minimum, happy path (`200 OK` with JSON array), boundary (missing `min_quantity` defaults to `0`), and invalid-input case (`400 BadRequest` on negative or non-integer `min_quantity`).
+4. Each plan case includes: brief setup, the action taken, and the expected observable outcome.
+5. The plan file contains a `## Cases` section with at least 6 case entries (3 per behavior).
+6. No source files in this repo (`Bontyyy/orchestrator-api-sample`) are modified.
+
+## Do not touch
+
+- `tests/OrchestratorApiSample.Tests/WidgetsControllerTests.cs` — implementing test cases in code is T04's job, not this task.
+- `tests/OrchestratorApiSample.Tests/WidgetServiceTests.cs` — same reason.
+- Any source file under `src/` in this repo.
+- `.specfuse/verification.yml` — the verification gates are the inherited contract.
+- `.github/settings.yml` and any workflow declared as a required check — branch protection configuration is never touched.
+- Secrets (`.env`, `*.pem`, `*.key`).
+- `.git/` internals.
+- Generated directories (`_generated/`, `gen-src/`, or the repo's equivalent) in either component repo.
+
+## Verification
+
+The deliverable lives in the orchestrator repo (`deliverable_repo: clabonte/orchestrator`), not this repo. Verification commands that read the deliverable file run from the orchestrator repo root; no build or test commands run against this component repo (no source changes are made here).
+
+```sh
+# Run from orchestrator repo root (deliverable_repo)
+ls docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md
+grep -c "##\|###" docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md
+grep "## Cases" docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md
+```
+
+The `grep -c` is informational; confirm a `## Cases` section exists and contains at least 6 case entries (each distinguishable setup/action/outcome block counts as one entry).
+
+## Escalation triggers
+
+- If the behaviors described in the feature spec (quantity-filtered listing semantics) are ambiguous or contradict the implementations delivered by T01/T02, escalate `spec_level_blocker` to return the feature to plan review.
+- If the orchestrator repo path `docs/walkthroughs/phase-2/test-plans/` cannot be created or written (e.g. permission issue), escalate `spec_level_blocker` — the routing assumption needs human review.
+- None beyond the four universal triggers in `shared/rules/escalation-protocol.md` otherwise apply.
+```
+
+### Step 7 — Idempotency check
+
+```sh
+gh issue list --repo Bontyyy/orchestrator-api-sample --state all \
+  --search "[FEAT-2026-0004/T03] in:title" --json number,title,state
+# → [] (empty)
+```
+
+Empty — no existing issue. Proceed.
+
+### Step 8 — Create the issue
+
+```sh
+gh issue create \
+  --repo Bontyyy/orchestrator-api-sample \
+  --title "[FEAT-2026-0004/T03] Author test plan for quantity-filtered widget listing" \
+  --body-file /tmp/FEAT-2026-0004-T03.md \
+  --label state:ready \
+  --label type:qa-authoring \
+  --label autonomy:review
+# → https://github.com/Bontyyy/orchestrator-api-sample/issues/10
+```
+
+`state:ready` because `depends_on: []`.
+
+### Step 9 — Re-read
+
+```sh
+gh issue view 10 --repo Bontyyy/orchestrator-api-sample --json number,title,body,labels,state
+# → title, body, labels match. State `open`. Round-trip ✓.
+```
+
+### Step 10 — Emit `task_created`
+
+```json
+{
+  "timestamp": "2026-04-22T00:00:00Z",
+  "correlation_id": "FEAT-2026-0004/T03",
+  "event_type": "task_created",
+  "source": "pm",
+  "source_version": "1.0.0",
+  "payload": {
+    "issue": "Bontyyy/orchestrator-api-sample#10",
+    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/10",
+    "title": "[FEAT-2026-0004/T03] Author test plan for quantity-filtered widget listing",
+    "task_type": "qa_authoring",
+    "autonomy": "review",
+    "component_repo": "Bontyyy/orchestrator-api-sample",
+    "depends_on": [],
+    "verification_count": 4
+  }
+}
+```
+
+Passes `scripts/validate-event.py` (exit 0). Appended. Re-read confirms JSON integrity.
+
+### Step 11 — Emit `task_ready` (no-dep case)
+
+```json
+{
+  "timestamp": "2026-04-22T00:00:01Z",
+  "correlation_id": "FEAT-2026-0004/T03",
+  "event_type": "task_ready",
+  "source": "pm",
+  "source_version": "1.0.0",
+  "payload": {
+    "issue": "Bontyyy/orchestrator-api-sample#10",
+    "trigger": "no_dep_creation"
+  }
+}
+```
+
+Passes validation, appended, re-read.
+
+### Key differences from the .NET example
+
+| Dimension | .NET example (T01, FEAT-2026-0002) | Python/QA example (T03, FEAT-2026-0004) |
+|---|---|---|
+| Stack | .NET — `dotnet test`, `*.cs`, `IWidgetRepository` C# interface | Python — `pytest`, `*.py`, `WidgetRepository` Protocol |
+| Task type | `implementation` | `qa_authoring` |
+| `deliverable_repo` | omitted (deliverable = edited source in `component_repo`) | `clabonte/orchestrator` (test plan lives in orchestrator repo) |
+| `## Deliverables` | omitted | present — names the test plan path |
+| `§Verification` root | `component_repo` root | `deliverable_repo` root (orchestrator repo) — annotated per-command |
+| Claim surface | 3 implementation-state claims (convention, file, tooling) | 4 absence claims (no test plan, no docs dir, regression suite location, tooling) |
+| `pending → ready` | simultaneous on creation (`depends_on: []`) | simultaneous on creation (`depends_on: []`) |
+
 ## What this skill does not do
 
 - It does **not** construct the task graph. [`../task-decomposition/SKILL.md`](../task-decomposition/SKILL.md) owns that.
 - It does **not** re-ingest plan-file edits. [`../plan-review/SKILL.md`](../plan-review/SKILL.md) owns that.
 - It does **not** verify Specfuse template coverage. [`../template-coverage/SKILL.md`](../template-coverage/SKILL.md) owns that.
 - It does **not** flip `pending → ready` for tasks with non-empty `depends_on`. [`../dependency-recomputation/SKILL.md`](../dependency-recomputation/SKILL.md) owns every such flip. The no-dep case handled here is the single exception where issue creation and ready-flipping are the same operation.
-- It does **not** modify [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md). The template is frozen at v1; any adjustment emerging from this skill's design is a retrospective (WU 2.8) candidate, not a silent edit.
+- It does **not** modify [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md). Template modifications require a dedicated WU with explicit backwards-compat justification (WU 2.13 updated the template to v1.1 via that process); this skill consumes the template as-is.
 - It does **not** modify [`../../issue-drafting-spec.md`](../../issue-drafting-spec.md). The spec is the inherited contract; revising it requires the level of justification of a shared-rule amendment.
 - It does **not** verify orchestrator-internal claims (event log, feature registry, labels). The spec scopes those out.
 - It does **not** author the work unit prompt. The plan-review skill (WU 2.3) co-authors the prompt with the human during `plan_review`; the issue-drafting skill reshapes the approved prompt into a template-compliant body.

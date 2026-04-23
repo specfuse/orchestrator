@@ -1,5 +1,5 @@
 <!--
-Work unit issue body template. v1.0.
+Work unit issue body template. v1.1.
 
 This template is the body of every GitHub issue that represents a task
 (implementation or QA) in a component repository. It is the contract
@@ -16,10 +16,23 @@ than attempt to infer the missing content.
 The five-section structure below is fixed by orchestrator-architecture.md
 §8 and may not be renamed, reordered, or extended with additional
 top-level `##` sections. Sub-structure inside each section is free.
+The optional `## Deliverables` section (added in v1.1) is the single
+authorized extension to that structure — it sits between `## Context`
+and `## Acceptance criteria` and may be omitted for implementation tasks.
 
 Fill every `<...>` placeholder and delete these HTML comments before
 posting. A fully-worked example of this template lives at
 `shared/templates/work-unit-issue.example.md`.
+
+v1.1 changes (WU 2.13):
+- Added optional `deliverable_repo` frontmatter field (see annotation below).
+- Added optional `## Deliverables` section between `## Context` and
+  `## Acceptance criteria`.
+Both additions are backwards-compatible: issues authored before v1.1
+(without `deliverable_repo`, without `## Deliverables`) remain structurally
+valid. For most tasks, omit `deliverable_repo` (defaults to `component_repo`).
+For QA authoring / curation tasks whose deliverable lives in the orchestrator
+repo, set `deliverable_repo: clabonte/orchestrator`.
 -->
 
 ```yaml
@@ -27,6 +40,17 @@ correlation_id: FEAT-YYYY-NNNN/TNN
 task_type: <implementation | qa_authoring | qa_execution | qa_curation>
 autonomy: <auto | review | supervised>
 component_repo: <owner>/<repo>
+# deliverable_repo: <owner>/<repo>   # OPTIONAL — omit for most tasks (defaults to component_repo).
+                                      # Set when the task's primary deliverable lives in a different
+                                      # repo from component_repo (e.g. QA authoring / curation tasks
+                                      # whose test plan or curation record is committed to the
+                                      # orchestrator repo rather than the target component repo).
+                                      # Example: deliverable_repo: clabonte/orchestrator
+                                      # Commands in §Verification that operate on the deliverable
+                                      # (read the file, run a script against it) run from
+                                      # deliverable_repo's root; commands that build or test the
+                                      # target component (dotnet test, pytest, mypy) still run from
+                                      # component_repo's root.
 depends_on: [] # task-local IDs within this feature, e.g. [T01, T03]
 generated_surfaces: [] # paths (in component_repo) to generated files this task's acceptance depends on, e.g. ["_generated/Controllers/OrdersController.cs"]
 ```
@@ -50,6 +74,15 @@ Frontmatter field semantics:
   An agent that picks up an issue whose `component_repo` does not
   match its own assignment stops and escalates with
   `spec_level_blocker`.
+- `deliverable_repo` (optional) — the `<owner>/<repo>` where the
+  task's primary deliverable lives. When absent, defaults to
+  `component_repo`. When present, §Verification commands that
+  operate on the deliverable file run from `deliverable_repo`'s root;
+  commands that build, test, or gate-check the component still run
+  from `component_repo`'s root. Typical use: `qa_authoring` and
+  `qa_curation` tasks whose test plan or curation record is committed
+  to the orchestrator repo (`clabonte/orchestrator`), not the target
+  component repo.
 - `depends_on` (required, possibly empty) — task-local IDs (e.g.
   `[T01, T03]`) inside the same feature that must be `done` before
   this task can transition to `ready`. The PM agent's dependency
@@ -76,6 +109,30 @@ The reader of this section is the agent picking the task up cold. Give
 it enough context that it does not need to fetch the feature registry
 entry before starting. Do not summarize the acceptance criteria here —
 that is the next section.
+-->
+
+<!--
+## Deliverables   ← OPTIONAL SECTION (v1.1)
+
+Use this section when the task produces named files or artifacts that
+live outside `component_repo` — typically `qa_authoring` and
+`qa_curation` tasks whose deliverables are committed to `deliverable_repo`
+(e.g. the orchestrator repo) rather than edited in-place in the target
+component repo.
+
+Omit for implementation tasks: their deliverable is the set of edited
+source files in `component_repo`, which §Verification's build/test
+commands already cover implicitly. No placeholder is needed.
+
+When present, format as a short bullet list. Each bullet names the file
+by its relative path from `deliverable_repo`'s root and adds a half-
+sentence on what it contains. Example for a `qa_authoring` task:
+
+  - `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md` — authored
+    test plan covering widget quantity-filtered listing acceptance criteria.
+
+Leave this block comment in place when posting; it is an HTML comment and
+will not render on GitHub. Delete only when populating the section.
 -->
 
 ## Acceptance criteria
