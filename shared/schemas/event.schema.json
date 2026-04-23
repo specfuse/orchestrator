@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/event.schema.json",
   "title": "Event log entry",
-  "$comment": "Additive history (WU 2.14, F2.4): Phase 1 baseline enum — feature_created, spec_validated, task_graph_drafted, plan_ready, plan_generated, plan_approved, task_created, task_ready, task_started, task_completed, task_blocked, spec_issue_raised, override_applied, override_expired, human_escalation. Phase 2 additions: template_coverage_checked (WU 2.6), feature_state_changed (WU 2.9). Phase 3 additions: test_plan_authored (WU 3.2), qa_execution_completed + qa_execution_failed (WU 3.3). Per-type payload schemas for these types live under shared/schemas/events/. NOTE: plan_reingested was considered in WU 2.14 but deliberately not added — WU 2.11's template_coverage_checked re-chain on every Phase B success already makes Phase B observable in the event log.",
+  "$comment": "Additive history (WU 2.14, F2.4): Phase 1 baseline enum — feature_created, spec_validated, task_graph_drafted, plan_ready, plan_generated, plan_approved, task_created, task_ready, task_started, task_completed, task_blocked, spec_issue_raised, override_applied, override_expired, human_escalation. Phase 2 additions: template_coverage_checked (WU 2.6), feature_state_changed (WU 2.9). Phase 3 additions: test_plan_authored (WU 3.2), qa_execution_completed + qa_execution_failed (WU 3.3), qa_regression_filed + qa_regression_resolved + escalation_resolved (WU 3.4; escalation_resolved is substrate — resolution_kind discriminator, first application retires the Phase 2 orphan inbox file FEAT-2026-0005-plan-review-cycle.md; closes carry-item F2.10). Per-type payload schemas for these types live under shared/schemas/events/. NOTE: plan_reingested was considered in WU 2.14 but deliberately not added — WU 2.11's template_coverage_checked re-chain on every Phase B success already makes Phase B observable in the event log.",
   "description": "A single JSONL entry in a feature's event log. Event log semantics are defined in orchestrator-architecture.md §7.3.",
   "type": "object",
   "additionalProperties": false,
@@ -49,7 +49,10 @@
         "feature_state_changed",
         "test_plan_authored",
         "qa_execution_completed",
-        "qa_execution_failed"
+        "qa_execution_failed",
+        "qa_regression_filed",
+        "qa_regression_resolved",
+        "escalation_resolved"
       ]
     },
     "source": {

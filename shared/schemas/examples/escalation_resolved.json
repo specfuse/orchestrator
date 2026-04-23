@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-04-23T20:15:00Z",
+  "correlation_id": "FEAT-2026-0005",
+  "event_type": "escalation_resolved",
+  "source": "human",
+  "source_version": "n/a",
+  "payload": {
+    "resolution_kind": "human_resolved",
+    "resolved_escalation_event_ts": "2026-04-22T21:01:11Z",
+    "resolved_escalation_inbox_file": "inbox/human-escalation/FEAT-2026-0005-plan-review-cycle.md",
+    "summary": "Dependency cycle resolved out of band during Phase 2 Edit C-fix (T01 depends_on reverted from [T02] to []); feature unblocked; inbox file retired as the first application of the escalation_resolved substrate in WU 3.4."
+  }
+}
