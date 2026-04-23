@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/test-plan.schema.json",
+  "title": "Test plan (stub)",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.2 as the stub contract for QA-authored test plans. Stub scope: test_id / covers / commands / expected per test. Phase 4 (specs-agent-driven plans, Arazzo-backed) and Phase 5 (generator-emitted skeletons) extend this schema additively — see agents/qa/skills/qa-authoring/SKILL.md §Deferred integration. The schema validates the YAML frontmatter block of /product/test-plans/FEAT-YYYY-NNNN.md; the prose body below the frontmatter is human-authored and not schema-governed.",
+  "description": "Machine-readable shape of a test plan authored by the QA agent (qa-authoring skill). One plan per feature; one entry in `tests` per behavior the plan covers. The full plan file is the .md at /product/test-plans/FEAT-YYYY-NNNN.md, whose YAML frontmatter validates against this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "feature_correlation_id",
+    "tests"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "description": "Version of this stub contract. Bumped on breaking changes to the schema. Phase 3 stub is v1.",
+      "const": 1
+    },
+    "feature_correlation_id": {
+      "type": "string",
+      "description": "Feature-level correlation ID the plan covers. Task-level IDs are not valid here — a plan is authored per feature, not per task.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}$"
+    },
+    "tests": {
+      "type": "array",
+      "description": "Ordered list of tests covering the feature's acceptance criteria. One entry per covered behavior by default; feature-scope overrides on qa_authoring cardinality (WU 2.10) may collapse the count.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "test_id",
+          "covers",
+          "commands",
+          "expected"
+        ],
+        "properties": {
+          "test_id": {
+            "type": "string",
+            "description": "Stable kebab-case identifier for this test within the plan. Must be unique across the plan's `tests` array (uniqueness is a skill-level discipline — JSON Schema cannot express cross-item uniqueness on a nested field directly). Stability is load-bearing: qa-regression keys regression artifacts on (implementation_task_correlation_id, test_id), so renaming a test_id in place would orphan open regressions.",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "minLength": 1
+          },
+          "covers": {
+            "type": "string",
+            "description": "Reference to the acceptance-criteria fragment this test validates. A direct quote, heading path, or identifier from the feature's spec — precise enough that a human reading the plan can locate the covered behavior in the source spec without guessing.",
+            "minLength": 1
+          },
+          "commands": {
+            "type": "array",
+            "description": "Executable step list the qa-execution skill runs for this test. In the Phase 3 stub, each command is a free-form shell string; Phase 4 replaces this with richer Arazzo-backed step structures (see skill's §Deferred integration).",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "expected": {
+            "type": "string",
+            "description": "Success predicate for the test — a prose statement describing what qa-execution confirms. The Phase 3 stub is deliberately textual; Phase 4 structures this as a machine-evaluable predicate.",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "feature_correlation_id": "FEAT-2026-0060",
+  "tests": [
+    {
+      "test_id": "widgets-export-default-page-size",
+      "covers": "AC-1: GET /widgets/export returns the first 50 widgets when no page_size parameter is supplied.",
+      "commands": [
+        "curl -sS -o body.json -w '%{http_code}' http://localhost:8080/widgets/export"
+      ],
+      "expected": "HTTP status is 200 and body.json parses as a JSON array of exactly 50 widget objects, each with the fields id, status, and created_at."
+    },
+    {
+      "test_id": "widgets-export-page-size-over-limit-rejected",
+      "covers": "AC-2: GET /widgets/export returns 400 Bad Request when page_size exceeds 500.",
+      "commands": [
+        "curl -sS -o body.json -w '%{http_code}' 'http://localhost:8080/widgets/export?page_size=501'"
+      ],
+      "expected": "HTTP status is 400 and body.json contains an error object with error.code == 'page_size_over_limit'."
+    }
+  ]
+}
