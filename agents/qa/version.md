@@ -1,7 +1,8 @@
 # QA agent version
 
-Current version: **0.1.0**
+Current version: **1.0.0**
 
 ## Changelog
 
+- `1.0.0` — WU 3.1: QA agent configuration rewritten to production v1 quality. `CLAUDE.md` restructured around the four Phase 3 skills (`qa-authoring`, `qa-execution`, `qa-regression`, `qa-curation`), with a new top-level `## Cross-task regression semantics` section codifying the Q4 invariant: the QA agent never writes labels or state to a task it does not own, and a qa-execution failure spawns a new implementation task via `/inbox/qa-regression/` rather than flipping the state of the task under test. Role-specific verification clauses reference each Phase 3 skill by name (the skill files themselves land in WUs 3.2–3.5). Role-specific escalation expanded to distinguish qa-task-level `spinning_detected` (authoring/curation failures) from implementation-task-level `spinning_detected` on qa-execution repeat failure per architecture §6.4. New `## Anti-patterns` section codifies the Q4 invariant and the idempotence disciplines (qa-execution keyed on `(task_correlation_id, commit_sha)`; qa-regression keyed on `(implementation_task_correlation_id, test_id)`) as hard stops. Role-switch hygiene inherited from `shared/rules/role-switch-hygiene.md` (landed in WU 2.1); no QA-specific override. Output artifacts section now enumerates the specific Phase 3 events (`test_plan_authored`, `qa_execution_completed`, `qa_execution_failed`, `qa_regression_filed`, `qa_regression_resolved`, `escalation_resolved`, `regression_suite_curated`) alongside the shared-lifecycle events (`task_started`, `task_completed`, `task_blocked`, `spec_issue_raised`, `human_escalation`). `agents/qa/README.md` added for cold-open navigation. `agents/qa/rules/` remains empty by design; no role-specific overrides are needed at v1. Closes WU 3.1 of Phase 3.
 - `0.1.0` — Initial Phase 0 draft.
