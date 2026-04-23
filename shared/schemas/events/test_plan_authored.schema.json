@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/test_plan_authored.schema.json",
+  "title": "test_plan_authored event payload",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.2 as the first QA-emitted per-type schema. Fields: plan_path (required, string — canonical /product/test-plans/ path) + test_count (required, integer ≥1). Follows the minimalist precedent of template_coverage_checked (WU 2.6): downstream consumers can reason about the event without re-reading the plan file, but the canonical plan content lives in the file itself.",
+  "description": "Payload shape for the `test_plan_authored` event emitted by the QA agent after a successful qa-authoring run. The event is the signal that a plan exists at `plan_path` and carries `test_count` tests; qa-execution, qa-regression, and qa-curation all key off subsequent events (`qa_execution_completed`, `qa_execution_failed`, `qa_regression_filed`, `qa_regression_resolved`, `regression_suite_curated`) rather than this one, but a feature missing `test_plan_authored` has not completed its qa-authoring gate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "plan_path",
+    "test_count"
+  ],
+  "properties": {
+    "plan_path": {
+      "type": "string",
+      "description": "Path to the authored test plan file, relative to the product specs repo root. Architecture §4.3 fixes `/product/test-plans/` as the canonical location; a path outside this directory is a mis-emission.",
+      "pattern": "^/product/test-plans/FEAT-\\d{4}-\\d{4}\\.md$"
+    },
+    "test_count": {
+      "type": "integer",
+      "description": "Number of entries in the plan's `tests` array at emission time. Duplicated into the payload so a consumer reading the event log without pulling the plan file can still reason about coverage breadth.",
+      "minimum": 1
+    }
+  }
+}

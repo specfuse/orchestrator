@@ -1,0 +1,11 @@
+{
+  "timestamp": "2026-04-23T16:45:00Z",
+  "correlation_id": "FEAT-2026-0060",
+  "event_type": "test_plan_authored",
+  "source": "qa",
+  "source_version": "1.1.0",
+  "payload": {
+    "plan_path": "/product/test-plans/FEAT-2026-0060.md",
+    "test_count": 2
+  }
+}
