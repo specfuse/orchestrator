@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-04-23T18:44:00Z",
+  "correlation_id": "FEAT-2026-0061",
+  "event_type": "qa_regression_filed",
+  "source": "qa",
+  "source_version": "1.3.0",
+  "payload": {
+    "implementation_task_correlation_id": "FEAT-2026-0061/T02",
+    "test_id": "widgets-export-rate-limit-enforced-429",
+    "failing_qa_execution_event_ts": "2026-04-23T18:42:00Z",
+    "failing_commit_sha": "def56789abcdef0123456789abcdef0123456789",
+    "regression_inbox_file": "inbox/qa-regression/FEAT-2026-0061-widgets-export-rate-limit-enforced-429.md"
+  }
+}
