@@ -1,4 +1,4 @@
-# PM agent — plan-review UX skill (v1.0)
+# PM agent — plan-review UX skill (v1.1)
 
 ## Purpose
 
@@ -11,7 +11,7 @@ The plan-review document is the human's primary decision point on a feature. Its
 In scope:
 
 - **Phase A — Plan-file emission.** Once, after task decomposition completes. Writes the plan-review file, flips the feature state `planning → plan_review`, and emits `plan_ready`.
-- **Phase B — Re-ingest.** Each time the plan file is edited by the human (typically many times during `plan_review`). Re-reads the plan file, re-validates, and re-writes the updated task graph into the feature frontmatter. Silent — no event per re-ingest.
+- **Phase B — Re-ingest.** Each time the plan file is edited by the human (typically many times during `plan_review`). Re-reads the plan file, re-validates, re-writes the updated task graph into the feature frontmatter, and re-invokes template-coverage-check against the post-edit graph (§"Template-coverage re-chain"). Emits one `template_coverage_checked` event on success; escalates `spec_level_blocker` on coverage or pre-flight failure.
 
 Out of scope (and therefore not touched by this skill):
 
@@ -37,10 +37,18 @@ Out of scope (and therefore not touched by this skill):
 - Update to `/features/<correlation_id>.md` frontmatter: `state` flipped from `planning` to `plan_review`. The `task_graph` is unchanged on emission — it is what 2.2 wrote.
 - One `plan_ready` event appended to `/events/<correlation_id>.jsonl`.
 
-**Phase B:**
+**Phase B (success):**
 
 - Update to `/features/<correlation_id>.md` frontmatter: `task_graph`, `involved_repos`, and `autonomy_default` synchronized with the plan file. `state` remains `plan_review`. `correlation_id` never changes.
-- No event. Re-ingest is silent; auditability comes from git history on both files.
+- One `template_coverage_checked` event appended to `/events/<correlation_id>.jsonl` (emitted by the template-coverage re-chain after structural validation; validated through `scripts/validate-event.py` before append).
+
+**Phase B (escalation — structural validation):**
+
+- No write to feature frontmatter. One `human_escalation` event appended.
+
+**Phase B (escalation — re-chain coverage failure):**
+
+- Feature frontmatter written (structural validation passed). No `template_coverage_checked` event. One `human_escalation` event appended. Escalation file written at `/inbox/human-escalation/<correlation_id>-template-coverage.md`.
 
 ## Plan-file format
 
@@ -174,7 +182,43 @@ Invoked each time the human edits the plan file. The trigger-detection mechanism
    Any failure → escalate `spec_level_blocker`.
 8. Write the validated object to `/features/<correlation_id>.md` frontmatter. Preserve the prose body unchanged.
 9. Re-read the feature file back. Confirm the frontmatter round-trips.
-10. Do **not** emit an event. The plan file's git history and the feature file's git history are the audit trail; adding a `plan_reingested` event per edit would add noise without new information.
+10. Do **not** emit a `plan_reingested` event. The plan file's git history and the feature file's git history are the audit trail; adding a `plan_reingested` event per edit would add noise without new information.
+11. **Run the template-coverage re-chain** (see §"Template-coverage re-chain" below). This is the final step of every successful Phase B pass; it runs unconditionally after structural validation succeeds.
+
+### Template-coverage re-chain
+
+After every successful Phase B structural validation (steps 1–10), Phase B re-invokes the template-coverage-check procedure against the post-edit task graph. This is **unconditional** — the re-chain runs whether or not `required_templates` or `assigned_repo` changed during the human's edit. Unconditional chaining is preferred over conditional chaining (e.g., "re-run only if `assigned_repo` or `required_templates` changed") for two reasons: (a) it is deterministic and auditable — every Phase B pass leaves a `template_coverage_checked` event in the log, making the coverage status at each re-ingest observable; (b) it avoids change-detection logic that would itself need to be correct and tested.
+
+The re-chain procedure follows the full coverage-check discipline defined in [`../template-coverage-check/SKILL.md`](../template-coverage-check/SKILL.md), applied to the post-edit task graph now stored in the feature frontmatter. Specifically:
+
+1. **Re-run the pre-flight check (Step 2.5 of template-coverage-check).** If any task in the post-edit graph is missing the `required_templates` field entirely (the human added a new task during their edit but did not populate the field), escalate `spec_level_blocker` exactly as the direct coverage-check invocation would:
+   - Write the escalation file at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` naming the tasks with the absent field.
+   - Append a `human_escalation` event with `reason: spec_level_blocker`, validated through `scripts/validate-event.py` (exit 0) before append.
+   - Return escalation to the caller. Do **not** proceed to emit `template_coverage_checked`. Phase B exits in escalation state; the feature frontmatter has already been written in step 8 — this is acceptable because the frontmatter write was structurally valid; the escalation is about the coverage contract, not structural integrity.
+
+2. **Re-run the coverage walk (Steps 3–5 of template-coverage-check).** Enumerate demand, fetch declarations, cross-reference tokens. A coverage gap found at this point triggers the same `spec_level_blocker` escalation as a primary coverage-check invocation: escalation file + `human_escalation` event. Same exit semantics as above — frontmatter has been written; escalation is on the coverage contract.
+
+3. **On coverage pass:** emit one `template_coverage_checked` event with the updated `involved_repos` and `task_count` from the post-edit graph:
+
+   ```json
+   {
+     "timestamp": "<ISO-8601 now>",
+     "correlation_id": "<feature_correlation_id>",
+     "event_type": "template_coverage_checked",
+     "source": "pm",
+     "source_version": "<from scripts/read-agent-version.sh pm>",
+     "payload": {
+       "involved_repos": ["<post-edit involved repos>"],
+       "task_count": <post-edit task count>
+     }
+   }
+   ```
+
+   Pipe through `scripts/validate-event.py` (top-level + per-type payload schema per [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json)); require exit 0 before appending. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line.
+
+**Idempotency:** A Phase B pass on an unchanged plan file (e.g., prose-only edit, or identical structural re-submit) still emits a fresh `template_coverage_checked` event. This is correct — the event asserts "coverage held at `<timestamp>` for this graph shape"; multiple assertions are not harmful and make the audit trail dense rather than sparse.
+
+**Escalation file naming:** Because the re-chain runs after Phase B's structural validation has already succeeded, the escalation file for a coverage failure from the re-chain uses the same path as a primary coverage escalation: `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md`. If an earlier primary coverage escalation file already exists at that path, overwrite it — the new escalation describes the current (post-edit) state of the task graph, which supersedes the prior escalation.
 
 ### What re-ingest does NOT enforce
 
@@ -188,9 +232,15 @@ The human is the authority during `plan_review`; the skill validates that their 
 
 ### Phase B exit criteria
 
-Either: the candidate validated and the feature frontmatter has been updated, and control returns to the caller. Or: validation failed and the skill has escalated `spec_level_blocker` with a specific reason; the feature state remains `plan_review`; the plan file is untouched; the feature frontmatter is untouched.
+Three possible outcomes:
 
-Re-ingest is idempotent. Running it twice in a row on an unchanged plan file produces no-op writes (same content), though the skill still performs the full read-parse-validate cycle each time — there is no "skip because nothing changed" shortcut.
+1. **Structural validation failed (steps 1–7):** The skill has escalated `spec_level_blocker` with a specific reason. The feature state remains `plan_review`. The plan file is untouched. The feature frontmatter is untouched. No `template_coverage_checked` event emitted.
+
+2. **Structural validation passed; template-coverage re-chain failed:** The feature frontmatter has been updated (step 8). The coverage re-chain found either (a) a task missing `required_templates` or (b) a coverage gap. The skill has escalated `spec_level_blocker` and appended a `human_escalation` event. No `template_coverage_checked` event emitted.
+
+3. **Full success:** The feature frontmatter has been updated and the coverage re-chain passed. One `template_coverage_checked` event is appended to the event log. Control returns to the caller.
+
+Re-ingest is idempotent. Running it twice in a row on an unchanged plan file produces no-op writes (same content) plus a duplicate `template_coverage_checked` emission — both are acceptable. The skill still performs the full read-parse-validate cycle each time; there is no "skip because nothing changed" shortcut.
 
 ## Approval signaling
 
@@ -222,7 +272,7 @@ Before returning from Phase A:
 - `source_version` on the event was produced by `scripts/read-agent-version.sh pm` at emission.
 - No path written is in [`never-touch.md`](../../../../shared/rules/never-touch.md).
 
-Before returning from Phase B:
+Before returning from Phase B (success — full pass):
 
 - The feature frontmatter re-validates against [`feature-frontmatter.schema.json`](../../../../shared/schemas/feature-frontmatter.schema.json).
 - Topological sort of `depends_on` succeeds; no cycles.
@@ -230,6 +280,21 @@ Before returning from Phase B:
 - Every `assigned_repo` ∈ `involved_repos`.
 - No duplicate task IDs.
 - The feature file's prose body is byte-identical to its pre-ingest content. The skill touches the frontmatter only.
+- The template-coverage re-chain (§"Template-coverage re-chain") ran against the post-edit graph and passed.
+- A `template_coverage_checked` event passed `scripts/validate-event.py` (top-level + per-type payload schema) with exit 0, was appended to the event log, and was re-read.
+- `source_version` on the `template_coverage_checked` event was produced by `scripts/read-agent-version.sh pm` at emission time.
+
+Before returning from Phase B (escalation — structural validation failed):
+
+- No write was made to the feature frontmatter. Plan file untouched. No `template_coverage_checked` event emitted.
+- A `human_escalation` event was appended and validated (exit 0).
+
+Before returning from Phase B (escalation — re-chain failed):
+
+- The feature frontmatter was updated (structural validation passed).
+- No `template_coverage_checked` event was emitted.
+- A `human_escalation` event was appended and validated (exit 0).
+- The escalation file at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` names the specific cause (absent `required_templates` field on one or more tasks, or a missing token gap).
 
 Failure handling per [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3: locally-correctable failures retry; three consecutive failures → `spinning_detected`; fundamentally-blocked → `spec_level_blocker`.
 
@@ -471,7 +536,7 @@ The human, satisfied, signals approval — e.g. by writing `/inbox/plan-approved
 - It does **not** emit `plan_approved`. The human emits it (directly or via a helper).
 - It does **not** detect plan-file edits. The trigger-detection loop is external; this skill is a function, not a daemon.
 - It does **not** modify the feature file's prose body. It writes the frontmatter only.
-- It does **not** emit events on re-ingest. Git history is the audit surface for per-edit changes.
+- It does **not** emit a `plan_reingested` event on re-ingest. Git history is the primary audit surface for per-edit changes; the `template_coverage_checked` event emitted by the re-chain (§"Template-coverage re-chain") provides the machine-readable signal that re-ingest succeeded and coverage held.
 - It does **not** re-apply task-decomposition heuristics (QA pairing, target-repo inference rules, autonomy override rules) on re-ingest. The human is the authority during `plan_review`; the skill validates structural integrity only.
 - It does **not** draft GitHub issue bodies. That is [`../issue-drafting/SKILL.md`](../issue-drafting/SKILL.md) (WU 2.4), invoked after `plan_approved` and the state flip to `generating`.
 
@@ -485,6 +550,8 @@ The human, satisfied, signals approval — e.g. by writing `/inbox/plan-approved
 - [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md) — re-read before this skill runs.
 - [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md) — inbox conventions for human signaling, relied on by the suggested `plan_approved` mechanism.
 - [`../task-decomposition/SKILL.md`](../task-decomposition/SKILL.md) — the upstream skill whose output this one materializes for review.
+- [`../template-coverage-check/SKILL.md`](../template-coverage-check/SKILL.md) — the sibling skill Phase B chains to after every successful structural validation; see §"Template-coverage re-chain" for the full chaining contract including escalation paths.
+- [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json) — per-type payload schema for the `template_coverage_checked` event emitted by the re-chain.
 - [`../issue-drafting/SKILL.md`](../issue-drafting/SKILL.md) — the downstream skill that consumes the approved plan (WU 2.4).
 - [`../../CLAUDE.md`](../../CLAUDE.md) — the PM role config orchestrating this skill alongside its siblings.
 - [`/docs/orchestrator-implementation-plan.md`](../../../../docs/orchestrator-implementation-plan.md) §"Work unit 2.3 — Plan-review UX skill" — the work unit that authored this skill.
