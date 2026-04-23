@@ -1,4 +1,4 @@
-# PM agent — plan-review UX skill (v1.1)
+# PM agent — plan-review UX skill (v1.2)
 
 ## Purpose
 
@@ -112,10 +112,12 @@ work-unit-issue.md-compliant body.>
 
 The file has two kinds of editable content, with a clear split:
 
-- **Structural fields** (`task_graph`, `involved_repos`, `autonomy_default`): edited inside the single fenced YAML block under `## Task graph`. These are the fields the feature-frontmatter schema governs.
-- **Work unit prompts**: edited inside each `### Work unit prompt` prose section. Free-form; the schema does not constrain them. They live in the plan file only and are consumed by [`../issue-drafting/SKILL.md`](../issue-drafting/SKILL.md) (WU 2.4) at drafting time.
+- **Structural edits** — changes inside the single fenced YAML block under `## Task graph`: task additions, task removals, `assigned_repo` changes, `depends_on` changes, `required_templates` changes, `involved_repos` changes, `autonomy_default` changes. These are the fields the feature-frontmatter schema governs. **Structural edits trigger Phase B re-ingest.**
+- **Prose edits** — drafting or revising the text of `### Work unit prompt` sections. Free-form; the schema does not constrain them. They live in the plan file only and are consumed by [`../issue-drafting/SKILL.md`](../issue-drafting/SKILL.md) (WU 2.4) at drafting time. **Prose edits are the primary human authoring task during `plan_review` and do not trigger Phase B re-ingest in a structural-validation sense.** (A Phase B re-invocation on an unchanged YAML block — prose-only edit — still runs the full read-parse-validate cycle and the template-coverage re-chain per §"Template-coverage re-chain"; this is acceptable and by design.)
 
-The `## Task TNN — <type>, <repo>` heading line is a human-readable rendering of the task's structural fields. It is **regenerated from the YAML block on every emission and every re-ingest**; edits to the heading line are ignored. If the human wants to change a task's type or repo, they edit the YAML block; the heading reflows on the next round-trip.
+When WU 2.7's acceptance criterion says "no edits during plan review", it means **no structural edits** — no YAML-block changes — during that particular happy-path walkthrough. It does not mean prompt prose must remain empty; drafting work unit prompts is expected at this stage.
+
+The `## Task TNN — <type>, <repo>` heading line is a human-readable rendering of the task's structural fields. **Heading lines are regenerated on Phase A emission only.** Phase B leaves the plan file untouched — this preserves Phase B's stateless-by-design invariant and the "don't write to the plan file during re-ingest" rule. Consequently, **heading lines can become stale** between Phase A emissions: if Phase B re-ingest accepts a YAML-block change that retargets a task to a different repo or changes its type, the corresponding heading line keeps the pre-edit text until the next Phase A emission. Example: after a structural edit that changes T03's `assigned_repo` from `owner/repo-a` to `owner/repo-b`, the heading `## Task T03 — implementation, owner/repo-a` stays as-is; the YAML block now says `owner/repo-b`. **The YAML block is canonical.** Heading lines are informational — useful for human scanning but not machine-read. Consumers of the plan file (the human, the issue-drafting skill, etc.) read from the YAML block; they do not parse the heading lines. If staleness becomes a readability concern, the human can trigger a fresh Phase A emission (which regenerates all heading lines from the current YAML), but this is not required. If the human wants to change a task's type or repo, they edit the YAML block; the heading reflows on the next Phase A round-trip.
 
 ### Why this format
 
@@ -157,6 +159,18 @@ The skill confirms, by direct read:
 ### Phase A exit criteria
 
 `plan_ready` is in the event log. Feature state is `plan_review`. Plan file exists on disk. The skill **does not loop**: control returns to whatever invoked it, and Phase B waits for a separate external trigger. The skill is not a daemon.
+
+### Human-authoring steps during `plan_review`
+
+After Phase A exits, the human authors the plan interactively. The expected sequence is:
+
+1. **Phase A emits the plan file** with the task graph mirrored from the feature frontmatter. At this point, `required_templates` on the task objects is **typically absent** — task-decomposition v1 does not populate it (see [`../task-decomposition/SKILL.md`](../task-decomposition/SKILL.md) §Out-of-scope).
+2. **The human populates `required_templates` on each task** — either with a list of needed generator tokens (e.g. `[api-controller, test-plan]`), or with an explicit empty array `[]` if the task genuinely needs no generator output (conventional for `qa_execution` and `qa_curation` tasks). This is a **structural edit** that triggers Phase B re-ingest.
+3. **Phase B re-ingest's template-coverage re-chain** (§"Template-coverage re-chain") runs the pre-flight check that gates on the `required_templates` field being present on every task. The re-chain escalates `spec_level_blocker` if any task is missing the field entirely (absent is different from `[]`).
+4. **The human drafts the `### Work unit prompt` prose bodies** — the primary authoring task during `plan_review`. These are **prose edits** and do NOT trigger re-ingest structurally (see §"Two edit surfaces").
+5. **The human signals approval** per §"Approval signaling", transitioning the feature to `generating`.
+
+Steps 2 and 4 may be interleaved or repeated in any order; Phase B re-ingest is idempotent and may be called any number of times. The sequence above is the canonical path for a first-time author of a feature plan.
 
 ## Phase B — Re-ingest
 
@@ -459,7 +473,7 @@ speculative contract.
 <draft the work unit prompt for this task>
 ````
 
-Note: the `## Task T01 — implementation, clabonte/api-sample` heading still says `api-sample`, unchanged by the human. That heading is a rendering; the next re-ingest will regenerate it from the YAML block (where T01 now says `persistence-sample`). The human does not need to re-write heading lines.
+Note: the `## Task T01 — implementation, clabonte/api-sample` heading still says `api-sample`, unchanged by the human. That heading is a rendering artifact from Phase A; **Phase B does not regenerate heading lines** (see §"Two edit surfaces" — headings are regenerated on Phase A emission only, YAML is canonical). The heading will stay stale until the next Phase A emission. The human does not need to re-write heading lines, and the machine reads T01's target repo from the YAML block, not the heading.
 
 ### Phase B — re-ingest
 
