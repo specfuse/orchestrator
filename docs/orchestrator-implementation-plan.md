@@ -748,9 +748,21 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 
 **Suggested model.** Sonnet 4.6. Retrospective synthesis against a concrete log; Opus is overkill.
 
-### Addendum — post-retrospective Phase 2 fixes
+### Addendum — post-retrospective Phase 2 fixes (WUs 2.9–2.15)
 
-Following the WU 1.6–1.12 pattern: the retrospective (2.8) produces a fix ladder (2.9, 2.10, …) with each fix independently landable in any order; a final WU (2.N) records the Phase 2 freeze declaration. The specific number and scope of these WUs is determined by 2.8's triage and is not pre-specified here. At the end of the ladder, the PM agent config is declared frozen for Phase 3 consumption, analogous to the Phase 1 freeze declaration of 2026-04-22.
+The WU 2.8 retrospective (merged 2026-04-23) triaged 26 findings from the WU 2.7 walkthrough into 23 Fix-in-Phase-2 items and 1 Phase 3+ defer. The fixes were carried by six subsequent work units (WUs 2.9–2.14), each independently landable in any order. A seventh work unit (WU 2.15) records the freeze declaration once the fix ladder is merged.
+
+See [`docs/walkthroughs/phase-2/retrospective.md`](walkthroughs/phase-2/retrospective.md) §"Fix-in-Phase-2 work plan" for the full per-finding rationale, and §"Phase 2 freeze declaration" for the freeze itself. Summary:
+
+- ✅ **WU 2.9 — Event schema additions.** `feature_state_changed` added to enum; per-type payload schemas for `feature_state_changed` and `human_escalation`; PM CLAUDE.md §"Output artifacts" enumerates feature-state emission points and codifies F2.9 escalation resolution (event log authoritative, frontmatter `state` never written during escalation). Closes F1.1, F2.8, F2.9. PR #23.
+- ✅ **WU 2.10 — task-decomposition skill clarifications.** Feature-scope overrides on qa_authoring cardinality; same-behavior gate on qa_execution deps (narrative-based identification); decomposition_pass counter documented as event-log-derived; depends_on prose narration in issue-drafting; orphan-check asymmetry folded into skill text. Closes F1.9+F2.1, F1.10+F2.2, F1.11, F1.12; folds F2.13. PR #24.
+- ✅ **WU 2.11 — template-coverage contract + plan-review Phase B chaining.** Out-of-scope rephrased as imperative prohibition + pre-flight check on absent `required_templates` (distinct from empty `[]`); plan-review Phase B extended with unconditional template-coverage re-chain emitting `template_coverage_checked` on every success. Closes F2.3, F2.5, F2.7. PR #25.
+- ✅ **WU 2.12 — plan-review skill polish.** Structural-vs-prose edit distinction clarified; stale-heading behavior documented explicitly; 5-step human-authoring sequence added. Closes F1.13, F2.12, F1.2. PR #26.
+- ✅ **WU 2.13 — issue-drafting + work-unit template polish.** Optional `deliverable_repo` frontmatter field + optional `## Deliverables` section added to `shared/templates/work-unit-issue.md` (backwards-compatible per WU 2.5 precedent); Python second worked example added to issue-drafting SKILL. Closes F1.3, F1.4. PR #27.
+- ✅ **WU 2.14 — Shared substrate + scripts hygiene.** `source_version` human convention promoted to `shared/rules/verify-before-report.md` §3; `validate-event.py` help text + `--stdin` alias + error on unsupported forms; zsh quoting fix in skill samples; new `validate-frontmatter.py` + `scripts/README.md`; schema provenance `$comment`s. `plan_reingested` event explicitly NOT added (WU 2.11's `template_coverage_checked` re-chain already covers Phase B audit trail). Closes F1.5+F2.6, F1.6, F1.7, F1.8, F2.4. PR #28.
+- ✅ **WU 2.15 — Phase 2 freeze declaration.** Recorded in [`docs/walkthroughs/phase-2/retrospective.md`](walkthroughs/phase-2/retrospective.md) §"Phase 2 freeze declaration"; cross-referenced from [`agents/pm/CLAUDE.md`](../agents/pm/CLAUDE.md) header and [`agents/pm/version.md`](../agents/pm/version.md) subtitle. PM agent v1.6.0 is the Phase 3 baseline.
+
+**Phase 2 frozen as of 2026-04-23.** Phase 3 (QA agent automation) can now begin from the corrected PM configuration and the documented Phase 3+ carry list (F2.10 and Phase 1 retrospective Finding 8).
 
 ---
 

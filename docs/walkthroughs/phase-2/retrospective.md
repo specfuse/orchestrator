@@ -367,3 +367,56 @@ No other outstanding items from WU 2.7.
 WU 2.8 concludes Phase 2's decision work. The walkthrough validated the v1 PM agent across the two feature shapes the plan called for (happy path + edge case); the retrospective sorted the resulting 26 findings into 23 Phase 2 fixes and 1 Phase 3+ defer (plus 2 positive observations and 1 Phase 1 carry-item re-affirmed), with explicit rationales and a concrete work plan. Phase 2 is ready to freeze once the six Fix-in-Phase-2 items (WUs 2.9–2.14) ship; Phase 3 (QA agent automation) starts from the corrected configuration and the documented deferred list rather than from a cold re-discovery pass.
 
 The Phase 2 freeze declaration is **not** recorded here. It will be issued by **WU 2.15 (= WU 2.N)**, analogous to WU 1.12, after the fix ladder merges. That WU will enumerate the frozen PM-agent surface and carry the list of deferred items into Phase 3's inputs.
+
+## Phase 2 freeze declaration
+
+**Declared on 2026-04-23 as part of WU 2.15.**
+
+All six Fix-in-Phase-2 items identified by the WU 2.8 triage have shipped to `main`:
+
+| WU | Findings absorbed | PR | Commit |
+|---|---|---|---|
+| WU 2.9 | F1.1, F2.8, F2.9 | [#23](https://github.com/clabonte/orchestrator/pull/23) | `eddc21d` |
+| WU 2.10 | F1.9+F2.1, F1.10+F2.2, F1.11, F1.12 (+F2.13 observation) | [#24](https://github.com/clabonte/orchestrator/pull/24) | `7c472a1` |
+| WU 2.11 | F2.3, F2.5, F2.7 | [#25](https://github.com/clabonte/orchestrator/pull/25) | `e203be1` |
+| WU 2.12 | F1.13, F2.12, F1.2 | [#26](https://github.com/clabonte/orchestrator/pull/26) | `bbc1c67` |
+| WU 2.13 | F1.3, F1.4 | [#27](https://github.com/clabonte/orchestrator/pull/27) | `550b3fc` |
+| WU 2.14 | F1.5+F2.6, F1.6, F1.7, F1.8, F2.4 | [#28](https://github.com/clabonte/orchestrator/pull/28) | `b7607dd` |
+
+With the six items landed, the PM agent configuration is declared frozen for Phase 3 consumption:
+
+> **PM agent v1.6.0 is the baseline Phase 3 depends on. Changes to this config during Phase 3 require architectural justification.**
+
+The freeze applies to the operational surface of the PM role:
+
+- [`agents/pm/CLAUDE.md`](../../../agents/pm/CLAUDE.md) at PM agent v1.6.0.
+- The five role skills:
+  - [`skills/task-decomposition/SKILL.md`](../../../agents/pm/skills/task-decomposition/SKILL.md) v1.1 (per WU 2.10).
+  - [`skills/plan-review/SKILL.md`](../../../agents/pm/skills/plan-review/SKILL.md) v1.2 (per WU 2.11 + WU 2.12).
+  - [`skills/issue-drafting/SKILL.md`](../../../agents/pm/skills/issue-drafting/SKILL.md) v1.2 (per WU 2.10 + WU 2.13).
+  - [`skills/dependency-recomputation/SKILL.md`](../../../agents/pm/skills/dependency-recomputation/SKILL.md) v1.0 (unchanged since WU 2.5).
+  - [`skills/template-coverage-check/SKILL.md`](../../../agents/pm/skills/template-coverage-check/SKILL.md) v1.1 (per WU 2.11).
+- The inherited contract [`agents/pm/issue-drafting-spec.md`](../../../agents/pm/issue-drafting-spec.md), authored in WU 1.9 and honored by the issue-drafting skill.
+- The shared substrate the role consumes. Phase 2 extended this substrate additively (per the WU 2.5 precedent) and those extensions are part of the frozen baseline:
+  - [`shared/rules/verify-before-report.md`](../../../shared/rules/verify-before-report.md) §3 extended in WUs 2.1, 2.5, and 2.14.
+  - [`shared/rules/role-switch-hygiene.md`](../../../shared/rules/role-switch-hygiene.md) — new in WU 2.1.
+  - [`shared/schemas/event.schema.json`](../../../shared/schemas/event.schema.json) `event_type` enum extended with `template_coverage_checked` (WU 2.6) and `feature_state_changed` (WU 2.9); `$comment` provenance added in WU 2.14.
+  - [`shared/schemas/events/`](../../../shared/schemas/events/) — four per-type payload schemas: `task_started.schema.json` (WU 2.5), `template_coverage_checked.schema.json` (WU 2.6), `feature_state_changed.schema.json` (WU 2.9), `human_escalation.schema.json` (WU 2.9).
+  - [`shared/schemas/feature-frontmatter.schema.json`](../../../shared/schemas/feature-frontmatter.schema.json) — optional `required_templates` field per task, added in WU 2.6.
+  - [`shared/schemas/template-coverage.schema.json`](../../../shared/schemas/template-coverage.schema.json) — declaration-file schema, new in WU 2.6.
+  - [`shared/templates/work-unit-issue.md`](../../../shared/templates/work-unit-issue.md) v1.1 — optional `deliverable_repo` frontmatter field + optional `## Deliverables` section, added in WU 2.13 (backwards-compatible with pre-v1.1 issues).
+- Scripts consumed by the PM role:
+  - [`scripts/validate-event.py`](../../../scripts/validate-event.py) — Phase 1 frozen script, extended in WU 2.5 (per-type payload discovery), WU 2.9 (two new per-type schemas picked up automatically), WU 2.14 (`--stdin` alias + clearer help text + error on unsupported forms — all additive; existing valid invocations unchanged).
+  - [`scripts/validate-frontmatter.py`](../../../scripts/validate-frontmatter.py) — new in WU 2.14, parallel to validate-event.py.
+  - [`scripts/read-agent-version.sh`](../../../scripts/read-agent-version.sh) — Phase 1 frozen, referenced by the PM role for `source_version` emission discipline.
+
+The freeze does **not** cover:
+
+- The QA, specs, config-steward, or merge-watcher role configs. Those remain Phase 0 v0.1 drafts pending their respective phases.
+- The component agent — its v1.5.0 configuration remains frozen at the Phase 1 baseline declared 2026-04-22, unaffected by Phase 2.
+- Phase 3+ carry-items:
+  - **F2.10** — no "escalation resolved" signal in the event log when a prior escalation is fixed; inbox file currently orphaned. Home: Phase 3 QA work, where regression escalations introduce resolution semantics naturally.
+  - **Finding 8 of the Phase 1 retrospective** — coverage-gate rebuild mandate before `--no-build`. Still open; appropriate home is the next component-agent-surface work unit.
+- The `scripts/` directory as a whole — future scripts may land without contradicting the freeze, so long as they do not alter the behavior of the scripts the PM role depends on.
+
+Phase 3 (QA agent automation) can now start. The Fix-in-Phase-2 items and their rationales above are the contract Phase 3 inherits.

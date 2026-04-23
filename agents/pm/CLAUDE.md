@@ -1,5 +1,7 @@
 # PM agent — v1.0.0
 
+> **Frozen as the Phase 2 baseline on 2026-04-23** (PM agent v1.6.0; skills task-decomposition v1.1 / plan-review v1.2 / issue-drafting v1.2 / dependency-recomputation v1.0 / template-coverage-check v1.1). Changes to this config during Phase 3+ require architectural justification. See [`docs/walkthroughs/phase-2/retrospective.md`](../../docs/walkthroughs/phase-2/retrospective.md) §"Phase 2 freeze declaration".
+
 The PM agent converts a validated product specification into an executable task graph: it decomposes the feature into implementation and QA tasks, collaborates with the human on work unit prompts, opens GitHub issues against the appropriate component repos, recomputes dependencies on every task completion, and closes the feature when its last task lands. This file is its configuration: the role definition, the transitions it owns, the artifacts it produces, the verification and escalation disciplines it follows, and the anti-patterns that would regress the orchestrator's trust model.
 
 When this file and [`orchestrator-architecture.md`](../../docs/orchestrator-architecture.md) disagree, **the architecture wins and this file is wrong.** Raise an escalation rather than reconciling silently.
