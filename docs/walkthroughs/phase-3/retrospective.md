@@ -506,3 +506,83 @@ WU 3.7 concludes Phase 3's triage work. The Phase 3 walkthroughs validated the Q
 Phase 3 is ready to proceed to the fix ladder once this retrospective merges. Phase 4 (specs agent and chat front-end) can start after Phase 3's fix WUs (3.8–3.12) ship and the freeze declaration is issued.
 
 The Phase 3 freeze declaration is **not** recorded here. It will be issued by **WU 3.N (= WU 3.13)**, analogous to WU 1.12 and WU 2.15, after the fix ladder merges. That WU will enumerate the frozen QA-agent surface (qa-authoring, qa-execution, qa-curation, qa-regression skills + QA CLAUDE.md v1.4.x) and carry the Deferred-to-Phase-4+ list into Phase 4's inputs.
+
+## Phase 3 freeze declaration
+
+**Declared on 2026-04-24 as part of WU 3.13.**
+
+All sixteen Fix-in-Phase-3 items identified by the WU 3.7 triage have shipped to `main` across five post-retrospective fix WUs:
+
+| # | Finding(s) | WU | PR |
+|---|---|---|---|
+| F3.1 (+ Phase 1 Finding 8 absorption) | Component verification `--no-build` pre-gate build step | WU 3.8 | [#41](https://github.com/clabonte/orchestrator/pull/41) |
+| F3.2 + F3.3 | qa-authoring delivery convention + runtime-port discovery | WU 3.9 | [#42](https://github.com/clabonte/orchestrator/pull/42) |
+| F3.4 + F3.7 + F3.29 | PM issue-drafting feature-state-transition + worked-example placeholder + plan-file fallback | WU 3.10 | [#44](https://github.com/clabonte/orchestrator/pull/44) |
+| F3.5 + F3.6 + F3.10 + F3.13 + F3.14 + F3.25 + F3.28 | Shared substrate operational discipline | WU 3.11 | [#45](https://github.com/clabonte/orchestrator/pull/45) |
+| F3.8 + F3.9 + F3.36 | QA + PM skill documentation polish (incl. sole-test retirement pre-flight latent-bug fix) | WU 3.12 | [#43](https://github.com/clabonte/orchestrator/pull/43) |
+
+Additionally, **two carry-items from prior phases** were closed in Phase 3:
+
+- **Phase 1 Finding 8 (coverage gate rebuild discipline)** — absorbed via WU 3.8 per the Phase 1 retrospective's explicit dispatch condition ("carry into the next edit of `verification/SKILL.md`, opportunistically"). Closed with 2-feature live evidence from Phase 3 walkthroughs (F1 Step 5 + F2 Step 5).
+- **F2.10 (escalation_resolved event / inbox orphaning)** — closed in WU 3.4 via the introduction of the `escalation_resolved` event type + per-type schema, plus the first-application retirement of the Phase 2 orphan `inbox/human-escalation/FEAT-2026-0005-plan-review-cycle.md`.
+
+With the five items landed, the QA agent configuration plus the post-fix-ladder shared substrate and Phase 1 + Phase 2 surfaces are declared frozen for Phase 4 consumption:
+
+> **QA agent v1.5.2 is the baseline Phase 4 depends on. The Phase 1 + Phase 2 frozen surfaces, as amended by the Phase 3 post-freeze additive fix ladder (component v1.5.2, PM v1.6.3, shared rules + templates post-WU-3.11), are the orchestrator's operational foundation Phase 4 will build on. Changes to any frozen surface during Phase 4+ require architectural justification.**
+
+### Frozen QA-agent surface (v1.5.2)
+
+- [`agents/qa/CLAUDE.md`](../../../agents/qa/CLAUDE.md) — role config (v1.0.0 file version; QA agent v1.5.2).
+- [`agents/qa/skills/qa-authoring/SKILL.md`](../../../agents/qa/skills/qa-authoring/SKILL.md) — v1.1 (post-WU 3.9).
+- [`agents/qa/skills/qa-execution/SKILL.md`](../../../agents/qa/skills/qa-execution/SKILL.md) — v1.0 (unchanged since WU 3.3 — no fix-ladder amendments required).
+- [`agents/qa/skills/qa-regression/SKILL.md`](../../../agents/qa/skills/qa-regression/SKILL.md) — v1.0 (unchanged since WU 3.4 — **qa-regression's runtime path remains unvalidated**; Phase 4 carry).
+- [`agents/qa/skills/qa-curation/SKILL.md`](../../../agents/qa/skills/qa-curation/SKILL.md) — v1.1 (post-WU 3.12 with sole-test retirement pre-flight).
+- [`agents/qa/rules/`](../../../agents/qa/rules/) — intentionally empty at freeze; no role-specific overrides needed at v1.
+
+### Phase 1 + Phase 2 surfaces, as amended by the Phase 3 fix ladder
+
+- [`agents/component/CLAUDE.md`](../../../agents/component/CLAUDE.md) + [`agents/component/version.md`](../../../agents/component/version.md) — component agent **v1.5.2** (Phase 1 frozen baseline v1.5.0 + post-freeze additive patches v1.5.1 at WU 3.8 + v1.5.2 at WU 3.11).
+- [`agents/component/skills/verification/SKILL.md`](../../../agents/component/skills/verification/SKILL.md) — v1.2 (post-WU 3.8 pre-gate build step).
+- [`agents/component/skills/pr-submission/SKILL.md`](../../../agents/component/skills/pr-submission/SKILL.md) — v1.1 (unchanged since Phase 1).
+- [`agents/component/skills/escalation/SKILL.md`](../../../agents/component/skills/escalation/SKILL.md) — v1.2 (unchanged since Phase 1).
+- [`agents/pm/CLAUDE.md`](../../../agents/pm/CLAUDE.md) + [`agents/pm/version.md`](../../../agents/pm/version.md) — PM agent **v1.6.3** (Phase 2 frozen baseline v1.6.0 + post-freeze additive patches v1.6.1 at WU 3.12 + v1.6.2 at WU 3.10 + v1.6.3 at WU 3.11).
+- [`agents/pm/skills/task-decomposition/SKILL.md`](../../../agents/pm/skills/task-decomposition/SKILL.md) — v1.2 (post-WU 3.12 step-count clarification).
+- [`agents/pm/skills/plan-review/SKILL.md`](../../../agents/pm/skills/plan-review/SKILL.md) — v1.2 (unchanged since Phase 2).
+- [`agents/pm/skills/issue-drafting/SKILL.md`](../../../agents/pm/skills/issue-drafting/SKILL.md) — v1.4 (post-WU 3.10 feature-state-transition + post-WU 3.11 `issue_url` standardization).
+- [`agents/pm/skills/dependency-recomputation/SKILL.md`](../../../agents/pm/skills/dependency-recomputation/SKILL.md) — v1.1 (post-WU 3.11 `issue_url` standardization).
+- [`agents/pm/skills/template-coverage-check/SKILL.md`](../../../agents/pm/skills/template-coverage-check/SKILL.md) — v1.1 (unchanged since Phase 2).
+- [`shared/rules/verify-before-report.md`](../../../shared/rules/verify-before-report.md) — with post-WU 3.11 §"Event-emission operational discipline" sub-section (five new clauses: timestamp, validate-event.py canonical invocation, JSONL single-line, canonical safe append pattern, orchestration-repo commit boundary).
+- [`shared/templates/work-unit-issue.md`](../../../shared/templates/work-unit-issue.md) — v1.2 (post-WU 3.10 generic placeholder).
+- Other shared rules (`correlation-ids.md`, `state-vocabulary.md`, `never-touch.md`, `override-registry.md`, `escalation-protocol.md`, `role-switch-hygiene.md`, `security-boundaries.md`) — unchanged across Phase 3.
+- `shared/schemas/` — all event envelope and per-type payload schemas, unchanged across Phase 3's fix ladder (per retrospective §"F3.15" deferral of task_lifecycle per-type schemas to Phase 4+).
+
+### The freeze does **not** cover
+
+- The specs, config-steward, or merge-watcher role configs. Those remain Phase 0 v0.1 drafts (or non-existent) pending their respective phases (Phase 4 and Phase 5 per the implementation plan).
+- The ten findings deferred to Phase 4+ by this retrospective (F3.11, F3.15, F3.16, F3.17, F3.22, F3.24, F3.27, F3.31, F3.32, F3.33). They are scheduled carry-items, not part of the frozen surface. Each has a named home phase in §"Deferred to Phase 4+" above.
+- The three **Phase 4 carry items** that emerged from Phase 3's walkthrough evidence: (a) the qa-regression skill's runtime validation (negative result from WU 3.6 — Phase 4 walkthroughs must include a regression-cycle feature); (b) the Q4 cross-attribution resolution path (also negative-result carry, dependent on (a) being exercised); (c) stricter "first round" semantics for the `generating → in_progress` transition added in WU 3.10 (v1 = "first task opened"; Phase 4+ may tighten to "all tasks opened" if walkthrough experience dictates).
+
+### Carry list for Phase 4 inputs
+
+**Findings deferred to Phase 4+** (from §"Deferred to Phase 4+" above):
+
+| # | Finding | Home |
+|---|---|---|
+| F3.11 | SKILL.md files exceed 25k token read limit | Phase 4+ — any WU revising issue-drafting or qa-curation SKILL.md for other reasons |
+| F3.15 | Task lifecycle events have no per-type schema (envelope-only) | Phase 5 — schema-governance automation |
+| F3.16 | "Done" derivation signal priority undocumented in dep-recomputation | Phase 5 — merge-watcher agent design |
+| F3.17 | `## Scope` cardinality clause wording ambiguity | Phase 4+ — any revision of task-decomposition SKILL.md |
+| F3.22 | Rule 1 `qa_execution never auto` conditional parsing friction | Phase 4+ — qa-execution SKILL.md revision |
+| F3.24 | T04 `## Deliverables` forward-looking reference | Phase 4+ — plan-review skill evolution |
+| F3.27 | template-coverage-check entry-condition expects `state == planning` | Phase 4+ — template-coverage-check SKILL.md revision |
+| F3.31 | `source: component:<bare_name>` format | Phase 4+ — schema-hygiene pass |
+| F3.32 | Cardinality wording "expected" ambiguous | Phase 4+ — specs-agent guidance |
+| F3.33 | `tail -1 log \| json.tool` fails on blank trailing line | Phase 4+ — verify-before-report.md §3 revision |
+
+**Negative-result carry items to Phase 4:**
+
+- **qa-regression runtime validation.** Phase 4 walkthroughs must include at least one regression-cycle feature exercising the full `qa_execution_failed → qa-regression spawn → fix → re-execute → qa_execution_completed` path.
+- **Q4 cross-attribution resolution.** Not exercised in Phase 3 (no regression loop triggered). Validate alongside the regression-cycle feature above.
+- **"First round" semantics refinement.** WU 3.10 v1 semantics = "first invocation with task_created"; Phase 4+ may tighten to "all tasks in task_graph have task_created" if walkthrough experience reveals edge cases (e.g., a task escalating `spec_level_blocker` during drafting and never producing a `task_created`).
+
+Phase 4 (specs agent and chat front-end) can now start. The sixteen Fix-in-Phase-3 items and their rationales are the contract Phase 4 inherits, alongside the frozen QA + amended Phase 1 + amended Phase 2 surfaces above and the ten Deferred-to-Phase-4+ findings + three negative-result carry items documented in this section.

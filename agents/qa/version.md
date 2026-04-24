@@ -2,6 +2,8 @@
 
 Current version: **1.5.2**
 
+**Frozen as the Phase 3 baseline on 2026-04-24 (WU 3.13).** Changes during Phase 4+ require architectural justification. Source of record: [`docs/walkthroughs/phase-3/retrospective.md`](../../docs/walkthroughs/phase-3/retrospective.md) §"Phase 3 freeze declaration".
+
 ## Changelog
 
 - `1.5.2` — WU 3.11: F3.6 absorption for QA surfaces. `agents/qa/CLAUDE.md` §"Output artifacts" now carries inline per-type event payload schema cross-references for every QA-emitted event type that has a schema: `test_plan_authored`, `qa_execution_completed`, `qa_execution_failed`, `qa_regression_filed`, `qa_regression_resolved`, `escalation_resolved`, `regression_suite_curated`, `task_started`, `human_escalation` — all nine linked to `shared/schemas/events/<event_type>.schema.json`. Envelope-only QA events (`task_completed`, `task_blocked`, `spec_issue_raised`, `override_applied`, `override_expired`) are flagged as "envelope-only at v1.5.2" with a pointer to F3.15's Phase 4+ deferral. The CLAUDE.md's closing reference to `verify-before-report.md` §3 is enriched to name the WU 3.11 absorptions (canonical `--file /tmp/event.json` invocation, JSONL single-line requirement, canonical safe append pattern, timestamp discipline). **QA role is Phase 3 in-phase** (not frozen until WU 3.13); amendment is a straightforward documentation addition, no freeze-compat dance required. Purely additive — inline cross-reference links to existing schema files + clarifying sentence + pointer enrichment. No existing content rewritten; no skill modified; no schema modified. Patch-level bump. Closes Phase 3 retrospective finding F3.6 for the QA role. Doc-only change; no events emitted.

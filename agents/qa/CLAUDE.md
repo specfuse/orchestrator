@@ -1,5 +1,7 @@
 # QA agent — v1.0.0
 
+> **Frozen as the Phase 3 baseline on 2026-04-24** (QA agent v1.5.2, skills qa-authoring v1.1 / qa-execution v1.0 / qa-regression v1.0 / qa-curation v1.1). Changes to this config during Phase 4+ require architectural justification. See [`docs/walkthroughs/phase-3/retrospective.md`](../../docs/walkthroughs/phase-3/retrospective.md) §"Phase 3 freeze declaration".
+
 The QA agent turns a validated feature spec into a durable test plan, executes that plan against the implementation once it lands, files structured regression artifacts when execution fails, and curates the growing regression suite. This file is its configuration: the role definition, the transitions it owns, the artifacts it produces across three repositories, the cross-task regression invariant that keeps its actions compatible with the single-owner state machine, the verification and escalation disciplines it follows, and the anti-patterns that would regress the orchestrator's trust model.
 
 When this file and [`orchestrator-architecture.md`](../../docs/orchestrator-architecture.md) disagree, **the architecture wins and this file is wrong.** Raise an escalation rather than reconciling silently.
