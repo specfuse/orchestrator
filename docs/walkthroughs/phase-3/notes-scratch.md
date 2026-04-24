@@ -582,10 +582,749 @@ Report back:
 
 ---
 
-## 4 — Real-time walkthrough notes
+## 4 — Real-time walkthrough notes (F1)
 
-Append here during execution. Format: `YYYY-MM-DD HH:MM` + session N + observation. Keep entries lapidary — 1–3 bullets per session. Post-session, write up the detailed log in feature-1-log.md.
+Append here during F1 execution. Format: `YYYY-MM-DD HH:MM` + session N + observation. Keep entries lapidary — 1–3 bullets per session. Post-session, write up the detailed log in feature-1-log.md.
 
 ```
-(empty — filled during walkthrough)
+(F1 complete 2026-04-24; see feature-1-log.md for the detailed narrative)
 ```
+
+---
+
+## 5 — Session prompts (F2)
+
+Same shape as §3 (F1): each prompt is designed to be pasted into the `Agent` tool with `subagent_type=general-purpose` and `model=sonnet`. Subagent starts with zero context — every prompt is self-contained.
+
+Expected total: **20 sessions** (12 agent + 8 manual) = F1 shape (9 sessions) + regression loop (6 additions: fail-execution, file, spawn, fix-impl, merge, re-execute) + resolution (1: qa-regression resolved) + curation + close (4).
+
+### F2 preamble — mitigation clauses baked into every subagent prompt (absorbs F1 findings F3.2, F3.3, F3.5, F3.6, F3.13)
+
+Include these five clauses in every subagent prompt, in addition to the F1 base (role-switch-hygiene re-read, verification, friction reporting):
+
+1. **Do NOT commit on orchestrator repo.** Leave event-log appends and frontmatter edits as uncommitted working-tree changes under `/Users/bonty/Documents/GitHub/orchestrator/`. The orchestration session (Opus 4.7) produces the single walkthrough-wrap commit at the end. You may `git add` if a tool requires staging; you may NOT `git commit` on the orchestrator repo. Commits on `orchestrator-api-sample` and `orchestrator-specs-sample` are allowed when the skill requires them (component impl, qa-authoring PR branch).
+2. **Timestamp discipline.** Every `timestamp` field on every event MUST be produced by `date -u +%Y-%m-%dT%H:%M:%SZ` at the moment the event is constructed. Do NOT synthesize from conversation context, from today's date string, or by copying/adjusting nearby log timestamps. If you're about to emit an event without having just run `date -u`, stop and run it.
+3. **Per-type event payload schemas — cross-reference before constructing.** Check `/Users/bonty/Documents/GitHub/orchestrator/shared/schemas/events/<event_type>.schema.json` exists; if yes, the payload must satisfy it. For `task_started`: required fields `issue_url` (full GitHub URL) + `branch`; do NOT use the bare `issue` field (that's the schema-less `task_created` convention). For events without a per-type schema, envelope-only validation applies (validate-event.py silently skips payload check).
+4. **validate-event.py invocation.** `/dev/stdin` pipe fails on macOS with exit 2. Use temp-file pattern: `python3 /Users/bonty/Documents/GitHub/orchestrator/scripts/validate-event.py --file /tmp/event-<descriptor>.json` with the event JSON written to that path first.
+5. **Friction reporting non-sanitized.** Record every surprise, workaround, re-read, or ambiguity — even minor. These feed WU 3.7 retro triage. Do NOT sanitize; honest friction data is the walkthrough's primary deliverable.
+
+Absolute paths: `/Users/bonty/Documents/GitHub/orchestrator/`, `/Users/bonty/Documents/GitHub/orchestrator-specs-sample/`, `/Users/bonty/Documents/GitHub/orchestrator-api-sample/`.
+
+---
+
+### F2 Session 1 — PM task-decomposition on FEAT-2026-0007
+
+```
+You are acting as the PM agent (v1.6.0, frozen as Phase 2 baseline) performing the task-decomposition skill on a fresh feature. This is a walkthrough session — honesty about friction is required. Do not sanitize your report.
+
+Setup discipline (re-read before acting, per /shared/rules/role-switch-hygiene.md):
+1. Read every file under /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/CLAUDE.md (PM role config, v1.6.0).
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/skills/task-decomposition/SKILL.md.
+
+F2 preamble (5 mitigation clauses — absorbs F1 findings):
+1. Do NOT `git commit` on the orchestrator repo. Leave appends uncommitted.
+2. Every event timestamp MUST be produced by `date -u +%Y-%m-%dT%H:%M:%SZ` at emission time.
+3. Per-type event payload schemas live at /Users/bonty/Documents/GitHub/orchestrator/shared/schemas/events/. `task_graph_drafted` has NO per-type schema (envelope-only).
+4. validate-event.py /dev/stdin broken on macOS — use `--file /tmp/event.json` pattern.
+5. Friction reporting non-sanitized. Record every surprise.
+
+Task:
+- Feature registry: /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md (state=planning, task_graph=[]).
+- Related specs file: /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/features/FEAT-2026-0007.md. Spec carries AC-1 (default 50), AC-2 (1 ≤ N ≤ 500 slice), AC-3 (N > 500 → HTTP 400 + error.code=page_size_over_limit).
+
+Expected flow per SKILL.md steps 1–7:
+- Step 1: state intent.
+- Step 2: read feature registry + spec. Spec has 3 ACs.
+- Step 3: enumerate capabilities. Per default cardinality (1 AC → 1 behavior), expect 3 behaviors grouped into 1 implementation task (all 3 are the same endpoint's different request shapes).
+- Step 4: build task list. Expected shape: 1 implementation, 1 qa_authoring, 1 qa_execution, 1 qa_curation.
+- Step 5: depends_on edges.
+- Step 6: validate in memory (schema + capability coverage + acyclic).
+- Step 7: write task_graph to feature frontmatter + emit task_graph_drafted event.
+
+Writes expected:
+- /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md — update frontmatter task_graph array. LEAVE state=planning.
+- /Users/bonty/Documents/GitHub/orchestrator/events/FEAT-2026-0007.jsonl — create file + append 1 JSONL line (task_graph_drafted event).
+
+Do NOT populate `required_templates` — that's human's role during plan_review (v1 discipline, WU 2.10).
+
+Do NOT:
+- Modify /agents/*, /shared/rules/* (frozen).
+- Push to GitHub.
+- Transition feature state.
+- Open GitHub issues (that's session 4).
+- Run template-coverage-check (session 3).
+- `git commit` on orchestrator repo.
+
+Verification:
+- validate-event.py --file /tmp/task_graph_drafted.json → exit 0.
+- Re-read appended line.
+- validate-frontmatter.py on FEAT-2026-0007.md → exit 0.
+- source_version via `bash scripts/read-agent-version.sh pm` at emission (expect 1.6.0).
+
+Report back:
+- task_graph rendered as a markdown table (id, type, depends_on, assigned_repo).
+- Full event JSON emitted.
+- Verification evidence (exit codes, re-read line).
+- Every friction, surprise, workaround — even minor. DO NOT sanitize.
+- Wall-clock duration + rough tool-use count.
+```
+
+---
+
+### F2 Session 2 — Human plan_review transition (manual)
+
+**Orchestrator actions (Opus 4.7 — me, not a subagent):**
+
+1. Review task_graph from S1. Compare against pre-computed §1 expected graph for FEAT-2026-0007. Note any divergence as F3.x finding.
+2. Edit `features/FEAT-2026-0007.md` — add `required_templates` per task per §1 table (T01: `[api-controller, api-request-validator, api-response-serializer]`; T02: `[test-plan]`; T03/T04: `[]`).
+3. Transition feature state: `planning → plan_review → generating`. Emit TWO `feature_state_changed` events with 10s gap (canonical trajectory preserved even though plan-review skill session skipped).
+4. `source: human`, `source_version: <short SHA>` via `git rev-parse --short HEAD` on orchestrator repo.
+5. Validate each edit: `validate-frontmatter.py --file features/FEAT-2026-0007.md` → exit 0. Each event via validate-event.py → exit 0.
+
+---
+
+### F2 Session 3 — PM template-coverage-check on FEAT-2026-0007
+
+```
+You are acting as the PM agent (v1.6.0 frozen) performing the template-coverage-check skill on FEAT-2026-0007.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/skills/template-coverage-check/SKILL.md.
+
+F2 preamble (5 mitigation clauses — same as S1).
+
+Task:
+- Feature registry: /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md (state=generating, task_graph populated, required_templates populated).
+- Component repo: /Users/bonty/Documents/GitHub/orchestrator-api-sample. Its .specfuse/templates.yaml declares `[api-controller, api-request-validator, api-response-serializer, test-plan, test-runner]`.
+
+Expected flow per SKILL.md:
+- For each task, compare required_templates against assigned_repo's provided_templates.
+- WU 2.11 hardening: `required_templates: []` is valid; absent field is pre-flight reject.
+- Clean → emit template_coverage_checked event (per-type schema EXISTS at shared/schemas/events/template_coverage_checked.schema.json — use it).
+
+Writes expected:
+- /Users/bonty/Documents/GitHub/orchestrator/events/FEAT-2026-0007.jsonl — append 1 template_coverage_checked event.
+
+Do NOT:
+- Modify feature frontmatter, .specfuse/ files, frozen surfaces.
+- Open GitHub issues.
+- `git commit` on orchestrator repo.
+
+Verification:
+- validate-event.py --file /tmp/template_coverage_checked.json → exit 0 (envelope + per-type payload).
+- Re-read appended line.
+- Name per task which required_templates tokens matched which provided_templates.
+
+Report back:
+- Coverage satisfaction matrix.
+- Emitted event JSON.
+- Validation outputs.
+- Friction verbatim.
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 4 — PM issue-drafting on FEAT-2026-0007
+
+```
+You are acting as the PM agent (v1.6.0 frozen) performing the issue-drafting skill on FEAT-2026-0007.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/skills/issue-drafting/SKILL.md (may exceed 25k read limit — use offset/limit chunking).
+4. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/issue-drafting-spec.md.
+5. Read /Users/bonty/Documents/GitHub/orchestrator/shared/templates/work-unit-issue.md (v1.1).
+
+F2 preamble (5 mitigation clauses). Additional: **F3.7 mitigation — the SKILL's worked example uses `clabonte/orchestrator` as deliverable_repo, which is the Phase 2 era convention. For THIS walkthrough, ADAPT: T02 and T04 use `deliverable_repo: Bontyyy/orchestrator-specs-sample` (NOT clabonte/orchestrator).**
+
+Task:
+- Feature registry: /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md (state=generating, task_graph fully populated).
+- Open 4 GitHub issues on Bontyyy/orchestrator-api-sample — one per task.
+
+Per-task issue requirements:
+- T01 (implementation): `deliverable_repo` omitted.
+- T02 (qa_authoring): `deliverable_repo: Bontyyy/orchestrator-specs-sample`.
+- T03 (qa_execution): `deliverable_repo` omitted.
+- T04 (qa_curation): `deliverable_repo: Bontyyy/orchestrator-specs-sample`.
+
+Labels: `type:<kind>`, `autonomy:review`, `state:ready` for T01+T02 (no deps), `state:pending` for T03+T04.
+
+Events emitted: 4× task_created + 2× task_ready (on T01, T02).
+
+Writes:
+- 4 issues via `gh issue create` on Bontyyy/orchestrator-api-sample.
+- /Users/bonty/Documents/GitHub/orchestrator/events/FEAT-2026-0007.jsonl — 6 event lines.
+
+Do NOT:
+- Open issues on specs-sample.
+- Touch frozen surfaces.
+- Merge any PR.
+- `git commit` on orchestrator repo.
+
+Verification per issue:
+- validate-event.py --file /tmp/<event>.json → exit 0 for each.
+- `gh issue view <url> --json number,title,labels,body` — confirm 5 mandatory ## sections + labels + deliverable_repo + ## Deliverables iff deliverable_repo set.
+
+Report back:
+- Table: T id, issue URL, labels, deliverable_repo value.
+- All 6 events JSON.
+- Verification outputs.
+- Friction verbatim (especially deliverable_repo adaptation from the worked example).
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 5 — Component implementation on T01
+
+```
+You are acting as the component agent (v1.5.0, frozen as Phase 1 baseline) performing an implementation task on Bontyyy/orchestrator-api-sample.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/component/CLAUDE.md.
+3. Read each skill under /Users/bonty/Documents/GitHub/orchestrator/agents/component/skills/ that CLAUDE.md references for an implementation task (include verification/SKILL.md).
+
+F2 preamble (5 mitigation clauses). Additional: **F3.1 mitigation — api-sample's .specfuse/verification.yml uses `--no-build` on tests and coverage gates. Before running verification gate sequence, explicitly run `dotnet restore && dotnet build` on the feature branch. A gate sequence run literally on --no-build without a fresh build can trap on stale artifacts (Phase 1 Finding 8). Document this pre-step in your verification evidence.**
+
+Task:
+- GitHub issue URL: <FILL IN T01 ISSUE URL FROM SESSION 4>.
+- Repo: /Users/bonty/Documents/GitHub/orchestrator-api-sample (local clone). Pull latest main first: `git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample fetch && git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample checkout main && git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample pull`.
+- Feature: FEAT-2026-0007 — paginate GET /widgets with page_size query parameter. Implement per AC-1, AC-2, AC-3 as written in the spec at /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/features/FEAT-2026-0007.md. Read the spec carefully.
+
+Implementation discipline:
+- Feature branch name: `feat/FEAT-2026-0007-T01-widgets-pagination` (follow api-sample git log conventions otherwise).
+- Add unit tests covering every AC enumerated in the spec.
+- Coverage ≥ 90%, zero warnings, all CI gates green.
+- Existing widget repository/service abstractions already in the sample repo — reuse, do not refactor.
+
+Expected flow:
+- State intent.
+- Flip T01 `state:ready → state:in-progress` via `gh issue edit`.
+- Emit task_started event (payload requires issue_url + branch per per-type schema).
+- Implement on feature branch.
+- Pre-gate build: `dotnet restore && dotnet build` (F3.1 mitigation).
+- Run all verification gates per .specfuse/verification.yml. Require all pass before reporting.
+- Push branch + `gh pr create` with `Closes Bontyyy/orchestrator-api-sample#<N>` in body.
+- Flip T01 `state:in-progress → state:in-review`.
+- Emit task_completed event on T01 with verification evidence.
+
+Do NOT:
+- Merge your own PR.
+- Touch .specfuse/verification.yml, branch protection, /agents/*.
+- `git commit` on orchestrator repo (event appends stay uncommitted).
+
+Verification evidence:
+- PR URL.
+- Every gate output (tests N/N, coverage %, warnings, OWASP, lint, build).
+- Re-read of task_completed event line.
+
+Report back:
+- PR URL + file changes summary.
+- Gate outputs.
+- Friction verbatim.
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 6 — Human: merge T01 PR (manual)
+
+**Orchestrator actions:**
+
+1. Review T01 PR on api-sample. Confirm CI `verification gates` workflow SUCCESS.
+2. Squash-merge via `gh pr merge <N> --squash --delete-branch`.
+3. Note T01 merge commit SHA (full 40-char hex) — needed for S10 qa-execution `commit_sha` payload field.
+4. Flip T01 issue `state:in-review → state:done` via `gh issue edit`.
+5. Issue auto-closes via `Closes` directive (same-repo); if not, `gh issue close <N>`.
+6. No second `task_completed` event — S5 subagent already emitted at PR open (F1 convention).
+
+---
+
+### F2 Session 7 — QA qa-authoring on T02
+
+```
+You are acting as the QA agent (v1.4.0) performing the qa-authoring skill on FEAT-2026-0007.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/skills/qa-authoring/SKILL.md.
+
+F2 preamble (5 mitigation clauses). Additional:
+- **F3.2 mitigation — PR convention PINNED explicit** (SKILL underspecifies):
+  - Branch on specs-sample: `qa-authoring/FEAT-2026-0007-T02`.
+  - Commit message: `feat(test-plan): FEAT-2026-0007 — widgets list pagination`.
+  - Push + `gh pr create` against specs-sample main.
+  - PR title: `feat(test-plan): FEAT-2026-0007 — widgets list pagination`.
+  - PR body: summary + coverage notes (if any) + `Closes Bontyyy/orchestrator-api-sample#<T02_ISSUE_NUMBER>`.
+  - STOP at PR open + `gh pr view <url>`. Do NOT merge.
+- **F3.3 mitigation — port convention.** api-sample's launchSettings.json http profile listens on `http://localhost:5083`. Author all `commands[]` in the plan targeting `http://localhost:5083` (NOT 5000). Include `## Coverage notes` mentioning the port choice so qa-execution can re-confirm.
+
+Task:
+- GitHub issue URL: <FILL IN T02 ISSUE URL>.
+- Feature: FEAT-2026-0007.
+- Registry: /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md.
+- Spec: /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/features/FEAT-2026-0007.md — 3 ACs.
+- Deliverable repo clone: /Users/bonty/Documents/GitHub/orchestrator-specs-sample/ (pull latest first: `git -C /Users/bonty/Documents/GitHub/orchestrator-specs-sample fetch && git -C /Users/bonty/Documents/GitHub/orchestrator-specs-sample checkout main && git -C /Users/bonty/Documents/GitHub/orchestrator-specs-sample pull`).
+
+Expected flow per SKILL.md steps 1–7:
+- Step 1: intent; flip T02 `state:ready → state:in-progress`; emit task_started (issue_url + branch per per-type schema — the BRANCH here is your specs-sample branch name `qa-authoring/FEAT-2026-0007-T02`).
+- Step 2: read registry + spec.
+- Step 3: enumerate behaviors. 3 ACs → 3 tests under default cardinality (no scope override collapses this). Expected test_ids (kebab-case, unique within plan):
+  - `widgets-list-default-page-size-50` (AC-1)
+  - `widgets-list-explicit-page-size-honored` (AC-2)
+  - `widgets-list-page-size-over-limit-rejected` (AC-3)
+- Step 4: cardinality — scope silent on QA cardinality override → default = 1 test per behavior = 3 tests.
+- Step 5: draft plan entries with `covers` quoting AC prose verbatim, `commands` using curl against http://localhost:5083/widgets, `expected` prose predicates per AC.
+- Step 6: validate in-memory (schema round-trip via test-plan.schema.json, unique test_ids, coverage check).
+- Step 7: write plan at /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/test-plans/FEAT-2026-0007.md, PR per convention above, emit test_plan_authored event (per-type schema at shared/schemas/events/test_plan_authored.schema.json — payload `{plan_path, test_count: 3}`).
+
+Flip T02 `state:in-progress → state:in-review`. Emit task_completed with PR URL.
+
+Do NOT:
+- Merge your own PR.
+- Write outside /product/test-plans/ on specs-sample.
+- Touch component code on api-sample.
+- Flip labels on ANY task other than T02 (Q4 invariant).
+- `git commit` on orchestrator repo (event appends stay uncommitted). Commits on specs-sample branch ARE allowed.
+
+Verification per SKILL §Verification:
+- Plan file round-trips shared/schemas/test-plan.schema.json.
+- Unique test_ids.
+- Coverage check: every AC fragment covered.
+- test_plan_authored event validates (envelope + per-type).
+- Re-read plan file post-write.
+- source_version via `bash scripts/read-agent-version.sh qa` (expect 1.4.0).
+
+Report back:
+- Full plan file contents (YAML frontmatter + prose).
+- PR URL on specs-sample.
+- All 3 events JSON (task_started, test_plan_authored, task_completed).
+- Verification evidence.
+- Friction verbatim — especially any PR-convention ambiguity (F3.2 mitigation stress test) and any startup-command assumption (F3.3).
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 8 — Human: merge qa-authoring PR + close T02 (manual)
+
+**Orchestrator actions:**
+
+1. Review specs-sample PR. Confirm plan validates via test-plan.schema.json.
+2. Squash-merge via `gh pr merge <N> --squash --delete-branch` (specs-sample).
+3. Flip T02 issue `state:in-review → state:done` via `gh issue edit -R Bontyyy/orchestrator-api-sample <T02_N>`.
+4. **Manually close T02** via `gh issue close -R Bontyyy/orchestrator-api-sample <T02_N>` — cross-repo `Closes` doesn't auto-fire (F1 F3.12 confirmed).
+5. No second `task_completed` event — S7 subagent already emitted.
+
+---
+
+### F2 Session 9 — PM dependency-recomputation (first invocation)
+
+```
+You are acting as the PM agent (v1.6.0 frozen) performing the dependency-recomputation skill on FEAT-2026-0007.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/pm/skills/dependency-recomputation/SKILL.md.
+
+F2 preamble (5 mitigation clauses).
+
+Trigger: T02 task_completed event just appended. T01 and T02 both done. T03 depends_on [T01, T02] is satisfied.
+
+Task:
+- Read /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md frontmatter task_graph.
+- Read /Users/bonty/Documents/GitHub/orchestrator/events/FEAT-2026-0007.jsonl fresh (no cached snapshots).
+- For each `pending` task (derived from event log), check if all `depends_on` are `done`. If yes, flip `state:pending → state:ready` on the GitHub issue and emit task_ready.
+
+Expected:
+- T03 pending → ready.
+- T04 stays pending (dep T03 not done).
+
+Writes:
+- Label flip on T03 (issue URL <FILL IN>).
+- 1 task_ready event on events/FEAT-2026-0007.jsonl with trigger: "task_completed:T02".
+
+Do NOT:
+- Flip T04.
+- Touch task_graph or feature state.
+- `git commit` on orchestrator repo.
+
+Verification:
+- validate-event.py → exit 0.
+- gh issue view T03 --json labels → confirms state:ready present, state:pending absent.
+
+Report back: evaluated tasks + dependency status; transitions; events JSON; friction verbatim; duration.
+```
+
+---
+
+### F2 Session 10 — QA qa-execution on T03 (expected FAIL on AC-3)
+
+```
+You are acting as the QA agent (v1.4.0) performing the qa-execution skill on FEAT-2026-0007.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/skills/qa-execution/SKILL.md.
+
+F2 preamble (5 mitigation clauses). Additional:
+- **Important: qa_execution_failed is a VALID QA task completion.** The QA work is to run commands + report evidence; whether the system under test passes or fails is downstream (consumed by qa-regression). A failing test is NOT your problem to fix — report it faithfully per the per-type schema.
+
+Task:
+- GitHub issue URL: <FILL IN T03 ISSUE URL>.
+- Feature: FEAT-2026-0007.
+- Plan file (post-merge): /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/test-plans/FEAT-2026-0007.md. Pull latest: `git -C /Users/bonty/Documents/GitHub/orchestrator-specs-sample fetch && git -C /Users/bonty/Documents/GitHub/orchestrator-specs-sample checkout main && git -C /Users/bonty/Documents/GitHub/orchestrator-specs-sample pull`.
+- Component repo: /Users/bonty/Documents/GitHub/orchestrator-api-sample. Pull latest: `git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample fetch && git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample checkout main && git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample pull`.
+- commit_sha = `git -C /Users/bonty/Documents/GitHub/orchestrator-api-sample rev-parse HEAD` (full 40-char hex) = the T01 merge commit.
+
+Expected flow per SKILL.md steps 1–7:
+- Step 1: intent; flip T03 `state:ready → state:in-progress`; task_started (issue_url + branch=main).
+- Step 2: resolve plan + commit_sha. Plan round-trips test-plan.schema.json.
+- Step 3: idempotence scan — no prior qa_execution_* for (T03, commit_sha).
+- Step 4: start service (`dotnet run --project src/OrchestratorApiSample.Api/` from /Users/bonty/Documents/GitHub/orchestrator-api-sample; the launchSettings.json http profile should serve 5083 automatically — if plan uses 5083, native startup works; if plan uses a different port, override via `--urls`). Wait for 200 response. Run each test's commands verbatim. Evaluate `expected` predicate per test.
+- Step 5: aggregate. If ANY test fails → qa_execution_failed (per-type schema at shared/schemas/events/qa_execution_failed.schema.json requires failed_tests[] with minItems 1).
+- Step 6: validate + append event.
+- Step 7: flip T03 `state:in-progress → state:in-review`; emit task_completed.
+- Kill the service process. No leak.
+
+Do NOT:
+- Modify plan file.
+- Flip labels on T01 or any task other than T03 (Q4 invariant — qa-execution SKILL §Verification first bullet).
+- Commit to api-sample or open a PR there.
+- Touch frozen surfaces.
+- `git commit` on orchestrator repo.
+
+Verification per SKILL §Verification:
+- All declared commands ran.
+- Each test has definite pass/fail verdict.
+- qa_execution_completed OR qa_execution_failed event validates (envelope + per-type payload).
+- source_version from read-agent-version.sh qa.
+- Re-read appended event.
+
+Report back:
+- For each test: test_id, commands run, stdout/status captured, expected predicate, pass/fail verdict + first_signal if fail.
+- Emitted event JSON (identify whether it's completed or failed).
+- commit_sha used.
+- Verification evidence.
+- Friction verbatim.
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 11 — QA qa-regression (first-failure path)
+
+```
+You are acting as the QA agent (v1.4.0) performing the qa-regression skill on FEAT-2026-0007 — FIRST-FAILURE path.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/skills/qa-regression/SKILL.md.
+4. Read /Users/bonty/Documents/GitHub/orchestrator/shared/templates/qa-regression-issue.md (v0.2).
+
+F2 preamble (5 mitigation clauses). Additional:
+- **Q4 invariant is the primary stress test of this session.** The skill's §Verification first bullet is: "No write to labels or state on any task other than the QA task itself." Specifically: no write to T01 impl task's labels/state, no write to the (not-yet-minted) spawned fix task.
+- **No QA-owned task transitions here.** This skill is event-reactive (trigger = qa_execution_failed from S10). No `state:ready → state:in-progress` flip on any task — you're acting on an already-completed-and-closed qa_execution task.
+
+Task:
+- Triggering event: the `qa_execution_failed` line appended by S10 to /Users/bonty/Documents/GitHub/orchestrator/events/FEAT-2026-0007.jsonl. Read end-to-end; the triggering event is the last `qa_execution_failed` line.
+- Feature registry: /Users/bonty/Documents/GitHub/orchestrator/features/FEAT-2026-0007.md (for Q4 impl_task resolution via depends_on).
+- Plan file: /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/test-plans/FEAT-2026-0007.md (for `expected` + `commands` of each failing test).
+
+Expected flow per SKILL.md Steps 1–4A (first-failure):
+- Step 1: intent; reload hygiene.
+- Step 2: read feature registry; confirm task_correlation_id in task_graph. Read event log fresh.
+- Step 3: Q4 resolve implementation_task_correlation_id = intersect T03's depends_on with type=implementation → exactly 1 → T01.
+- Step 4A.1: idempotence scan — no prior qa_regression_filed for (T01, failed_test_id).
+- 4A.2: read plan; locate failed test entry; capture expected/commands/covers.
+- 4A.3: target_repo from T01.assigned_repo = Bontyyy/orchestrator-api-sample.
+- 4A.4: write /Users/bonty/Documents/GitHub/orchestrator/inbox/qa-regression/FEAT-2026-0007-<failed_test_id>.md per qa-regression-issue.md template v0.2. Frontmatter fields: correlation_id_feature, test_id, regressed_implementation_task_correlation_id, failing_qa_execution_event_ts, failing_commit_sha, test_plan_path, target_repo. Body: Expected, Observed (first_signal from trigger), Reproduction steps (expand commands), Regression context (mirror frontmatter). Re-read.
+- 4A.5: emit qa_regression_filed (per-type schema shared/schemas/events/qa_regression_filed.schema.json; payload keys implementation_task_correlation_id + test_id + failing_qa_execution_event_ts + failing_commit_sha + regression_inbox_file). source_version = 1.4.0.
+
+If failed_tests[] contains multiple entries (unlikely for our naive-impl scenario, but possible), loop 4A for each independently.
+
+Do NOT:
+- Write labels or state to T01 or to any not-yet-existent spawned fix task.
+- Flip T03 labels (it's already in-review from S10).
+- Open GitHub issues (inbox writing only — spawning is out of scope per SKILL).
+- Modify plan file.
+- Touch frozen surfaces.
+- `git commit` on orchestrator repo.
+
+Verification per SKILL §Verification:
+- First bullet (Q4): no write to labels/state on non-QA tasks.
+- Triggering event envelope + per-type payload parsed.
+- implementation_task_correlation_id resolved from task_graph with type=implementation.
+- Inbox artifact written + re-read; frontmatter parses + matches triggering event payload.
+- qa_regression_filed event validates (envelope + per-type).
+- No never-touch path.
+
+Report back:
+- Triggering event timestamp + failed_tests identified.
+- impl_task resolved.
+- Full inbox artifact contents (frontmatter + body).
+- qa_regression_filed event JSON.
+- Verification evidence — ESPECIALLY your audit of the Q4 first bullet (enumerate every write and confirm none touch T01).
+- Friction verbatim.
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 12 — Human: spawn T05 fix task from inbox (manual runbook)
+
+**Orchestrator actions (simulating PM inbox consumer — deferred to later WU per architecture):**
+
+1. Read inbox file `/Users/bonty/Documents/GitHub/orchestrator/inbox/qa-regression/FEAT-2026-0007-<failed_test_id>.md`.
+2. Mint T05 correlation ID (next TNN after T04).
+3. Update `features/FEAT-2026-0007.md` task_graph: append T05 entry with `{id: T05, type: implementation, depends_on: [], assigned_repo: Bontyyy/orchestrator-api-sample, required_templates: [api-controller, api-request-validator, api-response-serializer]}`. Also append T06 entry with `{id: T06, type: qa_execution, depends_on: [T05, T02], assigned_repo: Bontyyy/orchestrator-api-sample, required_templates: []}` — this is the regression re-execution task (pre-mint it so S15 dep-recomp flips it to ready).
+   - **Note on T04 curation dep update**: T04's original `depends_on: [T03]` — add T06 to it so curation waits for resolution: `depends_on: [T03, T06]`. (Open pre-finding — this may surface as PF-7 variant: the task graph shape for regression re-runs isn't explicit in the skills.)
+4. Validate frontmatter via `validate-frontmatter.py`.
+5. `gh issue create -R Bontyyy/orchestrator-api-sample --title "FEAT-2026-0007/T05 — Fix page_size_over_limit rejection (regression)" --body <body from inbox file> --label "type:implementation" --label "autonomy:review" --label "state:ready"`. Body must follow work-unit-issue.md template v1.1 structure with the inbox file's Expected/Observed/Reproduction sections embedded.
+6. Also open T06 issue: `gh issue create -R Bontyyy/orchestrator-api-sample --title "FEAT-2026-0007/T06 — qa-execution re-run after T05 fix" --body <standard qa-execution body> --label "type:qa-execution" --label "autonomy:review" --label "state:pending"`.
+7. Emit 2× task_created (T05, T06) + 1× task_ready (T05) events. source: human, source_version: <short SHA>.
+8. Record T05 + T06 issue URLs in notes-scratch §6 working notes for S13, S15 references.
+
+**Friction watch:** Novel manual step — log every ambiguity (task_graph shape for regression tasks is underspecified at v1; T06 depends_on edges; whether T04 dep should be updated).
+
+---
+
+### F2 Session 13 — Component implementation on T05 (fix)
+
+```
+You are acting as the component agent (v1.5.0, frozen) performing a regression-fix implementation task on Bontyyy/orchestrator-api-sample.
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/component/CLAUDE.md.
+3. Read component skills referenced for an implementation task.
+4. Read the inbox artifact at /Users/bonty/Documents/GitHub/orchestrator/inbox/qa-regression/FEAT-2026-0007-<failed_test_id>.md — it IS the reproduction brief for this fix.
+
+F2 preamble (5 mitigation clauses). F3.1 mitigation (dotnet build pre-gate — same as S5).
+
+Task:
+- GitHub issue URL: <FILL IN T05 ISSUE URL FROM S12>.
+- Repo: /Users/bonty/Documents/GitHub/orchestrator-api-sample. Pull latest main first.
+- Feature: FEAT-2026-0007/T05 — fix the regression described in the inbox artifact. Specifically: make GET /widgets?page_size=N with N > 500 return HTTP 400 with body `{"error": {"code": "page_size_over_limit", "message": "..."}}` with error.code exactly equal to "page_size_over_limit".
+
+Implementation discipline:
+- Feature branch: `fix/FEAT-2026-0007-T05-page-size-over-limit`.
+- Add/update unit tests covering AC-3 specifically.
+- Do NOT regress existing AC-1, AC-2 tests.
+- Coverage ≥ 90%, zero warnings, all gates green.
+- dotnet restore && dotnet build before running --no-build gates.
+
+Expected flow:
+- State intent.
+- Flip T05 `state:ready → state:in-progress`.
+- Emit task_started (issue_url + branch).
+- Implement fix.
+- Verify all gates including the re-run of existing tests.
+- Push + `gh pr create` with `Closes Bontyyy/orchestrator-api-sample#<T05_N>`.
+- Flip T05 `state:in-progress → state:in-review`.
+- Emit task_completed with evidence.
+
+Do NOT:
+- Merge own PR.
+- Weaken existing tests.
+- Touch /agents/*, frozen surfaces.
+- `git commit` on orchestrator repo.
+
+Report back: PR URL, file changes, gate outputs, friction, duration.
+```
+
+---
+
+### F2 Session 14 — Human: merge T05 PR (manual)
+
+**Orchestrator actions:** Same as S6. Squash-merge, note T05 merge commit SHA (for S16 qa-execution commit_sha), flip T05 `in-review → done`, auto-close via `Closes`.
+
+---
+
+### F2 Session 15 — PM dependency-recomputation (second invocation)
+
+```
+You are acting as the PM agent (v1.6.0 frozen) performing dependency-recomputation on FEAT-2026-0007.
+
+Setup + F2 preamble as prior PM sessions.
+
+Trigger: T05 task_completed just appended. T06 depends_on [T05, T02] now satisfied (T02 already done from S8).
+
+Task:
+- Read feature registry + event log fresh.
+- T06 should flip pending → ready.
+- T04 depends_on was updated to [T03, T06] in S12 — T04 stays pending (T06 not done yet).
+
+Writes: T06 label flip + 1 task_ready event with trigger: "task_completed:T05".
+
+Do NOT: flip T04; touch task_graph; `git commit` orchestrator.
+
+Verification: validate-event.py → exit 0; `gh issue view T06 --json labels` confirms ready.
+
+Report back: evaluated tasks, dependency status, transitions, events, friction, duration.
+```
+
+---
+
+### F2 Session 16 — QA qa-execution on T06 (expected PASS)
+
+```
+You are acting as the QA agent (v1.4.0) performing qa-execution on FEAT-2026-0007 — this is the REGRESSION RE-RUN.
+
+Setup + F2 preamble as S10. This session re-reads rules/SKILL unconditionally per role-switch-hygiene.
+
+Task:
+- GitHub issue URL: <FILL IN T06 ISSUE URL>.
+- Plan file unchanged at /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/test-plans/FEAT-2026-0007.md (pull latest).
+- Component repo at /Users/bonty/Documents/GitHub/orchestrator-api-sample. Pull main → HEAD is now T05's merge SHA.
+- commit_sha for this execution = current api-sample main HEAD (from `git rev-parse HEAD`) — DIFFERENT from S10's commit_sha.
+
+Expected flow per SKILL.md S10 shape:
+- Same as S10. Idempotence scan should find no prior event for (T06, new_commit_sha).
+- All 3 tests expected to PASS this time (T05 fix addressed AC-3).
+- Emit qa_execution_completed (per-type schema at shared/schemas/events/qa_execution_completed.schema.json).
+
+Do NOT: flip T01, T05, any task other than T06 (Q4); modify plan; `git commit` orchestrator.
+
+Verification: as S10.
+
+Report back: per-test verdict (all 3 expected pass), event JSON (qa_execution_completed vs _failed), commit_sha, verification evidence, friction, duration.
+```
+
+---
+
+### F2 Session 17 — QA qa-regression (resolution path)
+
+```
+You are acting as the QA agent (v1.4.0) performing qa-regression on FEAT-2026-0007 — RESOLUTION path.
+
+Setup + F2 preamble as S11. Re-read unconditionally.
+
+Task:
+- Triggering event: last `qa_execution_completed` from S16 on events/FEAT-2026-0007.jsonl.
+- Registry + plan as S11.
+
+Expected flow per SKILL.md Steps 1–4C (resolution):
+- Steps 1-2: as S11.
+- Step 3: Q4 resolve for T06's depends_on filtered to implementation — T06 depends_on = [T05, T02]; filtered to implementation = [T05]. implementation_task_correlation_id = T05.
+- Step 4C.1: open regression scan per test_id in plan. For `widgets-list-page-size-over-limit-rejected`: keyed on (T05, test_id) there's no filed event → skip. **BUT the open filed event from S11 is keyed on (T01, test_id) — different impl_task.** Trigger the v1 fallback scan per SKILL §"Deferred — cross-attribution resolution": walk ALL open qa_regression_filed on feature, match any whose test_id appears in current plan, check resolving_commit_sha differs + post-dates failing_commit_sha.
+- 4C.2: resolution eligibility — resolving commit from S16 differs from S10's failing commit + post-dates.
+- 4C.3: emit qa_regression_resolved. Payload: implementation_task_correlation_id = T01 (from the ORIGINAL filed event, via fallback), test_id, filed_event_ts, resolving_qa_execution_event_ts, resolving_commit_sha.
+- 4C.4: scan for outstanding human_escalation on T01 with reason=spinning_detected between filed and resolving ts. NONE expected (single fix attempt; no repeat-failure path triggered). → `escalation_resolved` NOT emitted on this invocation.
+
+Do NOT:
+- Flip labels on any task (event-reactive, no QA task transitions here).
+- Write to /inbox/ (resolution path is event-only).
+- `git commit` orchestrator.
+
+Verification per SKILL §Verification:
+- Q4 first bullet: no write to non-QA labels/state — enumerate explicitly in report.
+- qa_regression_resolved event validates (envelope + per-type).
+
+Report back: triggering event, Q4 impl_task, fallback-scan match (T01-keyed), qa_regression_resolved JSON, confirm NO escalation_resolved emitted + why (no outstanding spinning escalation), Q4 audit enumeration, friction, duration.
+```
+
+---
+
+### F2 Session 18 — Human: close T06 + T04 dep-recomp (manual)
+
+**Orchestrator actions:**
+
+1. Flip T06 `state:in-review → state:done` + close (cross-issue close if needed, but T06 has no external PR deliverable — manual close).
+2. Emit `task_completed` for T06 on the event log if not already there (source: human).
+3. **Dep-recomp for T04** — T04.depends_on = [T03, T06]. Both done now. Flip T04 `state:pending → state:ready`. Emit task_ready with trigger: "task_completed:T06". **Doing this manually rather than subagent** — it's a trivial case and we've already exercised dep-recomp in S9+S15.
+
+---
+
+### F2 Session 19 — QA qa-curation on T04
+
+```
+You are acting as the QA agent (v1.4.0) performing qa-curation on FEAT-2026-0007 (drafting mode).
+
+Setup discipline:
+1. Read /Users/bonty/Documents/GitHub/orchestrator/shared/rules/ (8 files).
+2. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/CLAUDE.md.
+3. Read /Users/bonty/Documents/GitHub/orchestrator/agents/qa/skills/qa-curation/SKILL.md (may exceed 25k — chunk).
+
+F2 preamble (5 mitigation clauses). Additional:
+- **Open-regression protection stress test.** Scan cohort includes FEAT-2026-0006 (from F1) and FEAT-2026-0007. The FEAT-2026-0007 feature log has an open `qa_regression_filed` → `qa_regression_resolved` PAIR (S11 filed, S17 resolved) — the regression is CLOSED, so protection should NOT refuse anything for `widgets-list-page-size-over-limit-rejected`. Exercise the protection logic's "already resolved" branch.
+
+Task:
+- T04 qa_curation (issue URL <FILL IN>).
+- Scan cohort: /Users/bonty/Documents/GitHub/orchestrator-specs-sample/product/test-plans/*.md (2 plans post-F1: FEAT-2026-0006.md + FEAT-2026-0007.md).
+- Pull specs-sample latest first.
+- Expected candidates:
+  - Dedup: check `covers` overlap across 4 tests total (1 in FEAT-0006, 3 in FEAT-0007). No overlap expected — widget-count and widgets-list are distinct endpoints.
+  - Orphan: scan feature registries; all ACs covered still exist. No orphans expected.
+  - Consolidation: scan qa_execution_failed events within 30d/50-event window. One exists (S10 on FEAT-0007) but a single failure doesn't cluster. No candidates expected.
+  - Rename: no rename-request lines.
+- **Expected outcome: empty-curation branch** per SKILL §Step 7.
+
+Expected flow per SKILL.md drafting mode:
+- Pickup; flip T04 `state:ready → state:in-progress`; task_started.
+- Steps 1-4: read + classify → 0 candidates surviving.
+- Step 7 empty branch: NO PR, NO regression_suite_curated event. Comment on T04 issue with summary ("Curation pass complete. 0 accepted candidates, 0 refused. Scan covered 2 plans..."). Flip T04 `state:in-progress → state:in-review`. Emit task_completed with `empty_curation: true` additive payload field.
+
+Do NOT:
+- Open a PR for an empty-curation pass.
+- Emit regression_suite_curated (no PR landed).
+- Touch tasks other than T04 (Q4).
+- Touch frozen surfaces.
+- `git commit` orchestrator.
+
+Verification:
+- validate-event.py on task_completed → exit 0.
+- gh issue view T04 --json labels → state:in-review.
+- tail events/FEAT-2026-0007.jsonl → task_completed with empty_curation:true; NO regression_suite_curated.
+- Enumerate protection check on `widgets-list-page-size-over-limit-rejected`: open filed exists but paired resolved exists → not protected = OK to retire IF we had a retire candidate (we don't).
+
+Report back:
+- Scan cohort (2 plans).
+- Per-plan candidate classification (0 across all 4 kinds).
+- Protection-logic exercise summary (resolved pair verification).
+- T04 comment text.
+- task_completed event JSON.
+- Verification evidence including Q4 audit (no non-T04 writes).
+- Friction verbatim.
+- Duration + tool-use count.
+```
+
+---
+
+### F2 Session 20 — Human: close T04 + feature done (manual)
+
+**Orchestrator actions:**
+
+1. Flip T04 `state:in-review → state:done` + close issue.
+2. Emit `feature_state_changed(in_progress → done, trigger=all_tasks_done)`. source: human, source_version: <short SHA>.
+3. Update features/FEAT-2026-0007.md frontmatter: `state: generating → state: done` (or `in_progress → done` depending on whether S12 or similar flipped generating→in_progress — note F1 had F3.4 gap here; watch for it in F2).
+4. If `feature_state_changed(generating → in_progress)` missing from log: retro-emit with trigger=`first_round_issues_opened_retroactive` (F1 F3.4 mitigation pattern).
+5. Validate frontmatter + final event.
+6. Full event log re-validation: every line via validate-event.py.
+
+---
+
+### Backup branch — qa-curation stress (activate if S10 all-pass OR 2× fix fails)
+
+If triggered, pivot at S10 (for criterion a) or at S13+re-fail (for criterion b). Steps:
+
+1. Document the pivot decision in feature-2-log.md §"Outcome" with triggering criterion + rationale.
+2. Seed 3 fixture test plans in specs-sample `/product/test-plans/`:
+   - **FEAT-2026-9001.md** — dedup stress: test `widgets-listing-default-limit-50` with `covers: "AC-1: GET /widgets default slice"` (overlaps FEAT-0007 test if F2 reached S7, otherwise overlap fictive).
+   - **FEAT-2026-9002.md** — orphan stress: covers AC fragment absent from any real registry.
+   - **FEAT-2026-9003.md** — rename stress: prose body contains `rename-request: old-test-id → new-test-id`.
+3. Seed 1 `qa_regression_filed` (without paired _resolved) in /events/FEAT-2026-9002.jsonl to exercise protection refusal path.
+4. Invoke qa-curation subagent with expanded scan cohort. Expected: PR with dedup merge + orphan retire for FEAT-9002 tests OTHER than the protected one + rename + `refused_candidates` entry for the protected one.
+5. Log Q4 audit + friction in feature-2-log.md.
+
+---

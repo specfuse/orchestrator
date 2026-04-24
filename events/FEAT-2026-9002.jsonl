@@ -1,0 +1,2 @@
+{"timestamp":"2026-04-20T14:24:00Z","correlation_id":"FEAT-2026-9002","event_type":"qa_regression_filed","source":"qa","source_version":"1.4.0","payload":{"implementation_task_correlation_id":"FEAT-2026-9002/T02","test_id":"widgets-metadata-has-last-updated","failing_qa_execution_event_ts":"2026-04-20T14:22:17Z","failing_commit_sha":"0000000000000000000000000000000000000002","regression_inbox_file":"inbox/qa-regression/FEAT-2026-9002-widgets-metadata-has-last-updated.md"}}
+
