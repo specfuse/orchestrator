@@ -1,5 +1,5 @@
 <!--
-Work unit issue body template. v1.1.
+Work unit issue body template. v1.2.
 
 This template is the body of every GitHub issue that represents a task
 (implementation or QA) in a component repository. It is the contract
@@ -31,8 +31,21 @@ v1.1 changes (WU 2.13):
 Both additions are backwards-compatible: issues authored before v1.1
 (without `deliverable_repo`, without `## Deliverables`) remain structurally
 valid. For most tasks, omit `deliverable_repo` (defaults to `component_repo`).
-For QA authoring / curation tasks whose deliverable lives in the orchestrator
-repo, set `deliverable_repo: clabonte/orchestrator`.
+For QA authoring / curation tasks whose deliverable lives in a product
+specs repo, set `deliverable_repo: <product-specs-owner>/<product-specs-repo>`.
+
+v1.2 changes (WU 3.10):
+- Replaced the Phase-2-era concrete example target `clabonte/orchestrator`
+  in this template's comments with the generic placeholder
+  `<owner>/<repo>` (or `<product-specs-owner>/<product-specs-repo>` when
+  clearly referring to a product specs repo). Rationale: Phase 2 predated
+  the product specs repo split — product specs and test plans were
+  committed to the orchestrator repo itself. From Phase 3 onwards, product
+  specs live in a separate repo (e.g., `Bontyyy/orchestrator-specs-sample`
+  for the walkthroughs), and the stale concrete example was inducing
+  "stickiness" in cold invocations (F3.7 of the Phase 3 retrospective).
+  Comment-only change; no YAML structure, frontmatter field, or mandatory
+  section is modified. Fully backwards-compatible with v1.1 issues.
 -->
 
 ```yaml
@@ -43,9 +56,9 @@ component_repo: <owner>/<repo>
 # deliverable_repo: <owner>/<repo>   # OPTIONAL — omit for most tasks (defaults to component_repo).
                                       # Set when the task's primary deliverable lives in a different
                                       # repo from component_repo (e.g. QA authoring / curation tasks
-                                      # whose test plan or curation record is committed to the
-                                      # orchestrator repo rather than the target component repo).
-                                      # Example: deliverable_repo: clabonte/orchestrator
+                                      # whose test plan or curation record is committed to a
+                                      # product specs repo rather than the target component repo).
+                                      # Example: deliverable_repo: <product-specs-owner>/<product-specs-repo>
                                       # Commands in §Verification that operate on the deliverable
                                       # (read the file, run a script against it) run from
                                       # deliverable_repo's root; commands that build or test the
@@ -81,8 +94,8 @@ Frontmatter field semantics:
   commands that build, test, or gate-check the component still run
   from `component_repo`'s root. Typical use: `qa_authoring` and
   `qa_curation` tasks whose test plan or curation record is committed
-  to the orchestrator repo (`clabonte/orchestrator`), not the target
-  component repo.
+  to a product specs repo (`<product-specs-owner>/<product-specs-repo>`),
+  not the target component repo.
 - `depends_on` (required, possibly empty) — task-local IDs (e.g.
   `[T01, T03]`) inside the same feature that must be `done` before
   this task can transition to `ready`. The PM agent's dependency
@@ -117,7 +130,7 @@ that is the next section.
 Use this section when the task produces named files or artifacts that
 live outside `component_repo` — typically `qa_authoring` and
 `qa_curation` tasks whose deliverables are committed to `deliverable_repo`
-(e.g. the orchestrator repo) rather than edited in-place in the target
+(e.g. a product specs repo) rather than edited in-place in the target
 component repo.
 
 Omit for implementation tasks: their deliverable is the set of edited
