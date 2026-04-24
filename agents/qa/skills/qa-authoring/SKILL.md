@@ -1,4 +1,4 @@
-# QA agent — qa-authoring skill (v1.0)
+# QA agent — qa-authoring skill (v1.1)
 
 ## Purpose
 
@@ -88,6 +88,27 @@ If a spec type is not listed above, the skill escalates `spec_level_blocker` wit
 
 ### Step 5 — Draft each test entry
 
+#### Pre-step: discover the component's runtime port
+
+Before drafting any `commands`, the skill discovers the runtime port of every component repo the plan exercises, by inspecting the component repo's standard declared sources in this order:
+
+1. **.NET** — `<component_repo>/<project>/Properties/launchSettings.json`. Read the first profile (typically `http` or the project-name profile); take its `applicationUrl` (first entry if the value is a semicolon-separated list). Example: `"applicationUrl": "http://localhost:5083;https://localhost:7019"` → port `5083`.
+2. **Node / Express / similar** — `package.json` `scripts.start` (parse for `-p <port>` / `PORT=<port>` / `--port <port>`), or `.env.example` `PORT=<port>`, or the service's README if it documents the port as a stable contract.
+3. **Containerized (Dockerfile)** — `EXPOSE <port>` instruction.
+4. **Containerized (docker-compose)** — `services.<service>.ports[0]` left-hand side.
+5. **Other stacks** — a stack-equivalent declared source (Python Flask/FastAPI entry-point, Go `http.ListenAndServe` literal, Rust `tokio::net::TcpListener::bind` literal, etc.). The source must be a durable declaration in the repo, not a value inferred from a prior walkthrough or memory.
+
+Silence on ports is a defect, not an assumption opportunity. If none of the above sources yields a discoverable port, the skill escalates `spec_level_blocker` with reason "unable to discover runtime port for `<component_repo>`". The skill does **not** default to `5000`, `8080`, or any other "common" port.
+
+Once the port is discovered, the skill threads it into the plan through two complementary conventions (both apply unless the component's startup is genuinely more complex than a single backgrounded command, in which case (i) is omitted and (ii) carries the full procedure):
+
+- **(i) Startup command in `commands[0]` of the first test.** The first test's `commands[]` array carries the service-startup command as its first element, backgrounded with `&`, so qa-execution's first test run starts the service. Example: `["dotnet run --project src/OrchestratorApiSample.Api/ --urls \"http://localhost:5083\" &", "curl -sS -o body.json -w '%{http_code}' http://localhost:5083/widgets"]`. Subsequent tests' `commands[]` do not repeat the startup (the service is assumed running by the time they execute).
+- **(ii) Port and source file documented in `## Coverage notes`.** The plan's prose body always states the discovered port and the source file it was read from (e.g., "Runtime port: `5083`, sourced from `src/OrchestratorApiSample.Api/Properties/launchSettings.json`, profile `http`."). This documentation is mandatory regardless of whether (i) applies — it gives qa-execution a grep-able record of the port's provenance.
+
+When (i) is not applicable (the component needs DB migrations, multi-process startup, seed data, or other setup a single backgrounded command cannot express), (ii) carries the full procedure as prose. A plan with neither (i) nor a complete (ii) is malformed; the skill re-drafts or escalates.
+
+#### Drafting each test
+
 For each behavior (or merged behavior group, per step 4), draft:
 
 - **`test_id`** — a stable kebab-case identifier unique within this plan. Convention: `<domain>-<outcome>` (e.g., `widgets-export-default-page-size`, `widgets-export-page-size-over-limit-rejected`). The feature correlation ID is **not** prefixed into the `test_id` — the file's `feature_correlation_id` already scopes it. Stability is load-bearing: `qa-regression` keys regression artifacts on `(implementation_task_correlation_id, test_id)`, so a later rename would orphan open regressions. If a subsequent re-authoring pass discovers a badly-named `test_id`, handle the rename as a curation PR (WU 3.5), not as an in-place edit on this plan.
@@ -125,7 +146,58 @@ After all checks pass:
 4. Pipe the event through [`scripts/validate-event.py`](../../../../scripts/validate-event.py). Require exit `0` before appending.
 5. Append the event to `/events/<feature_correlation_id>.jsonl` in the orchestration repo.
 6. Re-read the appended line and confirm it matches what was constructed.
-7. Emit `task_completed` on the `qa_authoring` task and flip the task's label to `state:in-review` per [`../../CLAUDE.md`](../../CLAUDE.md) §"Entry transitions owned". The PR containing the plan file (in the product specs repo) is the deliverable under review.
+7. Emit `task_completed` on the `qa_authoring` task and flip the task's label to `state:in-review` per [`../../CLAUDE.md`](../../CLAUDE.md) §"Entry transitions owned". The PR containing the plan file (in the product specs repo) is the deliverable under review — see §"Delivery convention" below for the full branch / commit / PR mechanics.
+
+## Delivery convention
+
+The authoring pass's deliverable is a **PR on the product specs repo** containing the written plan file. The convention mirrors [`../qa-curation/SKILL.md`](../qa-curation/SKILL.md) §"Output" on the same specs repo, so an operator or merge watcher sees consistent shape across QA skills. An agent running this skill from a cold context must be able to produce the PR from the discipline below without external prompting.
+
+### Branch
+
+Create the branch `qa-authoring/<task_correlation_id>` in the **product specs repo**, branching from `main`'s current HEAD. The task-correlation-ID separator `/` is replaced with `-` in the branch name. Example: a `qa_authoring` task with correlation ID `FEAT-2026-0006/T02` produces branch `qa-authoring/FEAT-2026-0006-T02`.
+
+Branch-name format is grep-able: `^qa-authoring/FEAT-\d{4}-\d{4}-T\d{2}$`. A malformed branch name prevents the merge watcher from matching the PR back to the `qa_authoring` task issue; the skill does not invent alternative patterns.
+
+### Commit
+
+Write the plan file (per §Step 7 above), stage it, and commit on the authoring branch with:
+
+- **Message headline** — Conventional Commits shape: `feat(qa): test plan for <feature_correlation_id>` (or `chore(qa): test plan for <feature_correlation_id>` when the plan is a re-authoring of an existing plan). Keep under 72 characters.
+- **Message body** — one short paragraph summarizing coverage (one line per behavior covered, or a count reference to the `tests[]` array).
+- **Mandatory trailer** — `Feature: FEAT-YYYY-NNNN/TNN` (the `qa_authoring` task-level correlation ID), mirroring the component-agent PR-submission convention ([`/agents/component/skills/pr-submission/SKILL.md`](../../../component/skills/pr-submission/SKILL.md)). Every commit on the authoring branch carries this trailer; a missing or malformed trailer is a correctness bug.
+
+The commit's author identity is the QA agent's role identity, not the human operator's. Trailer verification is a pre-push check: re-read the commit's message via `git log -1 --format=%B` and confirm the trailer is present and well-formed before opening the PR.
+
+### PR
+
+Open the PR against the specs repo's `main` branch. Not a draft PR — the plan is review-ready when the authoring pass completes.
+
+- **Title** — `feat(qa): test plan for <feature_correlation_id>` (mirrors the commit headline; keep under 72 characters).
+- **Body** — structured:
+  - **First line** — the `qa_authoring` task-level correlation ID on its own (e.g., `FEAT-2026-0006/T02`), so the merge watcher and reviewers can pattern-match it from the PR body's first line.
+  - **`## Summary`** — one-paragraph prose: what feature is covered, how many tests are in the plan, and the cardinality-override rationale if any.
+  - **`## Plan** — path to the written plan file with a brief excerpt or reference to the rendered file.
+  - **`## Coverage matrix`** — one line per test: `- <test_id> covers <AC identifier>`.
+  - **`## How to review`** — what the reviewer should check (schema round-trip, coverage completeness, runtime-port assumption per §Step 5 pre-step).
+  - **`Closes <owner>/<repo>#<N>`** — mandatory — references the `qa_authoring` task issue (in whichever repo it lives — typically the same component repo the plan targets). GitHub's `Closes` directive wires the merge-watcher's PR→task pairing; without it, the match is lost. The qa-curation skill's equivalent convention is authoritative on the same-owner cross-repo behavior (qa-curation SKILL §"Step 6" + Phase 3 walkthrough cross-repo evidence F3.12 reclassification).
+
+### Stop-at-open discipline
+
+Once the PR is open:
+
+1. Flip the `qa_authoring` task's label `state:in-progress → state:in-review` per [`../../CLAUDE.md`](../../CLAUDE.md) §"Entry transitions owned".
+2. Emit `task_completed` on the `qa_authoring` task (per §Step 7 steps 3–6 above).
+3. **Stop.**
+
+The skill does **not** merge the PR, close the PR, add reviewers, self-approve, or advance the PR's state in any way after opening. The `in_review → done` transition belongs to the merge watcher (architecture §6.3) once a human reviewer approves and merges. A skill invocation that attempts any of these further actions is a Q4 / anti-pattern #1 violation — the PR is a task-owned deliverable, but the merge is not a qa_authoring-role-owned transition.
+
+### Idempotence on re-invocation
+
+A replayed invocation on the same `qa_authoring` task should not produce a duplicate PR. Three mechanisms:
+
+- **Branch-name uniqueness.** The branch `qa-authoring/<task_correlation_id>` is derived from the task correlation ID. A second invocation on the same task finds the branch already present and aborts with "idempotent skip: authoring branch already exists at `<branch>`; PR state = `<gh pr view state>`".
+- **Task-label check.** A second invocation on a task already at `state:in-review` treats the prior invocation as successful and emits nothing further (no duplicate `task_completed`, no duplicate `test_plan_authored` — the per-type schema plus event-log read of the feature's prior `test_plan_authored` event acts as the emission guard, per [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3 idempotence discipline).
+- **Plan-file-already-written branch.** If the plan file at `/product/test-plans/<feature_correlation_id>.md` already exists on `main` with frontmatter matching the current draft, the re-authoring is a no-op; the skill emits `task_completed` with `no_change: true` in a comment on the task issue and does not open a PR.
 
 ## Verification
 
@@ -207,14 +279,18 @@ The `## Scope` section is silent on `qa_authoring` cardinality. Default applies:
 
 ### Test drafting (step 5)
 
+Runtime port discovered per the §Step 5 pre-step from `clabonte/api-sample`'s `src/ApiSample.Api/Properties/launchSettings.json` profile `http` → `applicationUrl: "http://localhost:8080"` → port `8080`. Threaded into `commands[]` below and documented in `## Coverage notes`.
+
 - `test_id: widgets-export-default-page-size`
   - `covers`: "AC-1: GET /widgets/export returns the first 50 widgets when no page_size parameter is supplied."
-  - `commands`: `["curl -sS -o body.json -w '%{http_code}' http://localhost:8080/widgets/export"]`
+  - `commands`: `["dotnet run --project src/ApiSample.Api/ --urls \"http://localhost:8080\" &", "curl -sS -o body.json -w '%{http_code}' http://localhost:8080/widgets/export"]`
   - `expected`: "HTTP status is 200 and body.json parses as a JSON array of exactly 50 widget objects, each with the fields id, status, and created_at."
 - `test_id: widgets-export-page-size-over-limit-rejected`
   - `covers`: "AC-2: GET /widgets/export returns 400 Bad Request when page_size exceeds 500."
   - `commands`: `["curl -sS -o body.json -w '%{http_code}' 'http://localhost:8080/widgets/export?page_size=501'"]`
   - `expected`: "HTTP status is 400 and body.json contains an error object with error.code == 'page_size_over_limit'."
+
+The first test's `commands[0]` starts the service (backgrounded with `&`); the second test inherits the running service. This is convention (i) from §Step 5 pre-step.
 
 ### Schema round-trip (step 6)
 
@@ -232,6 +308,7 @@ tests:
   - test_id: widgets-export-default-page-size
     covers: "AC-1: GET /widgets/export returns the first 50 widgets when no page_size parameter is supplied."
     commands:
+      - "dotnet run --project src/ApiSample.Api/ --urls \"http://localhost:8080\" &"
       - "curl -sS -o body.json -w '%{http_code}' http://localhost:8080/widgets/export"
     expected: "HTTP status is 200 and body.json parses as a JSON array of exactly 50 widget objects, each with the fields id, status, and created_at."
   - test_id: widgets-export-page-size-over-limit-rejected
@@ -245,6 +322,13 @@ tests:
 
 Two tests, one per acceptance criterion. Default `qa_authoring` cardinality
 applied — the feature's `## Scope` section does not collapse the count.
+
+**Runtime port: `8080`**, sourced from
+`src/ApiSample.Api/Properties/launchSettings.json` profile `http`
+(`applicationUrl: "http://localhost:8080"`). The first test's `commands[0]`
+backgrounds the service startup; the second test inherits the running
+service. qa-execution should confirm the service has bound port 8080
+before evaluating test 1's `expected` predicate.
 ```
 
 ### Emitted event
