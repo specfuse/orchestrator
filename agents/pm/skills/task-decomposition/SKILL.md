@@ -1,4 +1,4 @@
-# PM agent — task decomposition skill (v1.1)
+# PM agent — task decomposition skill (v1.2)
 
 ## Purpose
 
@@ -43,6 +43,8 @@ The skill does **not** read the target component repos' source at decomposition 
 No GitHub API calls. No issue creation. No state flip on the feature (it stays in `planning`).
 
 ## The decomposition procedure
+
+**The procedure consists of 8 numbered steps** (Step 1 through Step 8). Downstream references — in the work unit issue body's `## Verification` section, in [`../../CLAUDE.md`](../../CLAUDE.md) §"Role-specific verification", or in any other consumer — should use this SKILL's step numbering as the canonical source. Step 1 (Read the feature context), Step 2 (Identify capabilities from the spec), Step 3 (Derive implementation tasks + target-repo assignment), Step 4 (Derive QA tasks), Step 5 (Construct `depends_on` edges), Step 6 (Set autonomy levels), Step 7 (Validate the graph), Step 8 (Write to frontmatter and emit `task_graph_drafted`).
 
 ### Step 1 — Read the feature context
 
