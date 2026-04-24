@@ -78,6 +78,16 @@ Mirror architecture §10. None is optional.
 
 The gates are a **conjunction**: all must pass. A single failure means the task is not done.
 
+## Pre-gate build step
+
+Before entering the gate sequence, if any mandatory gate's command embeds `--no-build` or `--no-restore` (or the equivalent "skip-build" flag for the component's language stack), the agent **must** run a build command against the repo root first — for .NET components, `dotnet restore && dotnet build`; for equivalent flags on other stacks, the stack's standard restore-and-build sequence. The pre-step runs once per task, immediately before gate 1 (`tests`); its output is not part of the `task_completed` evidence shape.
+
+The failure mode this prevents is the **stale-artifact trap**: a gate command that embeds `--no-build` silently runs against whatever binaries are already on disk. On a fresh checkout — or after the agent has added new test files, renamed a symbol, or switched branches — the pre-existing `bin/` and `obj/` artifacts are out of sync with the current source tree. A `tests` gate using `dotnet test --no-build` against stale artifacts can pass while the new tests are never actually executed, or fail for reasons unrelated to the code change under test. Either outcome corrodes the trust model the gate set exists to uphold.
+
+This pre-step is **not** itself one of the six gates — it is a prerequisite. It does not appear in the `task_completed` payload's `gates[]` array, it does not participate in spinning detection, and its output shape is not defined here. If the pre-build itself fails (exit non-zero), the agent treats the failure as a gate-sequence blocker per §"Failure handling" below (category 1: correctable locally) — the agent reads the build error, corrects its change, and retries the full pre-step plus gate sequence from the top.
+
+Origin: this section absorbs Phase 1 retrospective Finding 8 per the Phase 1 retrospective's defer language ("carry into the next edit of `verification/SKILL.md`, opportunistically — no dedicated work unit required"). Phase 3 walkthrough WU 3.6 produced 2-feature live empirical evidence for the trap on component-agent verification runs (F1 Step 5 and F2 Step 5 of [`docs/walkthroughs/phase-3/`](../../../../docs/walkthroughs/phase-3/)), satisfying the Phase 1 dispatch condition.
+
 ## Running a gate
 
 For each gate, the agent:
@@ -224,5 +234,6 @@ Had cycle 2 also failed, the agent would still have had one cycle left before sp
 
 ## Version
 
+- `1.2` — WU 3.8: added §"Pre-gate build step" documenting the mandatory `dotnet restore && dotnet build` (or stack-equivalent) pre-step before any gate whose command embeds `--no-build` or `--no-restore`. Absorbs Phase 1 walkthrough retrospective Finding 8 per its defer language ("carry into the next edit of `verification/SKILL.md`, opportunistically — no dedicated work unit required"). Triggered by 2-feature live empirical evidence from Phase 3 WU 3.6 (F1 Step 5 + F2 Step 5; finding F3.1 of the Phase 3 retrospective). Amendment is purely additive — no existing gate, gate order, or output shape is modified; Phase 1 v1.5.0 frozen surface is preserved.
 - `1.1` — WU 1.7: tightened pre-emission checks to require `scripts/validate-event.py` exit `0` before appending the `task_completed` event. Exit `1` loops back as a failed verification cycle; exit `2` escalates. Finding 1 of the Phase 1 walkthrough retrospective.
 - `1.0` — Phase 1 initial.

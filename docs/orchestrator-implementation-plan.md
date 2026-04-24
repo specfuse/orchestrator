@@ -991,6 +991,33 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 
 **Suggested model.** Sonnet 4.6. Retrospective synthesis against a concrete log; Opus is overkill.
 
+### Work unit 3.8 — Component agent verification skill pre-gate build step (Phase 1 Finding 8 absorption)
+
+**Objective.** Amend `agents/component/skills/verification/SKILL.md` to document a mandatory pre-gate build step: before running any gate whose command embeds `--no-build` or `--no-restore`, the agent must run `dotnet restore && dotnet build` (or the stack's equivalent) to ensure gate commands execute against fresh binaries. Absorbs Phase 3 retrospective finding F3.1, which closes Phase 1 Finding 8.
+
+**Context preamble.** First Phase 3 fix-ladder work unit. Smallest in the ladder — one finding, one skill file, doc-only additive. Three upstream signals converge on this amendment: (a) Phase 1 retrospective deferred Finding 8 with explicit dispatch — "carry into the next edit of `verification/SKILL.md`, opportunistically — no dedicated work unit required"; (b) WU 3.3 Q6 reaffirmed the carry for qa-execution (which never invokes `dotnet test --no-build` directly) but left the component-agent case unresolved; (c) Phase 3 WU 3.6 produced 2-feature live evidence (F1 Step 5 + F2 Step 5 — independent fresh subagents) that the stale-artifact trap is real on fresh checkouts when a gate command embeds `--no-build`. The 2-feature evidence satisfies the Phase 1 retro dispatch condition. The amendment is purely additive to the Phase 1 v1.5.0 frozen surface — it adds a mandatory pre-step, it does not rewrite, remove, or reorder any existing gate. Phase 1 freeze is respected under the Phase 1 retrospective's own defer language.
+
+**Inputs.** `agents/component/skills/verification/SKILL.md` v1.1 (Phase 1 frozen surface), `agents/component/version.md` v1.5.0 (Phase 1 frozen baseline), `docs/walkthroughs/phase-1/retrospective.md` §"Finding 8" + §"Deferred to Phase 2+" (dispatch condition), `docs/walkthroughs/phase-3/retrospective.md` §"F3.1" + §"WU 3.8" (2-feature evidence + scope), `docs/walkthroughs/phase-3/feature-1-log.md` §F3.1 (F1 S5 live evidence), `docs/walkthroughs/phase-3/feature-2-log.md` §F3.1 (F2 S5 confirmation).
+
+**Acceptance criteria.**
+
+1. `agents/component/skills/verification/SKILL.md` gains a new top-level section (between §"The six mandatory gates" and §"Running a gate") titled `## Pre-gate build step` that states the rule: if any mandatory gate's command embeds `--no-build` or `--no-restore`, the agent must run `dotnet restore && dotnet build` (or the language-stack equivalent build command) against the repo root before entering the gate sequence. The section names the failure mode it prevents (stale-artifact trap where `--no-build` silently runs previously-compiled tests) and cites the 2-feature live evidence (F1 S5 + F2 S5) for discoverability. The pre-step is not itself one of the six gates — it is a prerequisite that runs once per task before the gate sequence begins.
+2. `agents/component/skills/verification/SKILL.md` §"Version" gains a new `1.2` entry at the top of its changelog citing: WU 3.8, F3.1 2-feature evidence, the Phase 1 retrospective's "next edit of `verification/SKILL.md`, opportunistically" dispatch condition, and that the amendment is additive-only (no existing gate modified).
+3. `agents/component/version.md` bumped `1.5.0 → 1.5.1` (patch bump — post-freeze additive doc correction, not a minor feature addition). A `1.5.1` changelog entry is added at the top citing WU 3.8, the F3.1 absorption, the Phase 1 retro dispatch condition authorizing the amendment, and an explicit restatement that the amendment is purely additive and Phase 1 v1.5.0 freeze is respected.
+4. Commit message: `chore(phase-3): WU 3.8 component verification pre-gate build step`. Body cites F3.1, the Phase 3 retrospective's Fix-in-Phase-3 triage, and the Phase 1 retrospective's defer language authorizing the amendment.
+
+**Do not touch.** Do not modify `agents/component/CLAUDE.md` — the skill surface is the sole edit point per retrospective §"WU 3.8 scope". Do not modify `.specfuse/verification.yml` or the `verification.yml` schema — requiring a named `build` gate before `--no-build` gates is an optional complementary enhancement explicitly out of WU 3.8 scope. Do not modify any other skill (`pr-submission`, `escalation`, QA skills). Do not modify any shared rule (`/shared/rules/*`). Do not modify any component repository's `.specfuse/verification.yml` — this WU is a documentation change on the agent skill, not a per-repo config change. Do not emit events (doc-only change; no runtime state transitions).
+
+**Verification steps.**
+
+1. Re-read the amended `verification/SKILL.md` end-to-end and confirm the new §"Pre-gate build step" is discoverable, internally consistent with §"Running a gate" (which immediately follows), and does not contradict §"The six mandatory gates" or the per-gate interpretation table.
+2. Confirm no existing gate's pass condition, ordering, or output shape has been modified — the amendment is purely additive by observation.
+3. Confirm `agents/component/version.md` v1.5.1 changelog entry cites the Phase 1 retrospective dispatch condition verbatim or near-verbatim, so a future reader can trace the freeze-compat justification without re-deriving it.
+4. Confirm `agents/component/CLAUDE.md` was not modified (Phase 1 frozen surface preserved).
+5. Confirm no shared rule was modified.
+
+**Suggested model.** Opus 4.7. The surgical Phase 1 freeze-compatibility argument benefits from single-threaded reasoning; delegation to a subagent would add overhead without benefit on a ~4-file edit.
+
 ---
 
 ## Phase 4 — Specs agent and chat front-end
