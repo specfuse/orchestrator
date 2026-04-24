@@ -1,4 +1,4 @@
-# QA agent — qa-curation skill (v1.0)
+# QA agent — qa-curation skill (v1.1)
 
 ## Purpose
 
@@ -168,6 +168,16 @@ For each candidate, before drafting its diff into the PR, run the protection che
 
 A refusal is **not** an escalation. It is expected safety-check behavior and does not block the pass. The refused test_id becomes retireable automatically in a future pass once the open regression resolves; no manual intervention needed to unblock.
 
+**4.4 — Sole-test retirement pre-flight.** Before committing a dedup or orphan candidate that would remove a `tests[]` entry, verify that the affected plan file's `tests[]` array will contain at least one entry after the removal. For each retired `test_id` on each affected feature, count the plan's current `tests[]` length and subtract the number of retirements this candidate applies to that plan. If the resulting count is zero, the candidate is **refused**:
+
+- Record a `refused_candidates[]` entry: `{test_id, feature_correlation_id, reason: "sole-test retirement would violate test-plan.schema.json minItems:1 constraint; whole-plan-file retirement requires explicit human confirmation and is out of v1 scope (Phase 4+)"}`.
+- Log the refusal in the PR's curation report under the same **## Refused candidates** section used by the open-regression protection refusals — both are safety-check outcomes, not escalations.
+- Other candidates in the pass continue normally.
+
+Rationale: `test-plan.schema.json` enforces `tests[] minItems: 1`. A retirement that brings the array to zero would fail schema validation at Step 6 sub-step 3's re-validation. Catching it at Step 4.4 rather than at Step 6 avoids a roll-back cycle and keeps all refusal evidence in one place. Whole-plan-file retirement (deleting the plan file itself when all its tests are retired) is a distinct destructive operation that is **out of v1 scope** and requires explicit human confirmation — the skill does not decide unilaterally to delete a plan file.
+
+Cross-feature consolidation candidates run the pre-flight on **each** affected feature's plan; the candidate is refused if **either** plan would be left with zero tests (conservative, mirroring the cross-feature open-regression refusal posture).
+
 **Cross-feature retirement.** A consolidation candidate spanning two features retires test_ids on both plan files. The protection check runs against **both** feature event logs; the candidate is refused if **either** has an open regression on **its** retired test_id. This is conservative: a candidate may be refused even when only one half of the consolidation is blocked. Alternative (allow half-consolidation) was rejected — partial consolidation would leave the surviving half pointing at a test_id that no longer exists in the source plan, breaking downstream qa-regression backlinks.
 
 ### Step 5 — Classify candidates that survived protection into scope
@@ -183,7 +193,7 @@ Once Step 4 has filtered the candidate list, the surviving candidates determine 
 1. Create the branch `qa-curation/<qa_curation_task_correlation_id>` in the specs repo, branching from `main`'s current HEAD. Branch-name format is the task correlation ID with `/` replaced by `-` (e.g. `qa-curation/FEAT-2026-0070-T05`).
 2. Apply the diffs for every surviving candidate to the affected plan files. For each diff:
    - Dedup / consolidate: remove the merged-away `tests[]` entries, add/update the merged-into entry with unioned `commands` and the preserved `expected`. The merged-into `covers` field becomes a concatenation of both sources (`; `-joined) so traceability to the original AC fragments is preserved.
-   - Orphan: remove the retired `tests[]` entry. If removing brings the plan's `tests[]` array to length 0 (the feature has no remaining tests), **do not delete the plan file** — leave `tests[]` empty; plan-file retirement is a separate concern (Phase 4+).
+   - Orphan: remove the retired `tests[]` entry. A candidate that would bring the plan's `tests[]` array to zero is already refused at §Step 4.4's sole-test pre-flight and therefore never reaches this step; no special Step 6 handling is needed for the empty-array case. Whole-plan-file retirement (deleting the plan file when all its tests become obsolete) is a distinct destructive operation out of v1 scope (Phase 4+) and requires explicit human confirmation.
    - Rename: replace the old `test_id` with the new one, unchanged `covers` / `commands` / `expected`.
 3. Re-validate each modified plan file's frontmatter against [`test-plan.schema.json`](../../../../shared/schemas/test-plan.schema.json). A failed validation means the diff was malformed — roll back the change on that plan file, record the candidate as refused (with `reason: "schema validation failed on candidate's target plan"`), and continue.
 4. Compose the PR body as a structured curation report with these sections:
@@ -197,6 +207,8 @@ Once Step 4 has filtered the candidate list, the surviving candidates determine 
 7. Emit `task_completed` on the qa_curation task's feature event log with task-level correlation ID. Payload shape inherited from the Phase 1 baseline (`{issue: "<owner>/<repo>#<N>"}`; no per-type schema required — the bare envelope is sufficient).
 
 ### Step 7 — Empty-curation branch
+
+**Skill-governs-over-issue-AC.** The qa_curation task's GitHub issue body (drafted by PM issue-drafting) typically asserts acceptance criteria along the lines of "A PR is opened against `main` on specs-sample." That AC describes the **non-empty** curation path. When Step 5 produces zero surviving candidates, this SKILL's §Step 7 path is authoritative over the issue body's AC — no PR is opened and no branch is created, regardless of what the issue's AC text says. An issue body cannot override a SKILL's procedure; a qa_curation task on the empty-curation path is still complete when this §Step 7's numbered list is executed fully.
 
 If Step 5 produced zero surviving candidates:
 
