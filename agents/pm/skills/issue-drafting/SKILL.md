@@ -1,4 +1,4 @@
-# PM agent — issue-drafting skill (v1.2)
+# PM agent — issue-drafting skill (v1.3)
 
 ## Purpose
 
@@ -16,6 +16,7 @@ In scope:
 - Performing an idempotency check against the target repo before creating any issue.
 - Opening the GitHub issue with the correct title, body, and labels.
 - Emitting `task_created` for every opened issue; for tasks whose `depends_on` is empty, additionally flipping the state label `pending → ready` and emitting `task_ready` in the same pass.
+- Emitting `feature_state_changed(generating → in_progress)` on the first invocation to successfully append a `task_created` event for the feature — the skill's idempotence guard (event-log read for a prior transition) ensures at most one emission per feature. Operationalizes the ownership documented in [`../../CLAUDE.md`](../../CLAUDE.md) §"Entry transitions owned" and §"Output artifacts and where they go" (WU 3.10 absorption of Phase 3 retrospective finding F3.4).
 
 Out of scope (belongs to another skill or WU):
 
@@ -48,7 +49,7 @@ Per task drafted:
 - One `task_created` event appended to `/events/<feature_correlation_id>.jsonl`, validated by [`scripts/validate-event.py`](../../../../scripts/validate-event.py) with exit `0`.
 - For no-dep tasks only: one `task_ready` event appended to the same log, emitted after the label flip and after re-reading the labels back.
 
-No writes to component-repo code paths. No writes to `/product/`, `/overrides/`, or `/business/`. No other state transitions on the feature — the feature stays in whatever state the invoking pass placed it in (typically `generating` during initial issue creation).
+No writes to component-repo code paths. No writes to `/product/`, `/overrides/`, or `/business/`. **The only feature-state transition the skill owns is `generating → in_progress`**, emitted via §Step 12 on the first invocation to successfully append a `task_created` event for the feature. No other feature-level transitions are performed by this skill — all others belong to different roles (human for `plan_review → generating` and `in_progress → blocked_*`; merge watcher for `in_review → done`; PM's own `in_progress → done` via its feature-closure flow, not this skill).
 
 ## Inherited contract — the three Discipline clauses
 
@@ -99,6 +100,10 @@ If the task's `depends_on` is empty, extend the intent: "…and flip the issue t
 ### Step 2 — Read inputs
 
 Read the feature registry's frontmatter and the target task's `task_graph` entry. Read the plan-review file's `### Work unit prompt` section for the target task. Re-read [`../../issue-drafting-spec.md`](../../issue-drafting-spec.md) and this skill.
+
+**Plan-file fallback (F3.29).** The normal path reads `/features/<feature_correlation_id>-plan.md` and uses each task's `### Work unit prompt` section as the prose source. If the plan file does not exist on the orchestration repo's current HEAD (unusual path — e.g., plan-review was handled inline without materializing the plan-review file, or the feature is minimal and `plan_review → generating` was signaled directly), the skill falls back to deriving work-unit prompts from the feature registry's per-acceptance-criteria prose in `## Acceptance criteria` plus the `## Description` and `## Scope` sections. The fallback is honest — log the deviation from the normal flow in the drafting transcript as `plan_file_fallback: true` so a reviewer reading the transcript later can see the work-unit prompt was registry-derived, not plan-file-derived.
+
+**In production, plan-file absence is a `spec_level_blocker` escalation condition when the task graph is non-trivial** — specifically, when the feature has more than one task, or when any task has a non-empty `depends_on`. Non-trivial task graphs depend on the plan-review file as the mechanism by which the human validates the decomposition (the structural edits to `task_graph` + the co-authored `### Work unit prompt` sections the human wrote in plan-review are both load-bearing); proceeding without that validation is a correctness risk. For a single-task simple feature with no dependencies, the registry-derived fallback is acceptable without escalation — the task's shape is fully determined by its one acceptance criterion.
 
 **Do not** read the target component repo yet. Read it in step 4, per-claim, after the draft has been written and the claims identified. Reading it at this step would tempt the skill into session-caching target-repo state across the whole drafting pass — the pattern no-transitive-trust forbids.
 
@@ -203,6 +208,29 @@ If `depends_on: []`:
 3. Pipe through `scripts/validate-event.py`; require exit `0`. Append to the event log. Re-read.
 
 `task_created` and `task_ready` are emitted in that order; the dependency-recomputation skill's consumers rely on `task_created` as the issue-exists signal and `task_ready` as the agent-may-pick-up signal. Emitting them out of order, or emitting `task_ready` without a preceding `task_created` on the same task, is a correctness bug.
+
+### Step 12 — Feature-state transition check (`generating → in_progress`)
+
+After §Step 10 (and §Step 11 for no-dep tasks), re-read the feature's event log end-to-end fresh — no caching across steps — and evaluate the transition guard:
+
+1. **Read `/events/<feature_correlation_id>.jsonl` fully.** No tail-slice. A prior transition may have been emitted by an earlier invocation and could appear anywhere in the log.
+2. **Guard A — progress signal.** At least one `task_created` event for this feature exists (the `task_created` this invocation just appended counts).
+3. **Guard B — idempotence.** No prior `feature_state_changed` event on the log with `payload.from_state == "generating"` and `payload.to_state == "in_progress"`. If one exists, the transition has already been emitted by an earlier invocation; §Step 12 is a no-op on this pass.
+
+**If both guards pass**, construct and emit the transition event:
+
+- `timestamp`: ISO-8601 at emission time via `date -u +%Y-%m-%dT%H:%M:%SZ`.
+- `correlation_id`: the feature-level ID (no task suffix).
+- `event_type`: `feature_state_changed`.
+- `source`: `pm`.
+- `source_version`: produced by [`scripts/read-agent-version.sh pm`](../../../../scripts/read-agent-version.sh) at emission time.
+- `payload`: `{"from_state": "generating", "to_state": "in_progress", "trigger": "first_round_issues_opened"}` per [`/shared/schemas/events/feature_state_changed.schema.json`](../../../../shared/schemas/events/feature_state_changed.schema.json).
+
+Pipe through [`scripts/validate-event.py`](../../../../scripts/validate-event.py) (require exit `0`); append to the feature's event log; re-read the appended line and confirm it matches what was constructed. The transition is additive to the event log — no other artifact (feature frontmatter `state` field included) is modified by this step; per `agents/pm/CLAUDE.md` §"Output artifacts" and the F2.9 resolution, the event log is the single authoritative carrier of feature progress signals, not the frontmatter `state` field.
+
+**Operational semantics at v1.** "First round of task issues opened" is operationalized as "first invocation to successfully append a `task_created` event for the feature, conditional on no prior `generating → in_progress` transition on the log." In per-task invocation, only the first invocation passes Guard B; subsequent invocations append their own `task_created` but skip §Step 12 because the prior transition is already on the log. In a batched invocation pattern (one session opening N tasks), the transition is emitted after the first task's §Step 10; the remaining N-1 tasks' §Step 12 invocations all no-op. Either way, at most one `feature_state_changed(generating → in_progress)` per feature.
+
+**Phase 4+ note.** If walkthrough experience reveals cases where the transition should wait for all tasks in the first round (e.g., a feature with a task that escalates `spec_level_blocker` during drafting and therefore never gets a `task_created`), the semantics may tighten to "all tasks in `task_graph` have a `task_created` event AND no prior transition." Until then, the v1 "first task opened" semantics is documented as the operative rule. The retro's F3.4 disposition explicitly authorizes the v1 simplification; stricter semantics is a Phase 4+ refinement only if needed.
 
 ## Evidence logging — the §Context inline block
 
@@ -363,7 +391,7 @@ The skill performs the universal checks from [`/shared/rules/verify-before-repor
 - `source_version` on every emitted event was produced by `scripts/read-agent-version.sh pm` at emission time.
 - For no-dep tasks: the issue's `state:*` label is `state:ready`; `task_ready` passed validation and is the last line of the event log; `trigger` in its payload is `"no_dep_creation"`.
 - No path written is in [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md). The skill writes only to `/events/` (event log append) and indirectly to GitHub (issue creation) — neither is never-touched — but the check runs anyway per the universal discipline.
-- No state-machine transition was performed on the feature. The feature stays in its invoking state (typically `generating`). Issue-level `state:ready` on a no-dep task is not a feature-level transition.
+- §Step 12 ran to completion: either (a) both guards passed and a `feature_state_changed(generating → in_progress, trigger: "first_round_issues_opened")` event was validated, appended, and re-read on this invocation; or (b) one or both guards failed and the step was a deterministic no-op (idempotence guard saw a prior transition, or the task_created append failed for some reason handled at earlier steps). The feature frontmatter `state` field is never modified by this skill regardless of which branch §Step 12 took — per `agents/pm/CLAUDE.md` §"Output artifacts" and the F2.9 resolution, the event log is the authoritative carrier of feature progress signals.
 
 ### Before returning from a drafting pass (idempotency skip path)
 
@@ -616,7 +644,9 @@ ls tests/OrchestratorApiSample.Tests/WidgetsControllerTests.cs
 
 ## Worked example — FEAT-2026-0004/T03 (Python stack + `deliverable_repo`)
 
-This second example reconstructs how the issue-drafting skill drafts a `qa_authoring` task targeting `Bontyyy/orchestrator-persistence-sample` (Python stack). It was generated from the real Phase 2 WU 2.7 Feature 1 walkthrough, documented in [`/docs/walkthroughs/phase-2/feature-1-log.md`](../../../../docs/walkthroughs/phase-2/feature-1-log.md) §Step 5. The example is deliberately chosen to also showcase the `deliverable_repo` + `## Deliverables` fields added in WU 2.13: the test plan deliverable lives in the orchestrator repo, not in the component repo where the issue is filed.
+> **Historical-reconstruction note (WU 3.10, 2026-04-24).** This worked example was authored during Phase 2 (WU 2.13), when product specs and test plans were committed to the orchestrator repo itself. From Phase 3 onwards, product specs live in a separate product specs repo (e.g., `Bontyyy/orchestrator-specs-sample` for the walkthroughs). To prevent the Phase-2-era literal target `<product-specs-owner>/<product-specs-repo>` from being copied into new deployments (F3.7 "stickiness" — confirmed as 2-feature evidence in the Phase 3 retrospective), this example now uses `<product-specs-owner>/<product-specs-repo>` as a placeholder in every `deliverable_repo` reference below. Replace the placeholder with your deployment's product specs repo coordinates when applying this example. The walkthrough path references and event shapes are otherwise unchanged from the Phase 2 reconstruction.
+
+This second example reconstructs how the issue-drafting skill drafts a `qa_authoring` task targeting `Bontyyy/orchestrator-persistence-sample` (Python stack). It was generated from the real Phase 2 WU 2.7 Feature 1 walkthrough, documented in [`/docs/walkthroughs/phase-2/feature-1-log.md`](../../../../docs/walkthroughs/phase-2/feature-1-log.md) §Step 5. The example is deliberately chosen to also showcase the `deliverable_repo` + `## Deliverables` fields added in WU 2.13: the test plan deliverable lives in the product specs repo, not in the component repo where the issue is filed.
 
 ### Why a second example
 
@@ -643,7 +673,7 @@ Work unit prompt from `/features/FEAT-2026-0004-plan.md` (approved):
 
 ### Step 1 — Intent
 
-"I will draft and open the work-unit issue for FEAT-2026-0004/T03 on Bontyyy/orchestrator-api-sample, and flip it to `state:ready` on creation (`depends_on: []`). Because the deliverable lives in the orchestrator repo, I will set `deliverable_repo: clabonte/orchestrator` and include a `## Deliverables` section."
+"I will draft and open the work-unit issue for FEAT-2026-0004/T03 on Bontyyy/orchestrator-api-sample, and flip it to `state:ready` on creation (`depends_on: []`). Because the deliverable lives in the orchestrator repo, I will set `deliverable_repo: <product-specs-owner>/<product-specs-repo>` and include a `## Deliverables` section."
 
 ### Step 2 — Inputs read
 
@@ -651,7 +681,7 @@ Task graph entry, plan-review prompt (above), this skill, `issue-drafting-spec.m
 
 ### Step 3 — Draft with claim enumeration
 
-The skill shapes the body against `work-unit-issue.md` v1.1. Because the deliverable is a file committed to the orchestrator repo, it sets `deliverable_repo: clabonte/orchestrator` in the frontmatter and populates a `## Deliverables` section naming the test plan path.
+The skill shapes the body against `work-unit-issue.md` v1.1. Because the deliverable is a file committed to the orchestrator repo, it sets `deliverable_repo: <product-specs-owner>/<product-specs-repo>` in the frontmatter and populates a `## Deliverables` section naming the test plan path.
 
 Claims enumerated:
 
@@ -706,7 +736,7 @@ correlation_id: FEAT-2026-0004/T03
 task_type: qa_authoring
 autonomy: review
 component_repo: Bontyyy/orchestrator-api-sample
-deliverable_repo: clabonte/orchestrator
+deliverable_repo: <product-specs-owner>/<product-specs-repo>
 depends_on: []
 generated_surfaces: []
 ---
@@ -715,7 +745,7 @@ generated_surfaces: []
 
 This task authors the test plan covering both behaviors of **FEAT-2026-0004**: (1) the persistence port's quantity-filtered widget listing (T01, on `Bontyyy/orchestrator-persistence-sample`) and (2) the API endpoint for quantity-filtered listing (T02, on `Bontyyy/orchestrator-api-sample`). Feature registry: `features/FEAT-2026-0004.md`.
 
-The test plan is a product-level artifact committed to the orchestrator repo under `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md`. This issue is filed on `Bontyyy/orchestrator-api-sample` (the feature's primary API repo); the deliverable, however, is written to the orchestrator repo (`deliverable_repo: clabonte/orchestrator`). The QA agent performing this task writes to the orchestrator repo, not to this repo's code paths.
+The test plan is a product-level artifact committed to the orchestrator repo under `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md`. This issue is filed on `Bontyyy/orchestrator-api-sample` (the feature's primary API repo); the deliverable, however, is written to the orchestrator repo (`deliverable_repo: <product-specs-owner>/<product-specs-repo>`). The QA agent performing this task writes to the orchestrator repo, not to this repo's code paths.
 
 No test plan file for FEAT-2026-0004 currently exists on this repo. No `docs/` directory exists on this repo. The existing regression suite lives at `tests/OrchestratorApiSample.Tests/` and must not be modified by this task.
 
@@ -728,7 +758,7 @@ No test plan file for FEAT-2026-0004 currently exists on this repo. No `docs/` d
 
 ## Deliverables
 
-- `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md` — authored test plan covering widget quantity-filtered listing acceptance criteria for both the persistence port behavior (T01) and the API endpoint behavior (T02). Committed to the orchestrator repo (`deliverable_repo: clabonte/orchestrator`), not to this component repo.
+- `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md` — authored test plan covering widget quantity-filtered listing acceptance criteria for both the persistence port behavior (T01) and the API endpoint behavior (T02). Committed to the orchestrator repo (`deliverable_repo: <product-specs-owner>/<product-specs-repo>`), not to this component repo.
 
 ## Acceptance criteria
 
@@ -752,7 +782,7 @@ No test plan file for FEAT-2026-0004 currently exists on this repo. No `docs/` d
 
 ## Verification
 
-The deliverable lives in the orchestrator repo (`deliverable_repo: clabonte/orchestrator`), not this repo. Verification commands that read the deliverable file run from the orchestrator repo root; no build or test commands run against this component repo (no source changes are made here).
+The deliverable lives in the orchestrator repo (`deliverable_repo: <product-specs-owner>/<product-specs-repo>`), not this repo. Verification commands that read the deliverable file run from the orchestrator repo root; no build or test commands run against this component repo (no source changes are made here).
 
 ```sh
 # Run from orchestrator repo root (deliverable_repo)
@@ -850,7 +880,7 @@ Passes validation, appended, re-read.
 |---|---|---|
 | Stack | .NET — `dotnet test`, `*.cs`, `IWidgetRepository` C# interface | Python — `pytest`, `*.py`, `WidgetRepository` Protocol |
 | Task type | `implementation` | `qa_authoring` |
-| `deliverable_repo` | omitted (deliverable = edited source in `component_repo`) | `clabonte/orchestrator` (test plan lives in orchestrator repo) |
+| `deliverable_repo` | omitted (deliverable = edited source in `component_repo`) | `<product-specs-owner>/<product-specs-repo>` (test plan lives in orchestrator repo) |
 | `## Deliverables` | omitted | present — names the test plan path |
 | `§Verification` root | `component_repo` root | `deliverable_repo` root (orchestrator repo) — annotated per-command |
 | Claim surface | 3 implementation-state claims (convention, file, tooling) | 4 absence claims (no test plan, no docs dir, regression suite location, tooling) |
