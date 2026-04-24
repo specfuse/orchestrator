@@ -1,4 +1,4 @@
-# PM agent — dependency recomputation skill (v1.0)
+# PM agent — dependency recomputation skill (v1.1)
 
 ## Purpose
 
@@ -146,19 +146,19 @@ Construct:
 
 ```json
 {
-  "timestamp": "<ISO-8601 now>",
+  "timestamp": "<ISO-8601 now, produced via `date -u +%Y-%m-%dT%H:%M:%SZ` per verify-before-report.md §3>",
   "correlation_id": "FEAT-YYYY-NNNN/<candidate_TNN>",
   "event_type": "task_ready",
   "source": "pm",
   "source_version": "<from scripts/read-agent-version.sh pm>",
   "payload": {
-    "issue": "<assigned_repo>#<N>",
+    "issue_url": "https://github.com/<assigned_repo>/issues/<N>",
     "trigger": "task_completed:<triggering_TNN>"
   }
 }
 ```
 
-Pipe through [`scripts/validate-event.py`](../../../../scripts/validate-event.py); require exit `0`. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line to confirm JSON integrity.
+Pipe through [`scripts/validate-event.py`](../../../../scripts/validate-event.py) via the canonical `--file /tmp/event.json` invocation; require exit `0`. Append to `/events/<feature_correlation_id>.jsonl` via the canonical `printf '%s\n' "$(cat /tmp/event.json)" >> …` pattern per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3. Re-read the appended line to confirm JSON integrity.
 
 Continue to the next candidate.
 
@@ -216,16 +216,16 @@ Once an escalation is raised, the skill does not continue processing remaining c
 
 ## Event payload — `task_ready`
 
-Consistent with the shape authored in [`../issue-drafting/SKILL.md`](../issue-drafting/SKILL.md), but with a different `trigger` value to distinguish provenance:
+Consistent with the shape authored in [`../issue-drafting/SKILL.md`](../issue-drafting/SKILL.md), but with a different `trigger` value to distinguish provenance. **Per WU 3.11 / F3.14 standardization, all task lifecycle events use `issue_url` (full URL) as the canonical identifier field** — previously `task_ready` used `issue` (bare form), creating an asymmetry with `task_started` that burned a verification cycle in F1 Session 13.
 
 ```json
 {
-  "issue": "<owner>/<repo>#<number>",
+  "issue_url": "https://github.com/<owner>/<repo>/issues/<number>",
   "trigger": "task_completed:<completing_TNN>"
 }
 ```
 
-- `issue` — `<owner>/<repo>#<number>` short form. Same shape as the `task_created` event's `issue` field for the same task; consumers cross-reference by the shared `correlation_id`.
+- `issue_url` — full URL, `https://github.com/<owner>/<repo>/issues/<number>`. Consistent with the `task_created` event's `issue_url` field for the same task (same convention, populated by issue-drafting SKILL §"Event payloads") and with `task_started`'s per-type schema. Consumers cross-reference events by the shared `correlation_id` + `issue_url` pair.
 - `trigger` — the literal string `"task_completed:"` followed by the completing task's TNN (e.g. `"task_completed:T01"`). This distinguishes dependency-recomputation flips from issue-drafting's `"no_dep_creation"` flips. A future skill that introduces another flip path (e.g. a manual human-directed flip) would use its own distinct trigger tag.
 
 The top-level event's `correlation_id` is the **candidate's** task-level ID (the one being flipped), not the triggering task's. The `trigger` payload field carries the triggering TNN. Consumers looking for "which task just became ready" read the top-level `correlation_id`; consumers looking for "what caused this flip" read `payload.trigger`.
@@ -382,13 +382,13 @@ Re-read: `state:ready` present ✓, `state:pending` absent ✓, exactly one `sta
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue": "clabonte/api-sample#47",
+    "issue_url": "https://github.com/clabonte/api-sample/issues/47",
     "trigger": "task_completed:T01"
   }
 }
 ```
 
-Validates through `scripts/validate-event.py` (exit 0). Appended to `/events/FEAT-2026-0050.jsonl`. Re-read confirms.
+Validates through `scripts/validate-event.py --file /tmp/event.json` (exit 0). Appended to `/events/FEAT-2026-0050.jsonl` via the canonical `printf '%s\n'` pattern. Re-read confirms.
 
 **Candidate T04 (`clabonte/api-sample#49`)**
 

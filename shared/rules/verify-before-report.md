@@ -42,6 +42,24 @@ Additional generic checks apply in specific situations:
 - Any state transition must be one your role is authorized to perform (`state-vocabulary.md`). Verify before committing.
 - Any path you are about to write must not be in `never-touch.md`. Verify before writing.
 
+#### Event-emission operational discipline (WU 3.11, Phase 3 retrospective)
+
+Five operational clauses absorbed from the Phase 3 walkthrough findings. All five apply to every role that emits events via the `events/*.jsonl` log.
+
+- **Timestamps at emission time (F3.13).** Event timestamps must be produced at emission time via `date -u +%Y-%m-%dT%H:%M:%SZ`. Never synthesize a timestamp from context, memory, or prior event-log entries. Observed anomaly: F1 Sessions 1–4 produced timestamps stamped `2026-04-23T22:07Z` while other sessions in the same walkthrough ran on `2026-04-24` wall clock, yielding a non-monotonic event log until the discipline was prompt-pinned from Session 5 onwards.
+
+- **`validate-event.py` canonical invocation (F3.10).** Prefer `scripts/validate-event.py --file /tmp/event.json` as the canonical invocation pattern. Stdin/pipe invocations via `/dev/stdin` fail with exit `2` on some macOS configurations (observed 4 instances in F1; 0 in F2 with `--file` pinned). The procedure: write the constructed event JSON to a temp file first (`echo '<single-line-json>' > /tmp/event.json`), then validate via `scripts/validate-event.py --file /tmp/event.json`, require exit `0` before appending. The `--stdin` alias remains supported (WU 2.14) for invocations where stdin is known to work, but `--file` is the default recommendation.
+
+- **JSONL single-line requirement (F3.25).** The event JSON passed to `validate-event.py` and appended to `events/*.jsonl` must be a single line (JSONL format). Multi-line pretty-printed JSON is rejected by the validator — one validation error per line of pretty output. Minify the JSON before writing to the temp file or piping to the validator: `python3 -c 'import json,sys; json.dump(json.load(sys.stdin), sys.stdout)'` is a safe one-liner.
+
+- **Canonical safe JSONL append pattern (F3.28) — operationally CRITICAL.** To append a validated event to `events/FEAT-YYYY-NNNN.jsonl`, use:
+  ```sh
+  printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-YYYY-NNNN.jsonl
+  ```
+  The `printf '%s\n'` wrapper **guarantees** the trailing newline that separates JSONL entries regardless of the source file's trailing-newline state. **Plain `cat /tmp/event.json >> events/<feature>.jsonl` is unsafe**: when the Write tool or any source produces a file without a trailing newline, the naive redirect silently concatenates the new event onto the previous line, corrupting the JSONL log. Observed in F2 Session 4: six events concatenated onto one line on the first attempt, detected only when `tail -6 | python3 -m json.tool` raised `JSONDecodeError: Extra data`; recovery required an out-of-band `JSONDecoder.raw_decode()` loop to split the concatenated string and rewrite the file. JSONL corruption has no second-chance recovery; the canonical pattern prevents the failure mode and is mandatory.
+
+- **No `git commit` on the orchestration repo from a role-switch subagent (F3.5) — role-boundary rule.** A role-switch subagent session (component, PM, QA, specs, or any sub-role) appends events to the orchestration repo's `events/*.jsonl` log and returns control. It does **not** `git commit` those appends. The orchestration session (the Opus/Sonnet instance driving the walkthrough) or the human operator is responsible for the commit. Rationale: the orchestration repo's merge history is PR-based by design (every prior commit on `main` is a PR merge). A subagent-authored commit bypasses PR review and corrodes that invariant. Observed effectiveness: F1 = 4 unauthorized subagent commits ahead of origin (bypassing the PR-based convention); F2 with the preamble clause pinned = 0 commits across 6 subagent sessions. The subagent's append is the correct artifact; the commit is the orchestration session's responsibility.
+
 If a verification check fails, the task is not done. You are now in one of three situations:
 
 1. **Correctable locally.** Go back to step 2, act on the correction, verify again. This counts as one verification cycle.

@@ -1,4 +1,4 @@
-# PM agent — issue-drafting skill (v1.3)
+# PM agent — issue-drafting skill (v1.4)
 
 ## Purpose
 
@@ -339,8 +339,8 @@ Per-type payload schemas under `/shared/schemas/events/` are explicit Phase 2+ t
 
 ```json
 {
-  "issue": "<owner>/<repo>#<number>",
   "issue_url": "https://github.com/<owner>/<repo>/issues/<number>",
+  "issue": "<owner>/<repo>#<number>",
   "title": "[FEAT-YYYY-NNNN/TNN] <summary>",
   "task_type": "implementation",
   "autonomy": "review",
@@ -350,8 +350,8 @@ Per-type payload schemas under `/shared/schemas/events/` are explicit Phase 2+ t
 }
 ```
 
-- `issue` — short form `<owner>/<repo>#<number>`, for logs and human scanning.
-- `issue_url` — full URL, for tooling that wants to link out.
+- `issue_url` — **(canonical, WU 3.11 standardization, F3.14)** full URL, `https://github.com/<owner>/<repo>/issues/<number>`. This is the primary identifier and matches the convention used by `task_started` (per its per-type schema). Consumers should key off `issue_url` when cross-referencing task lifecycle events.
+- `issue` — short form `<owner>/<repo>#<number>`, retained for human scanning and for backward compatibility with pre-WU-3.11 consumers. Phase 4+ deprecation candidate once all consumers migrate to `issue_url`; for now, both fields are populated on `task_created` to avoid breaking existing consumers that key off `issue`.
 - `title` — the full issue title, including the `[FEAT-YYYY-NNNN/TNN]` prefix.
 - `task_type` — one of `implementation`, `qa_authoring`, `qa_execution`, `qa_curation` (the canonical underscore forms from the task graph schema, not the label slug forms).
 - `autonomy` — one of `auto`, `review`, `supervised`.
@@ -361,17 +361,19 @@ Per-type payload schemas under `/shared/schemas/events/` are explicit Phase 2+ t
 
 The top-level `correlation_id` field on the event is the task-level `FEAT-YYYY-NNNN/TNN`; the schema regex admits it. The payload does not duplicate the correlation ID.
 
+**WU 3.11 / F3.14 standardization note.** Task lifecycle events (`task_started`, `task_created`, `task_ready`) standardize on `issue_url` (full URL) as the canonical identifier. Prior to WU 3.11, `task_created` and `task_ready` used `issue` (bare `<owner>/<repo>#<N>` form) while `task_started` used `issue_url` (full URL — enforced by its per-type schema). F1 Session 13 burned one verification cycle on this asymmetry; the standardization eliminates it. `task_ready` is updated below accordingly. See [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3 for the construction discipline this skill implements.
+
 ### `task_ready` (no-dep case only)
 
 ```json
 {
-  "issue": "<owner>/<repo>#<number>",
+  "issue_url": "https://github.com/<owner>/<repo>/issues/<number>",
   "trigger": "no_dep_creation"
 }
 ```
 
-- `issue` — same short form as `task_created`. The `issue_url`, title, and other metadata are already on the preceding `task_created` event; consumers cross-reference by the shared `correlation_id` + `issue` pair.
-- `trigger` — `"no_dep_creation"` for this skill's emissions. The dependency-recomputation skill (WU 2.5) will emit `task_ready` with a different `trigger` value (e.g. `"task_completed:<TNN>"`) so the provenance of every flip is unambiguous.
+- `issue_url` — **(canonical, WU 3.11 standardization, F3.14)** full URL, same shape as on the paired `task_created` event. Consumers cross-reference events by the shared `correlation_id` + `issue_url` pair.
+- `trigger` — `"no_dep_creation"` for this skill's emissions. The dependency-recomputation skill (WU 2.5, F3.14-standardized in WU 3.11) emits `task_ready` with a different `trigger` value (e.g. `"task_completed:<TNN>"`) so the provenance of every flip is unambiguous.
 
 `task_ready` is emitted **after** `task_created` on the same task, never before and never without. Consumers parsing the event log chronologically rely on that order.
 
@@ -617,13 +619,13 @@ Passes `scripts/validate-event.py` (exit 0). Appended to `/events/FEAT-2026-0002
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue": "Bontyyy/orchestrator-api-sample#5",
+    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/5",
     "trigger": "no_dep_creation"
   }
 }
 ```
 
-Passes validation, appended, re-read.
+Passes validation, appended, re-read. (Per WU 3.11 / F3.14 standardization: `issue_url` is canonical across all task lifecycle events.)
 
 ### Contrast with the original Phase 1 Task B run
 
@@ -866,13 +868,13 @@ Passes `scripts/validate-event.py` (exit 0). Appended. Re-read confirms JSON int
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue": "Bontyyy/orchestrator-api-sample#10",
+    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/10",
     "trigger": "no_dep_creation"
   }
 }
 ```
 
-Passes validation, appended, re-read.
+Passes validation, appended, re-read. (Per WU 3.11 / F3.14 standardization: `issue_url` is canonical across all task lifecycle events.)
 
 ### Key differences from the .NET example
 
