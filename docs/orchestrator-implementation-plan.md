@@ -1200,28 +1200,283 @@ See [`docs/walkthroughs/phase-3/retrospective.md`](walkthroughs/phase-3/retrospe
 
 ### Phase 4 objective
 
-Automate the conversational spec-drafting phase. This is deferred to near-last because the human is already heavily in the loop during specs, and a poor spec prompt has the lowest blast radius — mistakes here produce bad specs, which a human reads and corrects, rather than bad merged code.
+Automate the conversational spec-drafting phase and bring the specs agent from its Phase 0 v0.1 draft to production quality. The specs agent differs from the three downstream agents in a structurally important way: it is session-driven rather than task-driven. The PM, component, and QA agents pick up structured work from GitHub issues or event triggers; the specs agent operates inside an interactive Claude Code session where the human is the primary driver and the agent is a conversational partner. The "chat front-end" in this phase's title refers to this interaction model — not a separate UI, but a CLAUDE.md and skill set that make the specs agent an effective collaborator during the inherently open-ended work of turning a feature idea into validated specifications. This is deferred to near-last because the human is already heavily in the loop during specs, and a poor spec prompt has the lowest blast radius — mistakes here produce bad specs, which a human reads and corrects, rather than bad merged code.
 
 ### Phase 4 known prerequisites
 
-- Phase 3 complete.
-- Specfuse spec validation tooling stable and well-understood.
+- Phase 3 complete and all four operational role configs at their frozen baselines: component v1.5.2, PM v1.6.3, QA v1.5.2, shared substrate post-WU-3.11.
+- The full Phase 3 carry list documented in `docs/walkthroughs/phase-3/retrospective.md` §"Carry list for Phase 4 inputs": ten deferred findings (F3.11, F3.15, F3.16, F3.17, F3.22, F3.24, F3.27, F3.31, F3.32, F3.33) and three negative-result carry items (qa-regression runtime validation, Q4 cross-attribution resolution, "first round" semantics refinement).
+- `agents/specs/CLAUDE.md` v0.1.0 (Phase 0 draft — the starting surface for WU 4.1).
+- Specfuse spec validation tooling stable and well-understood by the operator.
+- A product specs repo with the `/product/` and `/business/` top-level split operational (architecture §4.1).
+- At least one component repo with the Phase 1/2/3 walkthrough features exercised, providing a realistic downstream target for end-to-end validation.
 
 ### Phase 4 deliverables
 
-- Specs agent `CLAUDE.md`, skills, and rules.
-- A chat-oriented interaction pattern for drafting OpenAPI / AsyncAPI / Arazzo specifications collaboratively with the human.
-- Automated invocation of Specfuse validation at the `drafting → validating` transition.
-- Handoff to the PM agent on successful validation.
+- Specs agent `CLAUDE.md`, skills, and rules at production v1 quality.
+- Four role skills:
+  - **Feature intake** — creates feature registry entries in the orchestration repo, mints correlation IDs, emits `feature_created` events. The entry point for every feature.
+  - **Spec drafting** — the "chat front-end." Conversational guidance for drafting OpenAPI / AsyncAPI / Arazzo specifications collaboratively with the human. Manages the `/product/` subtree, ensures acceptance criteria are QA-consumable, encodes spec-structure expertise. Absorbs Phase 3 carry-item F3.32 (cardinality wording guidance for unambiguous scope sections).
+  - **Spec validation** — invokes Specfuse validation at the `drafting → validating` transition, interprets output, presents actionable feedback on failures, and owns the `validating → planning` handoff to the PM agent.
+  - **Spec-issue triage** — handles spec issues routed from downstream agents (component, QA) via the inbox, assessing whether the fix belongs in `/product/` (spec fix) or in the generator project (template fix).
+- Phase 3 negative-result carry-item exercise: the Phase 4 walkthrough deliberately triggers the qa-regression runtime path and the Q4 cross-attribution resolution path that were not exercised in Phase 3.
 - Phase 4 walkthrough and retrospective.
 
 ### Phase 4 acceptance criteria
 
-- The specs agent produces valid, reviewable specs for realistic features with demonstrably less human effort than pre-Phase-4 drafting.
-- Validation failures produce actionable feedback to the human.
-- Handoff to the PM agent is clean: no manual state-bumping required.
+- The specs agent, given a human's feature idea in an interactive session, produces valid, reviewable OpenAPI / AsyncAPI / Arazzo specs under `/product/` with demonstrably less human effort than pre-Phase-4 manual drafting.
+- Feature registry entries are created programmatically with correct correlation IDs, frontmatter validating against `feature-frontmatter.schema.json`, and a `feature_created` event emitted and validated through `scripts/validate-event.py`.
+- Specfuse validation failures produce actionable, structured feedback the human can act on without re-reading generator source or validation internals.
+- The `drafting → validating → planning` state transitions are automated end-to-end with `feature_state_changed` event emissions — no manual state-bumping required between the specs agent's work and the PM agent's pickup.
+- Spec issues routed from downstream agents via `/inbox/spec-issue/` are triaged by the specs agent and either resolved (spec fix applied, event emitted) or re-routed (generator issue filed) without human intervention in the triage step itself.
+- The qa-regression skill's runtime path is validated in the Phase 4 walkthrough via a deliberately regression-inducing feature, exercising the full `qa_execution_failed → qa-regression spawn → fix → re-execute → qa_execution_completed` path that was a negative result in Phase 3.
+- At least two features have been walked through end-to-end starting from the specs agent, with a written retrospective identifying all gaps and unblocking Phase 5.
 
-*Detailed work unit prompts deferred until Phase 3 completion.*
+### Phase 4 carry-item absorption plan
+
+The Phase 3 retrospective carried ten deferred findings and three negative-result items into Phase 4. Their disposition:
+
+| Carry item | Phase 3 home | Phase 4 disposition |
+|---|---|---|
+| F3.32 — Cardinality wording "expected" ambiguous | Specs-agent guidance | **Absorbed WU 4.3** — spec-drafting skill includes guidance on unambiguous scope/cardinality language |
+| F3.33 — `tail -1 log \| json.tool` fails on blank trailing line | verify-before-report.md §3 revision | **Re-deferred Phase 5+** — no Phase 4 WU touches verify-before-report.md as primary surface |
+| F3.11 — SKILL.md files exceed 25k token read limit | Any WU revising issue-drafting or qa-curation SKILL.md | **Re-deferred Phase 5+** — Phase 4 does not revise those skills |
+| F3.15 — Task lifecycle events no per-type schema | Phase 5 schema-governance | **Re-deferred Phase 5** |
+| F3.16 — "Done" derivation signal priority | Phase 5 merge-watcher design | **Re-deferred Phase 5** |
+| F3.17 — `## Scope` cardinality clause ambiguity | task-decomposition SKILL revision | **Re-deferred Phase 5+** — downstream of task-decomposition, not specs-agent |
+| F3.22 — Rule 1 `qa_execution never auto` conditional | qa-execution SKILL revision | **Re-deferred Phase 5+** |
+| F3.24 — T04 `## Deliverables` forward-looking reference | plan-review evolution | **Re-deferred Phase 5+** |
+| F3.27 — template-coverage-check entry-condition | template-coverage-check revision | **Re-deferred Phase 5+** |
+| F3.31 — `source: component:<bare_name>` format | Schema-hygiene pass | **Re-deferred Phase 5+** |
+| **qa-regression runtime validation** (negative result) | Phase 4 walkthrough | **Exercised WU 4.6 Feature 2** |
+| **Q4 cross-attribution resolution** (negative result) | Alongside regression cycle | **Exercised WU 4.6 Feature 2** |
+| **"First round" semantics refinement** | Walkthrough observation | **Observed WU 4.6** — refine in fix ladder if evidence dictates |
+
+### Work unit 4.1 — Specs agent config v1
+
+**Objective.** Elevate the Phase 0 v0.1.0 specs agent `CLAUDE.md` to production v1 quality, incorporating learnings from Phases 1–3 (especially the interaction model established by the three downstream agents), the conversational session-driven nature of the role, and the four Phase 4 skills the config now references.
+
+**Context preamble.** First Phase 4 work unit. The v0.1.0 config in `agents/specs/CLAUDE.md` is a Phase 0 draft — role definition, entry transitions, output artifacts, and placeholder verification/escalation stubs are present and structurally sound but untested against production requirements. The specs agent differs from the three downstream agents in a way that shapes this rewrite: it is session-driven, not task-driven. The PM picks up validated features; the component agent picks up ready issues; the QA agent picks up authoring/execution/curation tasks. The specs agent starts when a human opens a Claude Code session and says "I want to build feature X." Its skills therefore have a conversational entry point, not a structured-event trigger. This distinction is the architectural reason the specs agent is the last operational role to reach v1 — it absorbs the patterns established by the three downstream agents while inverting the interaction direction.
+
+**Inputs.** `agents/specs/CLAUDE.md` v0.1.0, `agents/pm/CLAUDE.md` v1.6.3 (reference for production-quality role config shape), `agents/component/CLAUDE.md` v1.5.2 (second reference), `agents/qa/CLAUDE.md` v1.5.2 (third reference — particularly the longitudinal QA cadence pattern, which maps to the specs agent's multi-session feature lifecycle), `shared/rules/role-switch-hygiene.md`, `shared/rules/escalation-protocol.md`, `shared/rules/state-vocabulary.md`, `shared/rules/verify-before-report.md` (especially §3 "Event-emission operational discipline"), architecture §5.1 (specs agent role definition), §6.1 (feature state machine — `drafting → validating → planning` transitions), §6.3 (transition ownership), `docs/walkthroughs/phase-3/retrospective.md` §"Carry list for Phase 4 inputs".
+
+**Acceptance criteria.**
+
+1. `agents/specs/CLAUDE.md` rewritten to v1.0.0 quality, with: one-paragraph role definition (emphasizing the session-driven, conversational nature — "the specs agent partners with the human in an interactive Claude Code session"); bullet list of every entry transition the role owns (`drafting → validating`, `validating → planning`, plus the "any agent" `blocked` transition per architecture §6.3); explicit artifact outputs across the three output surfaces (spec documents in `/product/`, feature registry entries in `/features/`, event log entries in `/events/`, spec issues in product specs or generator repos, human-escalation inbox files); a role-specific verification clause referencing the four Phase 4 skills by name; and a role-specific escalation clause enumerating specs-relevant conditions.
+2. **Session-driven interaction model clause.** The config documents, in its own top-level section `## Interaction model`, that the specs agent operates inside interactive human sessions rather than event-triggered pickups. The section names the entry points: (a) new feature idea → feature-intake skill; (b) spec drafting → spec-drafting skill; (c) validation request → spec-validation skill; (d) spec-issue inbox → spec-issue-triage skill. It also states that skills (a)–(c) are typically invoked in sequence within a single session, while skill (d) is invoked independently in response to inbox events.
+3. **Multi-repo output discipline clause.** The config documents, in its own top-level section `## Output surfaces`, the three repos the specs agent writes to: product specs repo (`/product/` subtree only — never `/business/`), orchestration repo (`/features/` for registry entries, `/events/` for event log, `/inbox/` for escalations), and occasionally generator project or component repos (for spec-issue filing only — never for code or generated content). The never-touch rules from `shared/rules/never-touch.md` apply; the specs agent additionally never touches generated directories, component repos' hand-written code, or any file outside `/product/` in the specs repo.
+4. **Role-switch hygiene inherited.** The config references `shared/rules/role-switch-hygiene.md` explicitly, mirroring the pattern established by WU 2.1 and WU 3.1.
+5. `agents/specs/rules/` populated with any role-specific rules surfaced by the design of Phase 4 skills, or left empty with `.gitkeep` + justification. No speculative rules.
+6. `agents/specs/README.md` exists, summarizing the role for a cold reader.
+7. `agents/specs/version.md` bumped to `1.0.0` with a meaningful changelog entry citing this work unit, the interaction model commitment, and the four skills the config references.
+8. Commit message: `feat(specs): v1 specs agent configuration`.
+
+**Do not touch.** Do not write the Phase 4 skills themselves (they are 4.2–4.5). Do not modify the frozen component, PM, or QA agent surfaces. Do not create skill stubs under `agents/specs/skills/` — those land in their own WUs. Do not edit shared rules unless a specific Phase 3 carry-item is explicitly absorbed by this WU (none are — F3.32 is absorbed by WU 4.3). Do not edit `shared/templates/spec-issue.md` — v0.1 is deliberate; any adjustment surfaces in WU 4.5.
+
+**Verification steps.**
+
+1. Open `agents/specs/CLAUDE.md` and verify every architecture §6.3 transition the specs agent owns appears exactly once, with no contradictions against shared rules.
+2. Confirm the `## Interaction model` section clearly distinguishes session-driven from task-driven and names all four skills.
+3. Confirm the `## Output surfaces` section lists all three repos with correct write boundaries.
+4. Run `scripts/read-agent-version.sh specs` and confirm output is `1.0.0`.
+5. Confirm no shared rules were silently duplicated into the role config.
+
+**Suggested model.** Opus 4.7. This config is re-read on every specs-agent invocation across Phase 4+.
+
+### Work unit 4.2 — Feature intake skill
+
+**Objective.** Produce the skill that creates a new feature's registry entry in the orchestration repo, mints the correlation ID, emits the `feature_created` event, and sets the feature state to `drafting` — the entry point for every feature's lifecycle.
+
+**Context preamble.** Second Phase 4 work unit. This skill has been performed manually since Phase 0 (WU 0.6 created the first feature registry entry by hand, and every subsequent walkthrough feature was human-authored). The skill automates what the human has done ten times across four phases, so the pattern is well-understood and the risk is low. The skill's output — a feature registry markdown file with validated frontmatter and a `feature_created` event — is the input the spec-drafting skill (WU 4.3) operates on. Getting the correlation ID format, frontmatter schema, and event payload right is load-bearing: every downstream agent consumes the correlation ID, and schema violations here cascade through the entire feature lifecycle.
+
+**Inputs.** Specs agent config v1 from 4.1, `shared/rules/correlation-ids.md` (the correlation ID scheme — minting the next ID requires reading existing `/features/FEAT-YYYY-NNNN.md` files to determine the next ordinal), `shared/schemas/feature-frontmatter.schema.json`, `shared/schemas/event.schema.json`, `shared/templates/feature-registry.md`, `scripts/validate-event.py`, `scripts/validate-frontmatter.py`, `shared/rules/verify-before-report.md` (event-emission operational discipline).
+
+**Acceptance criteria.**
+
+1. `agents/specs/skills/feature-intake/SKILL.md` v1.0 exists, describing step by step: how the specs agent asks the human for the feature's title, involved repos, and autonomy default; how it reads existing `/features/FEAT-YYYY-*.md` files to determine the next available ordinal; how it mints the correlation ID per `correlation-ids.md`; how it creates `/features/FEAT-YYYY-NNNN.md` populated from the `feature-registry.md` template with frontmatter values (`correlation_id`, `state: drafting`, `involved_repos`, `autonomy_default`, `task_graph: []`); how it validates the frontmatter against `feature-frontmatter.schema.json` using `scripts/validate-frontmatter.py`; and how it emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl` validated through `scripts/validate-event.py`.
+2. The skill handles the collision case: if a `FEAT-YYYY-NNNN.md` file already exists at the computed ordinal, the skill increments until a free ordinal is found. The collision-handling logic is documented explicitly.
+3. The skill does not populate the body sections (`Description`, `Scope`, `Out of scope`, `Related specs`) beyond minimal stubs — that is the spec-drafting skill's concern. The body sections carry placeholder text ("To be drafted during spec authoring") so the file is valid markdown but honestly incomplete.
+4. A `feature_created` per-type payload schema at `shared/schemas/events/feature_created.schema.json` is authored. The `feature_created` event type already exists in `event.schema.json`'s enum; the per-type payload schema is additive (following the WU 2.5 precedent). Payload fields: `feature_title` (string), `involved_repos` (array of strings), `autonomy_default` (enum), `correlation_id` (string matching `FEAT-YYYY-NNNN` pattern).
+5. A worked example in the skill shows: human provides "Widget Catalog API" as the feature title, `Bontyyy/orchestrator-api-sample` as the involved repo, `review` as autonomy; the skill creates `FEAT-2026-0008.md` (assuming `FEAT-2026-0007` is the latest), emits the `feature_created` event with a validated payload.
+6. Events and frontmatter validate through the respective scripts before any file is written.
+7. Commit message: `feat(specs): feature intake skill v1`.
+
+**Do not touch.** Do not draft spec content (that is 4.3). Do not run validation (that is 4.4). Do not modify `shared/schemas/feature-frontmatter.schema.json` — the existing schema supports the intake output. Do not modify `shared/schemas/event.schema.json`'s enum (the `feature_created` type already exists) — the only addition is the per-type payload schema. Do not modify shared rules.
+
+**Verification steps.**
+
+1. Round-trip the worked example's feature frontmatter through `scripts/validate-frontmatter.py` and confirm it passes.
+2. Round-trip the worked example's `feature_created` event through `scripts/validate-event.py` (with the new per-type schema) and confirm it passes.
+3. Confirm the collision-handling logic is explicit and deterministic — two invocations on the same day with the same ordinal must produce different IDs.
+4. Confirm body sections carry honest placeholder text, not fabricated content.
+
+**Suggested model.** Opus 4.7. Correlation ID minting and frontmatter schema compliance are foundational contracts.
+
+### Work unit 4.3 — Spec-drafting skill (absorbs F3.32)
+
+**Objective.** Produce the skill that structures the specs agent as a conversational partner during interactive spec-drafting sessions — the "chat front-end." The skill guides the human through drafting OpenAPI, AsyncAPI, and Arazzo specifications under `/product/`, ensures acceptance criteria are testable by the QA agent, encodes spec-structure expertise, and absorbs Phase 3 carry-item F3.32 (guidance on unambiguous cardinality/scope language).
+
+**Context preamble.** Third Phase 4 work unit — the most architecturally novel in the phase. Every prior skill in the orchestrator follows a procedural pattern: read structured input → apply rules → produce structured output → emit events. The spec-drafting skill breaks this pattern: its input is a human's partially-formed feature idea expressed in natural language, and its output is structured specification documents produced through an iterative conversation. The skill must guide this conversation without being prescriptive to the point of constraining the human's product thinking, while being structured enough that the resulting specs are machine-validatable and QA-consumable. The tension is deliberate — the phase title says "chat front-end" because the skill's primary value is making the conversational interaction productive, not automating away the human's judgment.
+
+F3.32 absorption: Phase 3 walkthroughs surfaced that the word "expected" in feature scope sections is ambiguous between confirmatory ("we expect this to happen") and prescriptive ("author exactly this many tests"). The qa-authoring skill's collapse-only rule made the ambiguity safe but didn't fix the root cause — spec authors (the human + specs agent) wrote ambiguous scope language. The spec-drafting skill addresses this at the source by including guidance on unambiguous cardinality and scope conventions.
+
+**Inputs.** Specs agent config v1 from 4.1, feature intake skill from 4.2, architecture §5.1, example product specs from Phase 1/2/3 walkthrough repos (under `/product/`), `shared/schemas/test-plan.schema.json` (for understanding what the QA agent needs from acceptance criteria — `covers`, `commands`, `expected` fields), `docs/walkthroughs/phase-3/retrospective.md` §"F3.32" (cardinality ambiguity finding), `agents/qa/skills/qa-authoring/SKILL.md` v1.1 (for understanding how the QA agent consumes acceptance criteria — the spec-drafting skill produces what qa-authoring consumes).
+
+**Acceptance criteria.**
+
+1. `agents/specs/skills/spec-drafting/SKILL.md` v1.0 exists, describing the conversational structure of a spec-drafting session in three phases:
+   - **Phase 1: Feature scoping.** The agent helps the human articulate what the feature does, which repos it touches, what its boundaries are. Output: the feature registry's `Description`, `Scope`, `Out of scope`, and `Related specs` body sections populated with concrete, unambiguous content. The skill documents what "unambiguous" means operationally: scope statements use prescriptive language ("the feature adds endpoint X returning Y") not confirmatory language ("we expect the feature to add..."); cardinality clauses use explicit defaults with override language ("default: one test per behavior; the feature's `## Scope` may collapse to fewer with explicit justification") rather than ambiguous "expected" phrasing. **This is the F3.32 absorption point.**
+   - **Phase 2: Spec drafting.** The agent helps the human produce the specification documents under `/product/specs/`. The skill documents: how to choose the right spec type (OpenAPI for REST endpoints, AsyncAPI for event-driven contracts, Arazzo for multi-step workflows); how to structure the spec files for Specfuse validation (referencing the codegen validator's requirements); how to write acceptance criteria that the QA agent can convert into test plans — each criterion must be testable (verifiable by a command with an observable expected outcome), scoped to a single behavior, and linked to a spec fragment. The skill explicitly names the QA-consumability requirement: "every acceptance criterion you write will be consumed by `qa-authoring/SKILL.md` to produce a `test_id` with `covers`, `commands`, and `expected` fields — write criteria that map cleanly to those three fields."
+   - **Phase 3: Pre-validation review.** The agent reviews the drafted specs with the human for completeness, internal consistency, and readiness for Specfuse validation. The skill documents what "ready for validation" means: all acceptance criteria are testable, all spec files are syntactically valid YAML/JSON, cross-references between spec files and the feature registry are consistent, and the feature registry's `Related specs` section links to every spec file produced. The agent does not run validation itself — that is the spec-validation skill's concern.
+2. The skill manages the `/product/` subtree: it documents the file path conventions for spec documents (`/product/specs/<feature-slug>.yaml` or `.json`), feature descriptions (`/product/features/<feature-slug>.md`), and how to avoid conflicts with existing files. File creation is verified by re-reading the created file and confirming it matches the intended content.
+3. The skill produces or updates the feature registry's body sections. It does not modify the frontmatter (state, correlation ID, task graph) — those are owned by the intake and validation skills. The skill's output discipline is: populate body sections, create spec files, leave frontmatter untouched.
+4. **F3.32 absorption clause.** A `## Scope and cardinality conventions` sub-section documents the guidance for unambiguous scope language. The section explains the Phase 3 finding (F3.32 — "expected" ambiguity between confirmatory and prescriptive), names the failure mode it prevents (qa-authoring misinterpreting scope constraints), and provides positive examples ("The feature adds three endpoints: list, get, create") vs. negative examples ("Three endpoints are expected under the default convention"). The section is cross-referenced from the Phase 1 scoping guidance so the human sees it at the right moment.
+5. A worked example shows a realistic spec-drafting session for a small REST API feature: the human describes the feature in two sentences; the agent asks three scoping questions; the human answers; the agent produces a feature description with five acceptance criteria, an OpenAPI fragment, and updates the feature registry body sections. The example demonstrates F3.32-compliant scope language.
+6. The skill includes a `## Deferred integration` section naming Phase 5 as the place where richer spec authoring (Arazzo-backed test plan skeletons, generator-emitted spec stubs) extends this skill's conversational foundation.
+7. Commit message: `feat(specs): spec-drafting skill v1 (absorbs F3.32)`.
+
+**Do not touch.** Do not run Specfuse validation (that is 4.4). Do not modify the feature registry frontmatter (state transitions are the validation skill's concern). Do not modify QA or PM skills — the spec-drafting skill produces what they consume, but the consuming skills' contracts are frozen. Do not modify `shared/schemas/test-plan.schema.json` or any shared schema. Do not modify shared rules.
+
+**Verification steps.**
+
+1. Walk the worked example end-to-end and confirm: (a) every acceptance criterion in the output is testable — it maps to a `test_id` with `covers`, `commands`, and `expected`; (b) scope language is unambiguous per the F3.32 guidance; (c) the feature registry body sections are populated without touching frontmatter.
+2. Confirm the QA-consumability requirement is explicit and cross-references `qa-authoring/SKILL.md`'s input expectations.
+3. Re-read the F3.32 absorption clause and confirm it addresses the finding as described in the Phase 3 retrospective.
+4. Confirm the skill does not invoke any external tools (Specfuse validator, scripts) — all external invocations are the validation skill's responsibility.
+
+**Suggested model.** Opus 4.7. The most architecturally novel skill in the project — the conversational structure, QA-consumability requirement, and F3.32 absorption all require precise prose.
+
+### Work unit 4.4 — Spec-validation skill
+
+**Objective.** Produce the skill that invokes Specfuse validation on drafted specs, interprets the output, presents actionable feedback on failures, and owns the `drafting → validating → planning` state transitions that hand the feature off to the PM agent.
+
+**Context preamble.** Fourth Phase 4 work unit. This skill bridges the specs agent's conversational work and the PM agent's structured planning work. The handoff is the cleanest inter-role boundary in the system: when this skill emits `feature_state_changed(validating → planning)`, the PM agent's task-decomposition skill is the next actor. Getting the handoff wrong — emitting the transition before validation is clean, or requiring manual state-bumping between specs and PM — re-introduces the coordination overhead the orchestrator exists to eliminate.
+
+The skill operates in two modes: first-pass validation (the human says "run validation" during a drafting session — the skill runs it and reports back in the same session) and re-validation (the human has fixed issues and asks for another pass). Both modes must be handled, and the skill must be idempotent — running validation twice on unchanged specs produces the same result without duplicate state-transition events.
+
+**Inputs.** Specs agent config v1 from 4.1, spec-drafting skill from 4.3 (for the output file conventions under `/product/`), `shared/schemas/event.schema.json`, `shared/schemas/events/feature_state_changed.schema.json`, `scripts/validate-event.py`, architecture §6.1 (feature state machine — the specs agent owns `drafting → validating` and `validating → planning`), architecture §6.3 (transition ownership).
+
+**Acceptance criteria.**
+
+1. `agents/specs/skills/spec-validation/SKILL.md` v1.0 exists, describing step by step: how the agent determines which spec files to validate (reads the feature registry's `Related specs` links); how it invokes the Specfuse validator against each spec file; how it collects and structures the output; how it presents results to the human (pass: summary + next-step prompt; fail: per-file error listing with actionable remediation guidance); and how it handles the state transitions.
+2. **State transition discipline.** The skill owns two transitions:
+   - `drafting → validating`: emitted when the human requests validation, before the validator runs. The `feature_state_changed` event carries `trigger: "human_requested_validation"`. If the feature is already in `validating` (re-validation pass), the transition is skipped (idempotence — no duplicate state events).
+   - `validating → planning`: emitted only on a clean validation pass (all spec files pass). The `feature_state_changed` event carries `trigger: "validation_clean"`. This transition is the PM handoff — once emitted, the PM agent's task-decomposition skill can pick up the feature.
+   On a failed validation, the feature stays in `validating`. The human works with the spec-drafting skill to fix the issues, then requests re-validation. The skill does not transition back to `drafting` on failure — that would require the human to re-trigger the `drafting → validating` transition unnecessarily. The `validating` state means "validation in progress or awaiting fix + re-validation."
+3. **Validation output structure.** The skill emits a `spec_validated` event on every validation run (pass or fail). A per-type payload schema is authored at `shared/schemas/events/spec_validated.schema.json` with fields: `feature_correlation_id`, `pass` (boolean), `spec_files_checked` (array of paths), `errors` (array of structured error objects — file, line, message, severity — on failure; empty on pass), `validator_version` (string — the Specfuse validator version used). The `spec_validated` event type already exists in `event.schema.json`'s enum; the per-type schema is additive.
+4. **Actionable failure feedback.** The skill does not dump raw validator output to the human. It interprets each error and provides: (a) the specific file and line; (b) what went wrong in plain language; (c) a concrete suggestion for fixing it (e.g., "add `operationId` to the GET /widgets endpoint" rather than "missing required property: operationId"). The skill's interpretation table covers the most common Specfuse validation errors. For errors outside the table, the skill presents the raw error with a caveat ("this error is not in my interpretation table — please review the raw validator output below").
+5. **Idempotence under re-validation.** The skill tracks validation attempts by reading the event log for prior `spec_validated` events on this feature. A re-validation after a fix produces a new `spec_validated` event (the event log is append-only — prior failures are preserved). The `validating → planning` transition is emitted only once per feature (guarded by checking for a prior `feature_state_changed(validating → planning)` event, same pattern as WU 3.10's Step 12 idempotence guard).
+6. A worked example shows: a feature with two spec files; first validation run fails on one file (missing `operationId`); the skill reports the error with remediation; the human fixes the spec; second validation run passes; the skill emits `validating → planning` and reports "feature FEAT-YYYY-NNNN is ready for PM planning."
+7. Events validate through `scripts/validate-event.py`.
+8. Commit message: `feat(specs): spec-validation skill v1`.
+
+**Do not touch.** Do not draft specs (that is 4.3). Do not create the task graph or open issues (that is the PM agent's territory). Do not modify `shared/schemas/event.schema.json`'s enum (the `spec_validated` type already exists) — the only addition is the per-type payload schema. Do not modify the PM agent's task-decomposition skill or any downstream configuration. Do not modify shared rules.
+
+**Verification steps.**
+
+1. Walk the worked example end-to-end and confirm: (a) the first validation emits `drafting → validating` + `spec_validated(pass: false)`; (b) the re-validation emits `spec_validated(pass: true)` + `validating → planning`; (c) no duplicate state transitions.
+2. Round-trip the `spec_validated` events through `scripts/validate-event.py` with the new per-type schema.
+3. Confirm the actionable feedback is genuinely actionable — a human reading the worked example's error output should know exactly what to fix without consulting external documentation.
+4. Confirm the `validating → planning` transition is the last thing the skill does — there is no further specs-agent work after the handoff.
+
+**Suggested model.** Opus 4.7. The state transition discipline and the inter-role handoff are both load-bearing contracts.
+
+### Work unit 4.5 — Spec-issue triage skill
+
+**Objective.** Produce the skill that handles spec issues routed from downstream agents (component, QA) via `/inbox/spec-issue/`, assessing whether the fix belongs in `/product/` (a spec correction the specs agent can make) or in the generator project (a template issue to be filed against the generator), and executing accordingly.
+
+**Context preamble.** Fifth Phase 4 work unit. Spec issues have been filed by component and QA agents since Phase 1 (Task C of WU 1.5 exercised the `spec_level_blocker` escalation path), but until now the specs agent's triage has been manual — the human reads the issue and decides. This skill automates the triage step. The skill's judgment call — "is this a spec problem or a generator template problem?" — is the most nuanced decision the specs agent makes, and it is the primary reason this skill is deferred to the last position in the Phase 4 skill sequence: the author needs the full context of the prior three skills to understand the boundary between spec content (which the specs agent owns) and generator templates (which the Phase 5 feedback loop will own).
+
+The skill operates reactively — it is triggered by inbox files under `/inbox/spec-issue/`, not by a conversational prompt. This is the one specs-agent skill that follows the event-driven pattern of the downstream agents rather than the session-driven pattern of the drafting skills. The inbox file format is defined by `shared/templates/spec-issue.md`.
+
+**Inputs.** Specs agent config v1 from 4.1, spec-drafting skill from 4.3, spec-validation skill from 4.4, `shared/templates/spec-issue.md` (the template downstream agents use to file spec issues), `agents/component/skills/escalation/SKILL.md` v1.2 (for the component agent's spec-issue filing behavior — the incoming contract), `shared/rules/escalation-protocol.md`, architecture §9.1 (generated code rules — distinguishes spec-level from generator-level issues).
+
+**Acceptance criteria.**
+
+1. `agents/specs/skills/spec-issue-triage/SKILL.md` v1.0 exists, describing: the pickup trigger (a new file under `/inbox/spec-issue/`); the triage decision tree (read the issue's observed/expected/suggested-resolution fields from the `spec-issue.md` template; determine whether the issue points to a spec-content problem in `/product/` or a generator-template problem in `_generated/` paths); the spec-fix path (the specs agent edits the affected spec file under `/product/`, re-runs validation per the spec-validation skill, and emits a `spec_issue_resolved` event); the generator-routing path (the specs agent files a GitHub issue against the generator project using the spec-issue template's information, emits a `spec_issue_routed` event, and archives the inbox file); and the escalation path (when the triage is ambiguous — the issue could be either spec or generator — the specs agent escalates to the human with structured context).
+2. **New event types.** `spec_issue_resolved` and `spec_issue_routed` are added to `event.schema.json`'s enum. Per-type payload schemas at `shared/schemas/events/spec_issue_resolved.schema.json` (fields: `original_issue_correlation_id`, `affected_files`, `resolution_summary`) and `shared/schemas/events/spec_issue_routed.schema.json` (fields: `original_issue_correlation_id`, `target_project`, `filed_issue_reference`).
+3. **Triage decision tree.** The skill documents explicit criteria for the spec-vs-generator classification: (a) if the issue names a file under `/product/` and the fix is a spec-content change (wrong endpoint path, missing field, incorrect type), it is a spec fix; (b) if the issue names a file under `_generated/` or equivalent and the problem is in the generated code's shape (missing boilerplate, wrong template output), it is a generator issue; (c) if the issue names a file under `_generated/` but the root cause is a spec error that propagated through generation, it is a spec fix (fix the spec, regenerate); (d) if the classification is unclear after reading the issue and the affected files, escalate to the human. Case (c) is the subtlest — the skill documents it with a worked example showing a generated controller with a wrong route because the OpenAPI spec had a typo in the path.
+4. **Inbox lifecycle.** The skill documents the inbox file lifecycle: read → triage → act → archive. Archived files are moved to `/inbox/spec-issue/processed/` (consistent with the inbox flow described in architecture §7.4). The skill never deletes inbox files.
+5. Two worked examples: (a) a spec fix — component agent filed a spec issue because an OpenAPI endpoint returns `200` but the spec says `201`; the specs agent fixes the spec, re-validates, emits `spec_issue_resolved`; (b) a generator routing — QA agent filed a spec issue because a generated test fixture is missing a required field; the specs agent determines the field is absent from the template (not the spec), files a generator issue, emits `spec_issue_routed`.
+6. Events validate through `scripts/validate-event.py`.
+7. Commit message: `feat(specs): spec-issue triage skill v1`.
+
+**Do not touch.** Do not modify `shared/templates/spec-issue.md` beyond what the per-type payload schemas require (if any). Do not modify the component or QA agents' spec-issue filing behavior. Do not implement the generator feedback loop (that is Phase 5). Do not modify generated code — the skill files an issue against the generator project, it does not fix the generated code directly. Do not modify shared rules.
+
+**Verification steps.**
+
+1. Walk both worked examples end-to-end and confirm: the spec-fix example resolves the issue without touching generated code; the generator-routing example files an issue without touching specs.
+2. Round-trip the new event types through `scripts/validate-event.py` with their per-type schemas.
+3. Confirm the triage decision tree handles case (c) — the "spec error propagated through generation" case — explicitly and correctly routes it to a spec fix, not a generator issue.
+4. Confirm inbox files are archived, not deleted.
+
+**Suggested model.** Opus 4.7. The triage decision tree's subtleties (especially case (c)) require precise reasoning.
+
+### Work unit 4.6 — Phase 4 walkthrough
+
+**Objective.** Exercise the specs agent end-to-end on two real features, validating that the Phase 4 skills 4.2–4.5 compose with the downstream PM, component, and QA agents into a working idea-to-done pipeline. Feature 2 deliberately exercises the qa-regression runtime path that was a negative result in Phase 3.
+
+**Context preamble.** Sixth Phase 4 work unit. This is the first walkthrough that exercises the full pipeline — from feature idea through specs, planning, implementation, QA, and (for Feature 2) regression — with the specs agent at the front instead of the human doing manual spec work. Structurally analogous to WU 2.7 and WU 3.6: multi-session, human-driven, two features, honest logs.
+
+Phase 4's walkthrough has an additional responsibility that Phase 2 and Phase 3 walkthroughs did not: exercising the Phase 3 negative-result carry items. The qa-regression skill (`qa-regression/SKILL.md` v1.0) was authored in WU 3.4 and reviewed but never executed at runtime — the Phase 3 walkthrough's component agent correctly implemented the AC-3 edge case on first pass, producing no `qa_execution_failed` event. The Q4 cross-attribution resolution path was also never exercised. Phase 4's Feature 2 is designed to close both negative results by choosing a feature where the implementation agent is likely to miss a non-obvious edge case, triggering the full regression loop.
+
+**Inputs.** Full specs agent config and skills v1. Full frozen PM, component, and QA agent surfaces. Phase 1/2/3 sample component repos. The product specs repo. Two feature ideas — the human selects these before the walkthrough, not during it. Feature 2 must have a non-obvious acceptance criterion that a Sonnet 4.6 component agent is likely to miss on first pass (e.g., an edge case in error handling, a boundary condition in pagination, a race condition in concurrent access).
+
+**Acceptance criteria.**
+
+1. **Feature 1 (happy path, full pipeline)** — the human opens a specs-agent session, describes a feature idea, and the specs agent: creates the feature registry entry (intake skill), helps draft specs and acceptance criteria (drafting skill), runs Specfuse validation (validation skill), and hands off to the PM agent. The PM agent produces the task graph, the human reviews and approves, issues are opened, the component agent produces a PR, the QA agent authors and executes a test plan, the feature reaches `done`. End-to-end pipeline, specs agent at the front, no manual state-bumping between the specs agent and the PM agent. Produces `docs/walkthroughs/phase-4/feature-1-log.md`.
+2. **Feature 2 (regression cycle + qa-regression runtime validation)** — same pipeline as Feature 1, but the feature is deliberately chosen so that the component agent's implementation misses a non-obvious acceptance criterion on first pass. Expected flow: qa-execution fails → qa-regression files a new implementation task via inbox → component agent picks up the regression-fix task → fixes → re-execution passes → `qa_regression_resolved` + `escalation_resolved` events emitted. If the component agent implements correctly on first pass (same outcome as Phase 3), the walkthrough uses a fallback path: manually introduce a regression in the component repo between implementation and QA execution to trigger the loop. The fallback is documented honestly in the log. **This exercises the Phase 3 negative-result carry items: qa-regression runtime validation and Q4 cross-attribution resolution.** Produces `docs/walkthroughs/phase-4/feature-2-log.md`.
+3. **"First round" semantics observation.** The walkthrough explicitly records whether WU 3.10's v1 "first round" semantics (first-task-opened) for the `generating → in_progress` transition produced correct observable behavior, or whether the Phase 4+ refinement to "all tasks opened" is warranted. This is an observation, not a test — the walkthrough records what happened, and the retrospective triages.
+4. Logs are honest — friction, workarounds, surprises are recorded, not sanitized.
+5. Any config or skill changes prompted by the walkthrough are committed as they happen, with `agents/specs/version.md` bumps and changelog entries.
+6. Every event emitted across both features validates through `scripts/validate-event.py` without exception.
+7. **Q4 cross-attribution audit.** The walkthrough explicitly verifies that the Q4 invariant held across Feature 2's regression cycle — the QA agent filed a NEW implementation task via inbox; it did not write labels or state to the original implementation task.
+8. Commit messages per feature: `chore(phase-4): walkthrough feature 1 complete` and `chore(phase-4): walkthrough feature 2 complete`.
+
+**Do not touch.** Do not change architectural decisions during the walkthrough; if an architectural problem surfaces, log it and proceed with a workaround — it is a retrospective input. Do not modify the frozen component, PM, or QA agent surfaces. Do not silently edit shared rules to make an issue go away.
+
+**Verification steps.**
+
+1. Each feature reaches either its expected end state or a clearly documented stop with a rationale.
+2. Both feature event logs are syntactically valid JSONL and pass `scripts/validate-event.py` line by line.
+3. Both walkthrough logs have concrete per-section observations, not generic prose.
+4. Feature 2's log includes explicit documentation of whether the qa-regression path was exercised naturally or via fallback, and the Q4 audit is a specific enumeration.
+5. Correlation IDs thread through every artifact: feature registry, event log, spec files, plan file, issue titles, branch names, commits, PRs.
+
+**Suggested model.** For agent sessions playing the production specs role: whichever model `agents/specs/CLAUDE.md` v1 targets for production (default: Sonnet 4.6). For downstream agent sessions: their respective production models. For the human's orchestration and note-taking session: Opus 4.7.
+
+### Work unit 4.7 — Phase 4 retrospective
+
+**Objective.** Triage findings from the Phase 4 walkthrough into Fix-in-Phase-4, Defer-to-Phase-5+, and Won't-fix-with-rationale categories. Produce the concrete fix work plan. Do not execute fixes here — each becomes its own post-retrospective WU per the WU 1.6–1.12 / 2.8 / 3.7 pattern.
+
+**Context preamble.** Seventh Phase 4 work unit. Structurally identical to WU 1.6, WU 2.8, and WU 3.7: the retrospective is the decision artifact; fixes land as independent post-retrospective WUs. A freeze declaration is not issued here — it is issued by the last Phase 4 WU after the fix ladder merges, analogous to WU 1.12, WU 2.15, and WU 3.13.
+
+This retrospective has an additional responsibility that prior retrospectives did not: dispositioning the Phase 3 carry items that Phase 4 was supposed to exercise. Specifically: (a) did the qa-regression runtime path validate? If so, the negative-result carry item is closed. If the fallback path was used, the finding is qualified ("validated via induced regression, not organic"). (b) Did the Q4 cross-attribution resolution path validate? Same disposition. (c) Did the "first round" semantics observation produce any finding? If so, it enters the Phase 4 findings table.
+
+The retrospective also re-evaluates the re-deferred Phase 3 findings (F3.11, F3.15, F3.16, F3.17, F3.22, F3.24, F3.27, F3.31, F3.33) and either absorbs any that now have a natural Phase 4 home (because the fix ladder touches the right surface) or carries them forward to Phase 5+ with their home phases reaffirmed.
+
+**Inputs.** Both walkthrough logs from 4.6, current state of `/agents/specs/`, the Phase 3 carry list (ten deferred findings + three negative-result carry items), the Phase 4 carry-item absorption plan (§above — documenting what was absorbed, re-deferred, or exercised).
+
+**Acceptance criteria.**
+
+1. `docs/walkthroughs/phase-4/retrospective.md` exists, structured like Phase 3's retrospective: identity, objective, walkthrough outcome, triage criteria, findings table, per-finding sections, Fix-in-Phase-4 work plan, Deferred-to-Phase-5+ list with named homes, loose ends, outcome.
+2. Triage criteria mirror Phase 3's: does it gate Phase 5? is there 2-feature evidence? does the cost of deferring exceed the cost of fixing now? A finding qualifies for Fix-in-Phase-4 if any of these holds.
+3. The Fix-in-Phase-4 work plan names each follow-up WU (4.8, 4.9, …, 4.N-1) with its scope and a one-sentence rationale. Each fix is independently landable.
+4. **Phase 3 carry-item disposition.** The retrospective includes an explicit section dispositioning each of the 13 Phase 3 carry items: F3.32 (absorbed by WU 4.3 — verify it landed correctly); the three negative-result carry items (closed or qualified based on walkthrough evidence); and the nine re-deferred findings (reaffirmed, absorbed by a fix-ladder WU, or re-deferred with updated home phases).
+5. The deferred list records any new Phase 4 carry-items with an explicit home phase, plus any re-deferred Phase 3 items.
+6. The Phase 4 freeze declaration is explicitly *not* recorded here — it is the scope of the last WU in the fix ladder. The retrospective ends with a pointer to that future WU.
+7. Commit message: `chore(phase-4): retrospective and fix plan`.
+
+**Do not touch.** Do not execute fix items here — the retrospective is triage only. Do not retroactively edit Phase 1, 2, or 3 artifacts. Do not declare the freeze.
+
+**Verification steps.**
+
+1. Open `docs/walkthroughs/phase-3/retrospective.md` and confirm Phase 4's retro follows the same section structure — a reader familiar with Phase 3 should recognize the shape.
+2. Confirm every Fix-in-Phase-4 finding has a named follow-up WU with scope.
+3. Confirm the deferred list has explicit carry-forward homes.
+4. Confirm the Phase 3 carry-item disposition section addresses all 13 items.
+
+**Suggested model.** Sonnet 4.6. Retrospective synthesis against a concrete log; Opus is overkill.
 
 ---
 
