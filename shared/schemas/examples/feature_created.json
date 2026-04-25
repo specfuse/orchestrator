@@ -1,0 +1,6 @@
+{
+  "feature_title": "Widget Catalog API",
+  "involved_repos": ["Bontyyy/orchestrator-api-sample"],
+  "autonomy_default": "review",
+  "correlation_id": "FEAT-2026-0008"
+}

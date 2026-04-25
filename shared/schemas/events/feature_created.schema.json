@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specfuse.dev/orchestrator/schemas/events/feature_created.schema.json",
+  "title": "feature_created event payload",
+  "$comment": "Provenance: authored 2026-04-25 in WU 4.2 (feature-intake skill). Fields: feature_title (required, string), involved_repos (required, array), autonomy_default (required, enum), correlation_id (required, FEAT-YYYY-NNNN). The feature_created event type has existed in event.schema.json since the Phase 1 baseline; this per-type schema is additive, preserving the Phase 1 freeze contract.",
+  "description": "Payload shape for the `feature_created` event emitted by the specs agent when a new feature registry entry is created during feature intake. The payload captures the human-provided inputs (title, repos, autonomy) alongside the minted correlation ID. The correlation ID is duplicated from the envelope for payload self-containment — downstream consumers that index payloads without re-reading the envelope benefit from the redundancy.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "feature_title",
+    "involved_repos",
+    "autonomy_default",
+    "correlation_id"
+  ],
+  "properties": {
+    "feature_title": {
+      "type": "string",
+      "description": "Human-provided title for the feature. Free-form prose; used in the feature registry's Description section header and in downstream issue titles. Not a machine identifier — the correlation ID is the stable reference.",
+      "minLength": 1
+    },
+    "involved_repos": {
+      "type": "array",
+      "description": "Component repositories this feature touches, as `owner/repo` strings. Mirrors the `involved_repos` frontmatter field at creation time.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "autonomy_default": {
+      "type": "string",
+      "description": "Feature-level autonomy default chosen by the human at intake. One of `auto`, `review`, or `supervised`.",
+      "enum": ["auto", "review", "supervised"]
+    },
+    "correlation_id": {
+      "type": "string",
+      "description": "The feature-level correlation ID minted during intake. Matches the envelope `correlation_id` and the registry filename. Duplicated here for payload self-containment.",
+      "pattern": "^FEAT-\\d{4}-\\d{4}$"
+    }
+  }
+}
