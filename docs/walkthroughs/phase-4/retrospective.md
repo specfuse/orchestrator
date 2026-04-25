@@ -412,4 +412,88 @@ The 13 Phase 3 carry items were dispositioned:
 
 Phase 4 is ready to proceed to the fix ladder once this retrospective merges. Phase 5 (generator feedback loop and merge-watcher agent) can start after the fix WU (4.8) ships and the freeze declaration is issued.
 
-The Phase 4 freeze declaration is **not** recorded here. It will be issued by **WU 4.9**, analogous to WU 1.12, WU 2.15, and WU 3.13, after WU 4.8 merges. That WU will enumerate the frozen specs-agent surface (feature-intake, spec-drafting, spec-validation, spec-issue-triage skills + specs CLAUDE.md v1.0.x) and carry the Deferred-to-Phase-5+ list into Phase 5's inputs.
+## Phase 4 freeze declaration
+
+**Declared on 2026-04-25 as part of WU 4.9.**
+
+All four Fix-in-Phase-4 items identified by the WU 4.7 triage have shipped to `main` in one post-retrospective fix WU:
+
+| # | Finding(s) | WU | Commit |
+|---|---|---|---|
+| F4.3 + F4.16 | Spec-validation SKILL.md trigger value standardization (`validation_requested`, `validation_passed`) | WU 4.8 | `7a7483d` |
+| F4.5 | Spec-drafting SKILL.md `## Related specs` path format guidance (repo-relative paths) | WU 4.8 | `7a7483d` |
+| F4.12 | Spec-drafting SKILL.md `## Delivery convention` section | WU 4.8 | `7a7483d` |
+
+Additionally, **one carry-item from Phase 3** was absorbed during Phase 4's skill-authoring WUs:
+
+- **F3.32 (cardinality wording "expected" ambiguous)** — absorbed via WU 4.3 (spec-drafting SKILL.md §"Scope and cardinality conventions"). The Phase 3 retrospective's home clause ("Phase 4+ — specs-agent guidance") is satisfied. Verified in WU 4.7.
+
+And **three negative-result carry items from Phase 3** were closed during Phase 4 walkthroughs:
+
+- **qa-regression runtime validation** — closed (qualified: induced regression). F2 S14 exercised the skill for the first time; correct artifacts produced.
+- **Q4 cross-attribution resolution** — closed (qualified: induced regression). Full cycle exercised in F2 (S14 filing → S15 audit → S16 fix → S18 re-execution → S19 resolution). Q4 invariant held.
+- **"First round" semantics refinement** — observation recorded; no finding. V1 "first-task-opened" semantics confirmed correct by F2 S7; F1's "all tasks opened" was coincidental timing.
+
+With WU 4.8 landed, the specs agent configuration plus the post-fix-ladder skills are declared frozen for Phase 5 consumption:
+
+> **Specs agent v1.0.1 is the baseline Phase 5 depends on. The Phase 1 + Phase 2 + Phase 3 frozen surfaces, as amended by their respective post-freeze additive fix ladders, remain the orchestrator's operational foundation. Changes to any frozen surface during Phase 5+ require architectural justification.**
+
+### Frozen specs-agent surface (v1.0.1)
+
+- [`agents/specs/CLAUDE.md`](../../../agents/specs/CLAUDE.md) — role config (v1.0.0 file version; specs agent v1.0.1).
+- [`agents/specs/skills/feature-intake/SKILL.md`](../../../agents/specs/skills/feature-intake/SKILL.md) — v1.0 (unchanged since WU 4.2).
+- [`agents/specs/skills/spec-drafting/SKILL.md`](../../../agents/specs/skills/spec-drafting/SKILL.md) — v1.0 post-WU 4.8 (Related specs path format guidance + delivery convention section added).
+- [`agents/specs/skills/spec-validation/SKILL.md`](../../../agents/specs/skills/spec-validation/SKILL.md) — v1.0 post-WU 4.8 (trigger values standardized to `validation_requested` / `validation_passed`).
+- [`agents/specs/skills/spec-issue-triage/SKILL.md`](../../../agents/specs/skills/spec-issue-triage/SKILL.md) — v1.0 (unchanged since WU 4.5 — **spec-issue-triage's runtime path remains unvalidated**; no spec issue was filed during Phase 4 walkthroughs; Phase 5 carry).
+- [`agents/specs/rules/`](../../../agents/specs/rules/) — intentionally empty at freeze; no role-specific overrides needed at v1.
+
+### Prior phase frozen surfaces (unchanged by Phase 4)
+
+Phase 4 did **not** amend any Phase 1, 2, or 3 frozen surface. The full prior-phase baseline is:
+
+- **Component agent v1.5.2** (Phase 1 frozen, Phase 3 amended) — `agents/component/CLAUDE.md`, `agents/component/skills/verification/SKILL.md` v1.2, `agents/component/skills/pr-submission/SKILL.md` v1.1, `agents/component/skills/escalation/SKILL.md` v1.2.
+- **PM agent v1.6.3** (Phase 2 frozen, Phase 3 amended) — `agents/pm/CLAUDE.md`, `agents/pm/skills/task-decomposition/SKILL.md` v1.2, `agents/pm/skills/plan-review/SKILL.md` v1.2, `agents/pm/skills/issue-drafting/SKILL.md` v1.4, `agents/pm/skills/dependency-recomputation/SKILL.md` v1.1, `agents/pm/skills/template-coverage-check/SKILL.md` v1.1.
+- **QA agent v1.5.2** (Phase 3 frozen) — `agents/qa/CLAUDE.md`, `agents/qa/skills/qa-authoring/SKILL.md` v1.1, `agents/qa/skills/qa-execution/SKILL.md` v1.0, `agents/qa/skills/qa-regression/SKILL.md` v1.0, `agents/qa/skills/qa-curation/SKILL.md` v1.1.
+- **Shared substrate** — `shared/rules/*` (8 files, post-WU 3.11), `shared/templates/*` (post-WU 3.10), `shared/schemas/*` (plus Phase 4 per-type schemas: `feature_created`, `spec_validated`, `spec_issue_resolved`, `spec_issue_routed`).
+
+### The freeze does **not** cover
+
+- The config-steward or merge-watcher role configs. Those remain Phase 0 v0.1 drafts (or non-existent) pending Phase 5 per the implementation plan.
+- The thirteen findings deferred to Phase 5+ by this retrospective (4 new Phase 4 findings + 9 re-deferred Phase 3 findings). They are scheduled carry-items, not part of the frozen surface. Each has a named home phase in §"Deferred to Phase 5+" above.
+- The **Phase 5 carry items** that emerged from Phase 4:
+  - (a) The spec-issue-triage skill's runtime validation (the skill was authored in WU 4.5 but never exercised at runtime — no spec issue was filed during Phase 4 walkthroughs). Phase 5 walkthroughs should include at least one spec-issue routing exercise.
+  - (b) The qa-regression / Q4 qualification: validated via induced regression, not organic. A future walkthrough that produces a natural regression would remove this qualification. Low priority — the skill's correctness is demonstrated; only the trigger mechanism is qualified.
+  - (c) Specfuse CLI installation: the spec-validation skill's failure-feedback path (Step 6) was not exercised because the CLI was not installed. Future walkthroughs should install the CLI to exercise the full validation flow.
+
+### Carry list for Phase 5 inputs
+
+**New Phase 4 findings deferred to Phase 5+:**
+
+| # | Finding | Home |
+|---|---|---|
+| F4.6 | Capability-counting rule unclear for narrative specs | Phase 5+ — task-decomposition SKILL.md revision (PM frozen surface) |
+| F4.7 | template-coverage-check expects `state == planning` (= F3.27) | Phase 5+ — template-coverage-check SKILL.md revision (PM frozen surface) |
+| F4.10 | Issue path bug: `product/features/test-plans/` vs `product/test-plans/` | Phase 5+ — issue-drafting SKILL.md revision (PM frozen surface) |
+| F4.13 | `dotnet test --no-build` false-green in qa-execution context | Phase 5+ — qa-execution SKILL.md revision (QA frozen surface) |
+
+**Re-deferred Phase 3 findings (carried forward from Phase 3 → Phase 4 → Phase 5+):**
+
+| # | Finding | Home |
+|---|---|---|
+| F3.11 | SKILL.md files exceed 25k token read limit | Phase 5+ — any WU revising long SKILL.md files for other reasons |
+| F3.15 | Task lifecycle events have no per-type schema (envelope-only) | Phase 5 — schema-governance automation |
+| F3.16 | "Done" derivation signal priority undocumented in dep-recomputation | Phase 5 — merge-watcher agent design |
+| F3.17 | `## Scope` cardinality clause wording ambiguity in task-decomposition | Phase 5+ — task-decomposition SKILL.md revision |
+| F3.22 | Rule 1 `qa_execution never auto` conditional parsing friction | Phase 5+ — qa-execution SKILL.md revision |
+| F3.24 | T04 `## Deliverables` forward-looking reference | Phase 5+ — plan-review skill evolution |
+| F3.27 | template-coverage-check entry-condition expects `state == planning` | Phase 5+ — template-coverage-check SKILL.md revision |
+| F3.31 | `source: component:<bare_name>` format | Phase 5+ — schema-hygiene pass |
+| F3.33 | `tail -1 log \| json.tool` fails on blank trailing line | Phase 5+ — verify-before-report.md §3 revision |
+
+**Phase 5 carry items (new from Phase 4):**
+
+- **spec-issue-triage runtime validation.** The skill was authored but never exercised at runtime. Phase 5 walkthroughs should include at least one spec-issue routing exercise.
+- **qa-regression / Q4 organic trigger qualification.** Validated via induced regression; a natural regression would remove this qualification.
+- **Specfuse CLI installation.** Spec-validation failure-feedback path (Step 6) not exercised.
+
+Phase 5 (generator feedback loop and merge-watcher agent) can now start. The four Fix-in-Phase-4 items and their rationales are the contract Phase 5 inherits, alongside the frozen specs + QA + PM + component + shared surfaces above and the thirteen Deferred-to-Phase-5+ findings + three Phase 5 carry items documented in this section.
