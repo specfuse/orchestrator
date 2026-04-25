@@ -101,6 +101,8 @@ This maps to qa-authoring's test entry as:
 
 **Output of Phase 2.** Spec files exist under `/product/` and the feature registry's `## Related specs` section links to every produced file. The acceptance criteria are enumerated in the spec files (for machine-readable specs, as response definitions; for narratives, as the `### Acceptance criteria` section).
 
+**`## Related specs` path format.** Each entry in the `## Related specs` section must use a **repository-relative path** as the primary reference (e.g., `product/features/FEAT-2026-0008.md`, `product/specs/widget-update-api.yaml`). These paths are relative to the product specs repo root and are portable across local clones and GitHub views. Full GitHub URLs may appear as supplementary links for human readers, but the first reference in each list item must be a relative path — downstream agents (PM, QA, component) operate on local clones and cannot resolve GitHub URLs to filesystem paths without a `find` workaround. The worked example below demonstrates the format.
+
 **After writing each file,** re-read the created file and confirm its content matches the intended draft. This is the spec-drafting skill's local application of the [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md) re-read discipline.
 
 ---
@@ -158,6 +160,23 @@ The skill does **not** modify the feature registry's frontmatter. The frontmatte
 - `involved_repos` and `autonomy_default` are set at intake.
 
 If the spec-drafting session surfaces a need to change `involved_repos` (e.g., the feature turns out to touch an additional repo), the agent informs the human and suggests re-running the relevant portion of feature intake — it does not modify the frontmatter directly.
+
+## Delivery convention
+
+Spec files produced by the spec-drafting skill must be committed to the product specs repo before the feature can proceed to validation. Uncommitted drafts are not a valid output state — the spec-validation skill reads spec files from the repo, and downstream agents (PM, QA) consume committed content.
+
+**When to commit.** After the human approves the spec content at the end of Phase 3 (pre-validation review), the agent commits the spec files to the product specs repo. This is the natural boundary: the content is reviewed, the agent has verified each file via re-read, and the next step (spec-validation) requires the files to be in the repo.
+
+**How to commit.** The delivery approach depends on the product specs repo's branch-protection posture:
+
+- **If the repo has branch protection on `main`:** create a feature branch (suggested format: `specs/FEAT-YYYY-NNNN`), commit the spec files, push, and open a PR against `main`. The human merges the PR before proceeding to spec-validation. The agent stops at PR-open — it does not merge or close.
+- **If the repo does not have branch protection:** commit directly to `main` and push. This is the simpler path for repos where the human is the sole reviewer and the spec-drafting session is the review.
+
+In either case, the commit message should follow the format: `feat(specs): draft FEAT-YYYY-NNNN <feature-title>`.
+
+**What to commit.** Only the spec files under `/product/` that this session created or modified. Do not commit files outside `/product/`, files in `/business/` ([`never-touch.md`](../../../../shared/rules/never-touch.md) §4), or files in `/product/test-plans/` (QA agent's surface). The feature registry body-section updates (in the orchestration repo) are committed separately by the orchestration session or human operator — the spec-drafting agent does not commit to the orchestration repo ([`verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §"Event-emission operational discipline").
+
+**Relationship to qa-authoring delivery convention.** This convention mirrors the qa-authoring skill's delivery convention (added in WU 3.9): both produce files in the product specs repo, both use branch + PR when branch protection is active, and both stop at PR-open. The commit boundary is the same: "content reviewed and verified → commit → downstream skill can proceed."
 
 ## Scope and cardinality conventions
 

@@ -60,7 +60,7 @@ This step runs only when the feature's current state is `drafting`. On re-valida
 | `source_version` | Output of `scripts/read-agent-version.sh specs` |
 | `payload.from_state` | `drafting` |
 | `payload.to_state` | `validating` |
-| `payload.trigger` | `human_requested_validation` |
+| `payload.trigger` | `validation_requested` |
 
 **2c.** Write the event to `/tmp/event.json`. Validate through `scripts/validate-event.py`:
 
@@ -207,7 +207,7 @@ The PM agent can pick up the feature for task decomposition.
 | `source_version` | Output of `scripts/read-agent-version.sh specs` |
 | `payload.from_state` | `validating` |
 | `payload.to_state` | `planning` |
-| `payload.trigger` | `validation_clean` |
+| `payload.trigger` | `validation_passed` |
 
 **8d.** Write to `/tmp/event.json`, validate, and append:
 
@@ -223,7 +223,7 @@ printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-YYYY-NNNN.jsonl
 Feature FEAT-YYYY-NNNN is ready for PM planning.
 
 State: validating → planning
-Trigger: validation_clean
+Trigger: validation_passed
 PM handoff: the PM agent's task-decomposition skill can now pick up
 this feature.
 ```
@@ -248,7 +248,7 @@ The skill owns two feature-level transitions. Both are emitted as `feature_state
 
 - **When:** the human requests validation and the feature is currently in `drafting`.
 - **Timing:** emitted **before** the validator runs (Step 2), so that the event log records the intent to validate even if the validator invocation fails.
-- **Trigger:** `human_requested_validation`.
+- **Trigger:** `validation_requested`.
 - **Idempotence:** if the feature is already in `validating` (re-validation), the transition is skipped entirely — no duplicate event is emitted. The `validating` state means "validation in progress or awaiting fix + re-validation."
 - **Registry update:** `state: drafting` → `state: validating` in the feature's frontmatter.
 
@@ -256,7 +256,7 @@ The skill owns two feature-level transitions. Both are emitted as `feature_state
 
 - **When:** all spec files pass validation with zero errors.
 - **Timing:** emitted **after** the `spec_validated(pass: true)` event (Step 8), as the last action of the skill.
-- **Trigger:** `validation_clean`.
+- **Trigger:** `validation_passed`.
 - **Idempotence:** guarded by scanning the event log for a prior `feature_state_changed` event with `from_state: validating` and `to_state: planning`. If found, the transition is skipped. This prevents duplicate handoffs if the human runs validation again on unchanged, already-validated specs.
 - **Registry update:** `state: validating` → `state: planning` in the feature's frontmatter.
 - **PM handoff:** this transition is what releases the PM agent's task-decomposition skill. Once emitted, the PM agent can pick up the feature. On a failed validation, the feature stays in `validating` — the skill does **not** transition back to `drafting` on failure, because that would require the human to re-trigger the `drafting → validating` transition unnecessarily.
@@ -369,7 +369,7 @@ SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
 
 # Construct event
 cat > /tmp/event.json << EOF
-{"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"feature_state_changed","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"from_state":"drafting","to_state":"validating","trigger":"human_requested_validation"}}
+{"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"feature_state_changed","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"from_state":"drafting","to_state":"validating","trigger":"validation_requested"}}
 EOF
 
 # Validate and append
@@ -526,7 +526,7 @@ TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
 
 cat > /tmp/event.json << EOF
-{"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"feature_state_changed","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"from_state":"validating","to_state":"planning","trigger":"validation_clean"}}
+{"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"feature_state_changed","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"from_state":"validating","to_state":"planning","trigger":"validation_passed"}}
 EOF
 
 python3 scripts/validate-event.py --file /tmp/event.json
@@ -540,7 +540,7 @@ printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-2026-0042.jsonl
 Feature FEAT-2026-0042 is ready for PM planning.
 
 State: validating → planning
-Trigger: validation_clean
+Trigger: validation_passed
 PM handoff: the PM agent's task-decomposition skill can now pick up
 this feature.
 ```
@@ -556,10 +556,10 @@ The event log at `/events/FEAT-2026-0042.jsonl` contains four entries (plus the 
 | # | `event_type` | Key payload fields |
 |---|---|---|
 | 1 | `feature_created` | (from intake — pre-existing) |
-| 2 | `feature_state_changed` | `from_state: drafting`, `to_state: validating`, `trigger: human_requested_validation` |
+| 2 | `feature_state_changed` | `from_state: drafting`, `to_state: validating`, `trigger: validation_requested` |
 | 3 | `spec_validated` | `pass: false`, 1 error (missing operationId) |
 | 4 | `spec_validated` | `pass: true`, 0 errors |
-| 5 | `feature_state_changed` | `from_state: validating`, `to_state: planning`, `trigger: validation_clean` |
+| 5 | `feature_state_changed` | `from_state: validating`, `to_state: planning`, `trigger: validation_passed` |
 
 **Confirming the acceptance criteria:**
 
