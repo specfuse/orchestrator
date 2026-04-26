@@ -153,7 +153,9 @@ for sha in "${commits[@]}"; do
   echo
 
   while true; do
-    printf "Take this commit? [y]es / [n]o / [d]iff / [q]uit: "
+    # Prompt and read both go through /dev/tty so the prompt text flushes
+    # immediately even when stdout is line-buffered (e.g., Claude Code's `!`).
+    printf "Take this commit? [y]es / [n]o / [d]iff / [q]uit: " > /dev/tty
     read -r answer < /dev/tty
     case "$answer" in
       y|Y|yes)
@@ -208,7 +210,7 @@ if [[ ${#picked[@]} -gt 0 ]] || [[ ${#declined[@]} -gt 0 ]]; then
   echo "If you reviewed all commits in this session, you can advance the UPSTREAM"
   echo "anchor to ${target_sha:0:12} so future syncs don't re-list these."
   echo
-  printf "Update UPSTREAM to %s? [y/N]: " "${target_sha:0:12}"
+  printf "Update UPSTREAM to %s? [y/N]: " "${target_sha:0:12}" > /dev/tty
   read -r answer < /dev/tty
   if [[ "$answer" =~ ^[Yy] ]]; then
     today=$(date -u +%Y-%m-%d)

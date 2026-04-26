@@ -207,7 +207,9 @@ for i in "${!candidate_shas[@]}"; do
 
   echo
   while true; do
-    printf "Extract this commit? [y]es / [n]o / [d]iff / [q]uit: "
+    # Prompt and read both go through /dev/tty so the prompt text flushes
+    # immediately even when stdout is line-buffered (e.g., Claude Code's `!`).
+    printf "Extract this commit? [y]es / [n]o / [d]iff / [q]uit: " > /dev/tty
     read -r answer < /dev/tty
     case "$answer" in
       y|Y|yes)
