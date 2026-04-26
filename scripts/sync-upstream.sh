@@ -98,9 +98,11 @@ fi
 
 # --- List commits in scope ---
 
-mapfile -t commits < <(
-  git log --reverse --format='%H' "${base_sha}..${target_ref}" -- "${PATHSPEC[@]}" 2>/dev/null
-)
+# Portable read-into-array (bash 3.2 has no `mapfile`/`readarray`).
+commits=()
+while IFS= read -r line; do
+  commits+=("$line")
+done < <(git log --reverse --format='%H' "${base_sha}..${target_ref}" -- "${PATHSPEC[@]}" 2>/dev/null)
 
 if [[ ${#commits[@]} -eq 0 ]]; then
   echo "No upstream commits in $base_sha..$target_ref touch scaffolding paths."
@@ -153,7 +155,9 @@ for sha in "${commits[@]}"; do
   echo
 
   while true; do
-    printf "Take this commit? [y]es / [n]o / [d]iff / [q]uit: "
+    # Prompt and read both go through /dev/tty so the prompt text flushes
+    # immediately even when stdout is line-buffered (e.g., Claude Code's `!`).
+    printf "Take this commit? [y]es / [n]o / [d]iff / [q]uit: " > /dev/tty
     read -r answer < /dev/tty
     case "$answer" in
       y|Y|yes)
@@ -208,7 +212,7 @@ if [[ ${#picked[@]} -gt 0 ]] || [[ ${#declined[@]} -gt 0 ]]; then
   echo "If you reviewed all commits in this session, you can advance the UPSTREAM"
   echo "anchor to ${target_sha:0:12} so future syncs don't re-list these."
   echo
-  printf "Update UPSTREAM to %s? [y/N]: " "${target_sha:0:12}"
+  printf "Update UPSTREAM to %s? [y/N]: " "${target_sha:0:12}" > /dev/tty
   read -r answer < /dev/tty
   if [[ "$answer" =~ ^[Yy] ]]; then
     today=$(date -u +%Y-%m-%d)

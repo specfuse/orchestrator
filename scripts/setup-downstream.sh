@@ -88,13 +88,21 @@ if [[ $already_stripped -eq 1 ]]; then
   echo
 fi
 
+# Reads a value interactively. Prompt text and read both go through /dev/tty
+# rather than stdout/stdin — two reasons:
+#   1. Callers use `var=$(prompt "...")` which captures stdout. If the prompt
+#      text were written to stdout it would land in $var alongside the answer,
+#      contaminating values used in case-pattern matches and shell expansions.
+#   2. Under Claude Code's `!` prefix, stdout may be line-buffered so a
+#      newline-less printf to stdout never flushes; /dev/tty writes flush
+#      to the terminal immediately.
 prompt() {
   local prompt_text="$1" default="${2:-}"
   local answer
   if [[ -n "$default" ]]; then
-    printf "%s [%s]: " "$prompt_text" "$default"
+    printf "%s [%s]: " "$prompt_text" "$default" > /dev/tty
   else
-    printf "%s: " "$prompt_text"
+    printf "%s: " "$prompt_text" > /dev/tty
   fi
   read -r answer < /dev/tty
   if [[ -z "$answer" && -n "$default" ]]; then

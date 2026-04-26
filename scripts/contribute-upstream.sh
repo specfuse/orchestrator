@@ -97,7 +97,11 @@ fi
 
 # --- List downstream commits ---
 
-mapfile -t all_commits < <(git log --reverse --format='%H' "${base_sha}..HEAD" 2>/dev/null)
+# Portable read-into-array (bash 3.2 has no `mapfile`/`readarray`).
+all_commits=()
+while IFS= read -r line; do
+  all_commits+=("$line")
+done < <(git log --reverse --format='%H' "${base_sha}..HEAD" 2>/dev/null)
 
 if [[ ${#all_commits[@]} -eq 0 ]]; then
   echo "No downstream commits since ${base_sha:0:12}. Nothing to contribute."
@@ -207,7 +211,9 @@ for i in "${!candidate_shas[@]}"; do
 
   echo
   while true; do
-    printf "Extract this commit? [y]es / [n]o / [d]iff / [q]uit: "
+    # Prompt and read both go through /dev/tty so the prompt text flushes
+    # immediately even when stdout is line-buffered (e.g., Claude Code's `!`).
+    printf "Extract this commit? [y]es / [n]o / [d]iff / [q]uit: " > /dev/tty
     read -r answer < /dev/tty
     case "$answer" in
       y|Y|yes)
