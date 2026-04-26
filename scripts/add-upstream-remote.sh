@@ -28,7 +28,10 @@ if [[ ! -d .git ]]; then
   exit 1
 fi
 
-upstream_url=$(awk -F': *' '$1 == "upstream" { print $2; exit }' UPSTREAM | sed 's/[[:space:]]*$//')
+# Extract the upstream URL. We can't use `awk -F': *'` here because the URL
+# itself contains a colon (e.g., `https://...`), so a `:`-based field split
+# would truncate the URL at the first colon and capture only "https".
+upstream_url=$(grep -m1 '^upstream:' UPSTREAM | sed -E 's/^upstream:[[:space:]]*//; s/[[:space:]]+$//')
 
 if [[ -z "$upstream_url" ]] || [[ "$upstream_url" == \<* ]]; then
   echo "Error: UPSTREAM file does not contain a valid upstream URL." >&2
