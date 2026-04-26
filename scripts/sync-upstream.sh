@@ -98,9 +98,11 @@ fi
 
 # --- List commits in scope ---
 
-mapfile -t commits < <(
-  git log --reverse --format='%H' "${base_sha}..${target_ref}" -- "${PATHSPEC[@]}" 2>/dev/null
-)
+# Portable read-into-array (bash 3.2 has no `mapfile`/`readarray`).
+commits=()
+while IFS= read -r line; do
+  commits+=("$line")
+done < <(git log --reverse --format='%H' "${base_sha}..${target_ref}" -- "${PATHSPEC[@]}" 2>/dev/null)
 
 if [[ ${#commits[@]} -eq 0 ]]; then
   echo "No upstream commits in $base_sha..$target_ref touch scaffolding paths."
