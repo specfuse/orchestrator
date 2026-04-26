@@ -56,12 +56,13 @@ for marker in agents/onboarding/CLAUDE.md shared/rules/README.md scripts/validat
   [[ -f "$marker" ]] || { echo "Missing $marker — does not look like an orchestrator template clone." >&2; exit 1; }
 done
 
-# Refuse to run on the upstream repo itself.
-if [[ -d .git ]] && git remote -v 2>/dev/null | grep -Eqi 'specfuse[/:]orchestrator(\.git)?( |$|/)'; then
-  echo "Refusing: target's .git remote points to the upstream Specfuse/orchestrator." >&2
-  echo "Remove .git first (rm -rf .git) if you intend to strip this clone." >&2
-  exit 1
-fi
+# Note: a fresh template clone and the upstream's own dev source-of-truth
+# both have .git remote = Specfuse/orchestrator, so the script can't
+# distinguish them. The marker-file check above confirms this is an
+# orchestrator scaffolding tree; "don't run strip on your dev source-of-truth"
+# is the operator's responsibility, not something the script can reliably
+# enforce. If you accidentally run it in the wrong place, `git restore .`
+# recovers everything.
 
 run() {
   if [[ $dry_run -eq 1 ]]; then
