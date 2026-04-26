@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in the scaffolding doesn't work as documented
+title: "[bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an issue. Please fill in the sections below.
+
+        For **security-sensitive issues**, please follow [SECURITY.md](../SECURITY.md) instead — do not open a public bug report.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you observe?
+      placeholder: When I ran X, the agent did Y, but the docs said it should do Z.
+    validations:
+      required: true
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What you expected
+      description: Concrete expected behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Clone the upstream / open a downstream session
+        2. Run `./scripts/...`
+        3. Observe ...
+    validations:
+      required: true
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      multiple: true
+      options:
+        - Specs agent
+        - PM agent
+        - Component agent
+        - QA agent
+        - Onboarding agent
+        - Scripts (sync, contribute, setup, validators)
+        - Shared rules / schemas / templates
+        - Documentation
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Upstream commit / version
+      description: Output of `cat UPSTREAM` if downstream, or the commit SHA you're at if working on upstream.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Logs, environment details (OS, Claude Code version, gh version), screenshots if helpful.

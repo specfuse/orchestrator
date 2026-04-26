@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation — Getting started
+    url: https://github.com/Specfuse/orchestrator/blob/main/GETTING_STARTED.md
+    about: The 5-minute on-ramp for greenfield and brownfield projects.
+  - name: Documentation — Operator runbook
+    url: https://github.com/Specfuse/orchestrator/blob/main/docs/operator-runbook.md
+    about: Day-1 quickstart for drafting your first feature.
+  - name: Documentation — Architecture
+    url: https://github.com/Specfuse/orchestrator/blob/main/docs/orchestrator-architecture.md
+    about: Authoritative architecture document. When configs and architecture conflict, architecture wins.

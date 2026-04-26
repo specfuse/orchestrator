@@ -1,0 +1,46 @@
+name: Feature request
+description: Suggest an improvement or new capability
+title: "[feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please describe your use case below.
+
+        Before opening, check that the idea is **scaffolding-relevant** (useful to any project running the orchestrator) rather than project-specific. Project-specific changes belong in your downstream, not upstream.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that's currently hard or impossible?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: What would you add, modify, or remove? Mention specific agents, skills, scripts, or docs if relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you consider? Why didn't they work?
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      options:
+        - Scaffolding only (upstream — applies to any project)
+        - Likely needs Phase 5 work (generator feedback loop, config-steward)
+        - Project-specific (downstream — won't go upstream)
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Cross-references to architecture sections, retrospective findings, or carry items if relevant.
