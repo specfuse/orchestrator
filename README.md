@@ -51,3 +51,13 @@ Once a project is wired:
 
 - [`docs/operator-runbook.md`](docs/operator-runbook.md) — quickstart for driving a feature from idea through `planning` with the specs agent. Includes environment prerequisites.
 - [`docs/operator-pipeline-reference.md`](docs/operator-pipeline-reference.md) — full-lifecycle operator reference covering PM, component, and QA sessions, inbox handling, spec-issue triage, and escalations.
+
+### Slash commands (in a Claude Code session)
+
+Project-scoped slash commands wrap the most common operations and become available via `/` autocomplete when you open a Claude Code session at the orchestration repo:
+
+- `/onboard` — switch into the onboarding-agent role; runs `repo-inventory`, `integration-plan`, or `bootstrap-greenfield` depending on project state.
+- `/sync-upstream` — periodic upstream sync; reviews and cherry-picks upstream commits since the `UPSTREAM` anchor.
+- `/contribute-upstream` — extract scaffolding-only patches from downstream commits for an upstream PR.
+
+The commands wrap the equivalent shell scripts under [`scripts/`](scripts/) and are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).

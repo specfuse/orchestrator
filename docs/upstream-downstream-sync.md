@@ -76,7 +76,7 @@ The script reads the URL from the top-level `UPSTREAM` file, adds an `upstream` 
 
 ### Periodic sync (recommended cadence: monthly, or on upstream release)
 
-The recommended path is the interactive sync script, which walks you through the upstream commits since your last anchor and cherry-picks the ones you want.
+The recommended path is the interactive sync script, which walks you through the upstream commits since your last anchor and cherry-picks the ones you want. From a Claude Code session, the same workflow is available as the `/sync-upstream` slash command — Claude introduces what's about to happen, asks you to run the script via `! ./scripts/sync-upstream.sh`, and helps with conflict resolution and post-sync follow-ups.
 
 ```bash
 ./scripts/sync-upstream.sh
@@ -140,7 +140,7 @@ Keep an eye on your role-specific `rules/` directories (e.g., `/agents/specs/rul
 
 If you find a bug, write a useful new skill, or improve a shared rule in your downstream, you may want to contribute it back. The path is more involved than upstream-pull because your downstream commits include private feature data that must not leak.
 
-The recommended path is the interactive contribution helper, which reviews your downstream commits since the `UPSTREAM` anchor, identifies which touch scaffolding paths, and produces clean path-scoped patches.
+The recommended path is the interactive contribution helper, which reviews your downstream commits since the `UPSTREAM` anchor, identifies which touch scaffolding paths, and produces clean path-scoped patches. From a Claude Code session, the same workflow is available as the `/contribute-upstream` slash command.
 
 ```bash
 ./scripts/contribute-upstream.sh
