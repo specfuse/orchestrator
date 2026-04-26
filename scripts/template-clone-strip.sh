@@ -147,7 +147,103 @@ for d in features events overrides \
   ensure_gitkeep "$d"
 done
 
-# 6. Write the UPSTREAM anchor file (only if it doesn't already exist — re-runs
+# 6. Replace the upstream Apache 2.0 LICENSE with a proprietary placeholder and
+#    preserve attribution in NOTICES.md. Most downstream orchestration repos
+#    hold proprietary content (project specs, features, integration plans);
+#    inheriting the upstream's permissive license would misleadingly imply the
+#    whole repo is Apache 2.0. The placeholder makes the IP boundary explicit;
+#    NOTICES.md keeps the upstream attribution intact (Apache 2.0 §4.b).
+#    Re-run safety: skip if NOTICES.md already exists.
+#    For an OSS downstream, restore manually: git restore LICENSE NOTICE && rm NOTICES.md
+if [[ -f NOTICES.md ]]; then
+  echo "NOTICES.md already present — not overwriting LICENSE/NOTICES."
+elif [[ -f LICENSE ]]; then
+  echo "Replacing upstream LICENSE with proprietary placeholder; preserving attribution in NOTICES.md"
+  if [[ $dry_run -eq 0 ]]; then
+    upstream_license_text=$(cat LICENSE)
+    upstream_notice_text=""
+    if [[ -f NOTICE ]]; then
+      upstream_notice_text=$(cat NOTICE)
+    fi
+
+    # Proprietary LICENSE placeholder. <YEAR> and <COPYRIGHT_HOLDER> are
+    # substituted by scripts/setup.sh after strip; if strip is run standalone,
+    # the operator fills them in manually. Adjust to your organization's
+    # standard proprietary license as needed.
+    cat > LICENSE <<'LICENSE_EOF'
+Copyright (c) <YEAR> <COPYRIGHT_HOLDER>
+All Rights Reserved.
+
+This software and associated documentation files (the "Software") contain
+proprietary and confidential information of <COPYRIGHT_HOLDER>.
+
+Unauthorized copying, reproduction, modification, distribution, or use of
+any part of this Software, via any medium, is strictly prohibited.
+
+This Software incorporates components derived from third-party open-source
+projects. Those components remain governed by their respective licenses;
+see NOTICES.md for the full text of those licenses and the attribution
+they require.
+
+NOTE: This is a starting template for a proprietary downstream orchestration
+repository. Replace `<YEAR>` and `<COPYRIGHT_HOLDER>` with concrete values,
+or replace this entire file with your organization's standard license terms.
+Consult legal counsel for the final arrangement.
+LICENSE_EOF
+
+    # NOTICES.md preserves Apache 2.0 attribution and reproduces the upstream
+    # LICENSE/NOTICE in full. Backticks escaped (\`) so they remain literal in
+    # the rendered Markdown rather than triggering command substitution.
+    cat > NOTICES.md <<NOTICES_EOF
+# Notices and third-party licenses
+
+Portions of this repository are derived from the [Specfuse Orchestrator](https://github.com/specfuse/orchestrator) project, an open-source multi-agent software development coordination framework licensed under the Apache License, Version 2.0.
+
+The following directories and files in this repository are derived from the upstream Specfuse Orchestrator scaffolding:
+
+- \`agents/\` — agent role configurations and skills
+- \`shared/\` — shared rules, schemas, templates
+- \`scripts/\` — orchestration helper scripts
+- \`docs/\` — operator documentation (vision, architecture, runbooks, sync workflow)
+- \`project/README.md\` — project directory overview
+- \`README.md\`, \`CONTRIBUTING.md\`, \`GETTING_STARTED.md\` — repository overview and contribution guides
+- \`SECURITY.md\`, \`CODE_OF_CONDUCT.md\` — community health files
+- \`.github/\` — issue and PR templates
+- \`.claude/commands/\` — project-scoped slash commands
+
+These files (and any modifications you make to them in this downstream) remain available under the upstream's Apache 2.0 license. Modifications must carry a notice stating they were changed, per Apache 2.0 §4.b — that notice can be a commit message, a changelog entry, or an inline comment, as appropriate.
+
+Original work added to this repository — including your project's \`/features/\`, \`/events/\`, \`/inbox/\`, \`/project/\` content (beyond \`README.md\`), and any local additions under \`/agents/<role>/rules/\` — is governed by this repository's [\`LICENSE\`](LICENSE).
+
+The upstream's LICENSE and NOTICE files are reproduced in full below for attribution.
+
+---
+
+## Upstream LICENSE — Apache License, Version 2.0
+
+\`\`\`
+${upstream_license_text}
+\`\`\`
+
+---
+
+## Upstream NOTICE
+
+\`\`\`
+${upstream_notice_text:-(no upstream NOTICE file was present at strip time)}
+\`\`\`
+NOTICES_EOF
+
+    # Remove upstream NOTICE — its content is now in NOTICES.md.
+    if [[ -f NOTICE ]]; then
+      rm -f NOTICE
+    fi
+  fi
+else
+  echo "No LICENSE found — skipping LICENSE/NOTICES setup."
+fi
+
+# 7. Write the UPSTREAM anchor file (only if it doesn't already exist — re-runs
 #    of the strip don't clobber a downstream's existing anchor record).
 if [[ -f UPSTREAM ]]; then
   echo "UPSTREAM file already present — not overwriting."

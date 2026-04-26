@@ -40,6 +40,18 @@ Once a project is wired:
 - [`docs/operator-runbook.md`](docs/operator-runbook.md) — quickstart for driving a feature from idea through `planning` with the specs agent. Includes environment prerequisites.
 - [`docs/operator-pipeline-reference.md`](docs/operator-pipeline-reference.md) — full-lifecycle operator reference covering PM, component, and QA sessions, inbox handling, spec-issue triage, and escalations.
 
+### Licensing — upstream vs. downstream
+
+This **upstream** repository is licensed under [Apache 2.0](LICENSE). You can incorporate the scaffolding into your own work, including proprietary work, with attribution.
+
+A **downstream** orchestration repo created via [`scripts/setup.sh`](scripts/setup.sh) holds your project's coordination state — `/features/`, `/events/`, `/inbox/`, `/project/` — alongside the upstream-derived scaffolding. Most teams want this content treated as **proprietary**, not Apache 2.0. The setup script handles this automatically:
+
+- The upstream's `LICENSE` (Apache 2.0) is replaced with a **proprietary placeholder** carrying your org name as the copyright holder and the current year.
+- A `NOTICES.md` is created at the downstream's root with full Apache 2.0 attribution and reproduces the upstream's `LICENSE` and `NOTICE` text in full — satisfying Apache 2.0 §4.b for the upstream-derived files (`agents/`, `shared/`, `scripts/`, `docs/`, the top-level Markdown docs, `.github/`, `.claude/`).
+- Modifications you make to upstream-derived files remain governed by Apache 2.0; original work added by you (`/features/`, `/events/`, `/inbox/`, project-specific `/agents/<role>/rules/`, `/project/` content beyond `README.md`) is governed by your downstream's `LICENSE`.
+
+If your downstream is itself open-source rather than proprietary, [`scripts/setup.sh`](scripts/setup.sh) documents the one-line revert to Apache 2.0 in the generated `project/NEXT_STEPS.md`. Either way, the licensing decision is **explicit and visible** in your downstream from day one — no inherited LICENSE files quietly imply terms that don't match your intent.
+
 ### Slash commands (in a Claude Code session)
 
 Project-scoped slash commands wrap the most common operations and become available via `/` autocomplete when you open a Claude Code session at the orchestration repo:

@@ -163,6 +163,20 @@ if [[ ! -f UPSTREAM ]]; then
   exit 1
 fi
 
+# Substitute LICENSE placeholders (year + copyright holder) that the strip
+# script wrote as <YEAR>/<COPYRIGHT_HOLDER>. The org name is a sensible default
+# for the copyright holder; the operator should review and adjust if the legal
+# entity name differs (NEXT_STEPS.md flags this).
+if [[ -f LICENSE ]] && grep -q '<YEAR>' LICENSE; then
+  current_year=$(date -u +%Y)
+  tmpfile=$(mktemp)
+  sed -e "s|<YEAR>|${current_year}|g" \
+      -e "s|<COPYRIGHT_HOLDER>|${org}|g" \
+      LICENSE > "$tmpfile"
+  mv "$tmpfile" LICENSE
+  echo "  filled LICENSE placeholders: year=${current_year}, copyright=${org} (review in NEXT_STEPS.md)"
+fi
+
 echo
 echo "─── Step 2/6: Re-initialize git history ──────────────────────"
 rm -rf .git
@@ -211,8 +225,23 @@ template-cloned from the upstream Specfuse-orchestrator. Project type: **$projec
 - ✅ Captured upstream anchor (see [\`UPSTREAM\`](../UPSTREAM))
 - ✅ Initialized fresh git history; pushed initial commit to \`$org/$repo_name\`
 - ✅ Configured the upstream Specfuse-orchestrator as a read-only remote
+- ✅ Replaced upstream Apache 2.0 LICENSE with a proprietary placeholder (year + copyright auto-filled); preserved upstream attribution in [\`NOTICES.md\`](../NOTICES.md)
 
 ## What to do next
+
+### Step 0 — Review and adjust [\`LICENSE\`](../LICENSE)
+
+The setup script wrote a proprietary LICENSE template with the current year and your GitHub org (\`$org\`) as the copyright holder. Two cases:
+
+- **If \`$org\` is your legal entity name (or close enough):** open \`LICENSE\` and confirm it matches your organization's standard proprietary terms. Adjust if needed.
+- **If your legal entity name differs** (e.g., the org is \`my-company\` but the legal entity is \`My Company, Inc.\`): edit \`LICENSE\` to use the correct name.
+- **If your downstream is open-source rather than proprietary**: recover the upstream Apache 2.0 LICENSE with \`git fetch upstream && git checkout upstream/main -- LICENSE && rm NOTICES.md\`. Your downstream is then Apache 2.0 like the upstream.
+
+Then commit and push:
+
+\`\`\`
+git add LICENSE && git commit -m "chore: finalize LICENSE for $project_name" && git push
+\`\`\`
 
 ### Step 1 — Open a Claude Code session at this repo
 
