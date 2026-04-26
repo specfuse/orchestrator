@@ -1,6 +1,6 @@
 # Agents
 
-Role configurations for the four operational agents that drive the orchestrator. Each role has its own directory with the layout fixed by architecture §5.2:
+Role configurations for the orchestrator's agents. Four **operational** agents drive per-feature work (specs, PM, component, QA); one **meta-role** (onboarding) operates project-wide to prepare a project for orchestrator coordination. Each role has its own directory with the layout fixed by architecture §5.2:
 
 ```
 /agents/<role>/
@@ -12,7 +12,7 @@ Role configurations for the four operational agents that drive the orchestrator.
 
 Every `CLAUDE.md` opens by pulling in the full [`/shared/rules/`](../shared/rules/README.md) set, then layers its own role-specific behavior on top. The partitioning test is architecture §5.3: **if every role must behave identically under a rule, it belongs in `/shared/`; if two roles would diverge, it belongs under `/agents/<role>/rules/`.** At v1 no role overrides a shared rule; per-role `rules/` directories exist but are intentionally empty.
 
-## Roles
+## Operational roles (per-feature)
 
 | Role | Version | Frozen | Skills |
 |---|---|---|---|
@@ -26,7 +26,15 @@ Every `CLAUDE.md` opens by pulling in the full [`/shared/rules/`](../shared/rule
 - [`component/`](component/CLAUDE.md) — one instance per component repo; picks up `ready` task issues, writes hand-written code, opens PRs, and reconciles overrides for its repo. Does not cross repo boundaries.
 - [`qa/`](qa/CLAUDE.md) — authors test plans, executes them, curates the regression suite. Owns `qa_authoring`, `qa_execution`, `qa_curation`, and `qa_regression` task types; files regression issues against implementation tasks and spec issues when ambiguities surface.
 
-A fifth meta-agent (config-steward) is named in architecture §5.1 and §5.4. It is **not** part of the v1 baseline — the operational roles stabilize first, and the meta-role lands in **Phase 5** alongside the generator feedback loop. See [`docs/orchestrator-implementation-plan.md`](../docs/orchestrator-implementation-plan.md) §"Phase 5".
+## Meta-roles (project-wide)
+
+| Role | Version | Frozen | Skills |
+|---|---|---|---|
+| [`onboarding/`](onboarding/CLAUDE.md) | 0.1.0 | no (Phase 4.5 draft) | repo-inventory, integration-plan, bootstrap-greenfield |
+
+- [`onboarding/`](onboarding/CLAUDE.md) — prepares a project for orchestrator coordination at integration time. Inventories repos, drafts integration or bootstrap plans, identifies orchestrator-readiness gaps. Operates project-wide rather than per-feature; runs once at integration and rarely thereafter. Artifacts land in [`/project/`](../project/). v0.1 draft, intended to be exercised on a real project and hardened.
+
+A second meta-role (config-steward) is named in architecture §5.1 and §5.4 and lands in **Phase 5** alongside the generator feedback loop. It will watch commits to `/agents/` and `/shared/` and steward version bumps. See [`docs/orchestrator-implementation-plan.md`](../docs/orchestrator-implementation-plan.md) §"Phase 5".
 
 ## Versioning and change process
 
