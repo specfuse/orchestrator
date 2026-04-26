@@ -20,32 +20,20 @@ The idea → spec → plan → implement → QA → done pipeline is operational
 
 ## Getting started on a real project
 
-The orchestration repo is the **process-state store for one product** (singleton per product). Template-clone this scaffolding to your own org as `<your-org>/<your-product>-orchestration`, strip upstream walkthrough artifacts via [`scripts/template-clone-strip.sh`](scripts/template-clone-strip.sh), and start fresh. Full workflow — including how to **pull upstream improvements** into your downstream over time and how to **contribute fixes back upstream** — is documented in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
+**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). One `git clone` + `./scripts/setup-downstream.sh` does the entire one-time setup (strip, git re-init, private GitHub repo creation, upstream remote configuration, personalized next-steps doc). Then `/onboard` in a Claude Code session walks you through the rest.
+
+The orchestration repo is the **process-state store for one product** (singleton per product). Template-cloned to your own org as `<your-org>/<your-product>-orchestration`. Full workflow — including how to **pull upstream improvements** into your downstream over time and how to **contribute fixes back upstream** — is documented in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
 
 The orchestrator engages **downstream of product discussion**. Brainstorming, business decisions, and feature ideation belong in your project's **product reference repo** (the `/product/` subtree); the orchestrator picks up at feature-intake when an idea crystallizes into a feature.
 
-Two paths from here:
+Two project shapes are supported, both via the same setup script:
 
-### Greenfield: new project, no existing code
+- **Greenfield:** new project, no repos yet. The onboarding agent's `bootstrap-greenfield` skill produces a setup checklist covering environment prereqs, repo-creation order, per-repo conventions, and first-feature scoping.
+- **Brownfield:** existing project with code, specs, and possibly in-flight features. The onboarding agent's `repo-inventory` skill walks each repo and produces readiness assessments; `integration-plan` then drafts a phased rollout (pilot → expand → import in-flight → steady state) that brings the project under orchestrator coordination without disrupting current delivery.
 
-You have a product idea but no repos yet.
+The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The `setup-downstream.sh` script asks for your project type and chooses the right onboarding skill for you.
 
-1. Open a Claude Code session at the orchestration repo with [`agents/onboarding/CLAUDE.md`](agents/onboarding/CLAUDE.md) as the role prompt.
-2. Run the [`bootstrap-greenfield`](agents/onboarding/skills/bootstrap-greenfield/SKILL.md) skill — produces `project/bootstrap-checklist.md` (environment prereqs, repo-creation order, initial conventions, first-feature scoping).
-3. Execute the checklist: create the product reference repo, create component repos in dependency order, set up `.specfuse/templates.yaml` and root `CLAUDE.md` per repo.
-4. As each component repo is created, run the onboarding agent's [`repo-inventory`](agents/onboarding/skills/repo-inventory/SKILL.md) skill against it.
-5. Pick a small first feature and run it end-to-end via [`docs/operator-runbook.md`](docs/operator-runbook.md).
-
-### Brownfield: existing project with code, specs, possibly in-flight features
-
-You have repos and ongoing work; you want to bring it under orchestrator coordination without disrupting current delivery.
-
-1. Open a Claude Code session at the orchestration repo with [`agents/onboarding/CLAUDE.md`](agents/onboarding/CLAUDE.md) as the role prompt.
-2. Run the [`repo-inventory`](agents/onboarding/skills/repo-inventory/SKILL.md) skill — walks each involved repo and produces `project/repos/<repo-slug>.md` with purpose, tech surface, current state, and orchestrator-readiness gaps. Builds `project/manifest.md`.
-3. Run the [`integration-plan`](agents/onboarding/skills/integration-plan/SKILL.md) skill — produces `project/integration-plan.md` with a phased rollout (pilot one feature on one repo first; expand component coverage; selectively import in-flight features at natural breakpoints; reach steady state).
-4. Execute the integration plan. The pilot feature runs end-to-end via [`docs/operator-runbook.md`](docs/operator-runbook.md); subsequent features expand following the plan.
-
-### Day-to-day operation (both paths converge here)
+### Day-to-day operation
 
 Once a project is wired:
 

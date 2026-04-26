@@ -97,6 +97,29 @@ moment each event is constructed, per `shared/rules/verify-before-report.md` §3
 
 ---
 
+## scripts/setup-downstream.sh
+
+Interactive one-shot setup for a downstream orchestration repo. Bundles
+strip + git re-init + private GitHub repo creation + upstream remote
+configuration into a single guided run, and writes a personalized
+`project/NEXT_STEPS.md` tailored to the project type.
+
+```sh
+# from inside a fresh clone of the upstream scaffolding:
+./scripts/setup-downstream.sh
+```
+
+Asks four questions: GitHub org, repo name, project name, project type
+(greenfield/brownfield). Pre-flight checks: clean working tree, `gh` CLI
+authenticated, fresh-clone markers present. Idempotent on the strip step
+(skipped if the clone is already stripped).
+
+This is the recommended entry point for a new downstream — see
+`GETTING_STARTED.md`. The individual scripts below are still available
+for advanced workflows or when something goes wrong mid-setup.
+
+---
+
 ## scripts/template-clone-strip.sh
 
 Strips walkthrough/feature/event content from a fresh template clone of the
