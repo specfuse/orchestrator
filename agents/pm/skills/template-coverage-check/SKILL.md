@@ -210,7 +210,7 @@ The walk is exhaustive — every task in the demand is checked against every `re
 
 **If `gaps` is non-empty** (escalation path):
 
-1. Compose the escalation file at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md`, using [`/shared/templates/human-escalation.md`](../../../../shared/templates/human-escalation.md). Reason: `spec_level_blocker`. Correlation ID: **feature-level** (`FEAT-YYYY-NNNN`). The "Agent state" section enumerates every gap as a bulleted list: `- T02 on clabonte/persistence-sample: missing token 'persistence-adapter' (declaration does not list it)`. The "Decision requested" section names the human's concrete options: add the missing template to the generator and update the declaration; reshape the task so it does not require the missing template; abandon the feature.
+1. Compose the escalation file at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md`, using [`/shared/templates/human-escalation.md`](../../../../shared/templates/human-escalation.md). Reason: `spec_level_blocker`. Correlation ID: **feature-level** (`FEAT-YYYY-NNNN`). The "Agent state" section enumerates every gap as a bulleted list: `- T02 on acme/persistence-sample: missing token 'persistence-adapter' (declaration does not list it)`. The "Decision requested" section names the human's concrete options: add the missing template to the generator and update the declaration; reshape the task so it does not require the missing template; abandon the feature.
 2. Construct the `human_escalation` event:
 
    ```json
@@ -225,7 +225,7 @@ The walk is exhaustive — every task in the demand is checked against every `re
        "inbox_file": "inbox/human-escalation/<feature_correlation_id>-template-coverage.md",
        "summary": "<N> template coverage gap(s) on <feature_correlation_id> at plan time",
        "gaps": [
-         {"task_id": "T02", "assigned_repo": "clabonte/persistence-sample", "missing_token": "persistence-adapter", "reason": "token_missing"},
+         {"task_id": "T02", "assigned_repo": "acme/persistence-sample", "missing_token": "persistence-adapter", "reason": "token_missing"},
          {"...": "..."}
        ]
      }
@@ -333,23 +333,23 @@ task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/persistence-sample
+    assigned_repo: acme/persistence-sample
     required_templates: [persistence-port, persistence-adapter]
   - id: T02
     type: implementation
     depends_on: [T01]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
     required_templates: [api-controller, api-request-validator]
   - id: T03
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
     required_templates: [test-plan]
 ```
 
 ### Declarations on each repo
 
-`clabonte/persistence-sample/.specfuse/templates.yaml`:
+`acme/persistence-sample/.specfuse/templates.yaml`:
 
 ```yaml
 schema_version: 1
@@ -359,7 +359,7 @@ provided_templates:
   - migration
 ```
 
-`clabonte/api-sample/.specfuse/templates.yaml`:
+`acme/api-sample/.specfuse/templates.yaml`:
 
 ```yaml
 schema_version: 1
@@ -375,7 +375,7 @@ provided_templates:
 
 Step 1 — intent: "I will check template coverage for FEAT-2026-0053."
 
-Step 2 — read frontmatter. `task_graph` is non-empty (3 tasks), `involved_repos` is `[clabonte/persistence-sample, clabonte/api-sample]`. Proceed.
+Step 2 — read frontmatter. `task_graph` is non-empty (3 tasks), `involved_repos` is `[acme/persistence-sample, acme/api-sample]`. Proceed.
 
 Step 2.5 — pre-flight check: every task has `required_templates` present. T01 → `[persistence-port, persistence-adapter]`, T02 → `[api-controller, api-request-validator]`, T03 → `[test-plan]`. No task is missing the field. Proceed.
 
@@ -383,18 +383,18 @@ Step 3 — demand:
 
 | Task | Repo | Required |
 |---|---|---|
-| T01 | `clabonte/persistence-sample` | `[persistence-port, persistence-adapter]` |
-| T02 | `clabonte/api-sample` | `[api-controller, api-request-validator]` |
-| T03 | `clabonte/api-sample` | `[test-plan]` |
+| T01 | `acme/persistence-sample` | `[persistence-port, persistence-adapter]` |
+| T02 | `acme/api-sample` | `[api-controller, api-request-validator]` |
+| T03 | `acme/api-sample` | `[test-plan]` |
 
 Step 4 — fetch declarations:
 
 ```sh
-gh api 'repos/clabonte/persistence-sample/contents/.specfuse/templates.yaml?ref=main' \
+gh api 'repos/acme/persistence-sample/contents/.specfuse/templates.yaml?ref=main' \
   --jq '.content' | base64 --decode
 # → schema_version: 1 ; provided_templates: [persistence-port, persistence-adapter, migration]
 
-gh api 'repos/clabonte/api-sample/contents/.specfuse/templates.yaml?ref=main' \
+gh api 'repos/acme/api-sample/contents/.specfuse/templates.yaml?ref=main' \
   --jq '.content' | base64 --decode
 # → schema_version: 1 ; provided_templates: [api-controller, api-request-validator, api-response-serializer, test-plan, test-runner]
 ```
@@ -423,7 +423,7 @@ Step 6 — success:
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "involved_repos": ["clabonte/api-sample", "clabonte/persistence-sample"],
+    "involved_repos": ["acme/api-sample", "acme/persistence-sample"],
     "task_count": 3
   }
 }
@@ -435,7 +435,7 @@ The invoker now proceeds to plan-review Phase A; feature flips `planning → pla
 
 ## Worked example 2 — coverage fails with one gap
 
-Same feature, same task graph, but `clabonte/persistence-sample/.specfuse/templates.yaml` has drifted:
+Same feature, same task graph, but `acme/persistence-sample/.specfuse/templates.yaml` has drifted:
 
 ```yaml
 schema_version: 1
@@ -467,7 +467,7 @@ Step 5 — cross-reference:
 One gap:
 
 ```
-{"task_id": "T01", "assigned_repo": "clabonte/persistence-sample", "missing_token": "persistence-adapter", "reason": "token_missing"}
+{"task_id": "T01", "assigned_repo": "acme/persistence-sample", "missing_token": "persistence-adapter", "reason": "token_missing"}
 ```
 
 Step 6 — escalate.
@@ -493,7 +493,7 @@ spec_level_blocker
 
 **What I found:** 1 coverage gap.
 
-- **T01** on `clabonte/persistence-sample`: missing token `persistence-adapter`. The repo's `.specfuse/templates.yaml` lists `[persistence-port, migration]`; the task's `required_templates` includes `persistence-adapter` which is not declared.
+- **T01** on `acme/persistence-sample`: missing token `persistence-adapter`. The repo's `.specfuse/templates.yaml` lists `[persistence-port, migration]`; the task's `required_templates` includes `persistence-adapter` which is not declared.
 
 **Event log:** `/events/FEAT-2026-0053.jsonl`
 **Feature registry:** `/features/FEAT-2026-0053.md`
@@ -502,7 +502,7 @@ spec_level_blocker
 
 One gap. Options:
 
-1. **Add the template.** Extend the Specfuse generator to emit a `persistence-adapter` and update `clabonte/persistence-sample/.specfuse/templates.yaml` to declare it. Re-run coverage check.
+1. **Add the template.** Extend the Specfuse generator to emit a `persistence-adapter` and update `acme/persistence-sample/.specfuse/templates.yaml` to declare it. Re-run coverage check.
 2. **Reshape T01.** Modify the task's `required_templates` to drop `persistence-adapter` if the implementation can proceed without generator output for that surface (e.g., hand-written adapter). Re-run coverage check.
 3. **Abandon the feature.** Flip `FEAT-2026-0053` to `abandoned` if the gap is not worth closing.
 
@@ -525,7 +525,7 @@ Event:
     "gaps": [
       {
         "task_id": "T01",
-        "assigned_repo": "clabonte/persistence-sample",
+        "assigned_repo": "acme/persistence-sample",
         "missing_token": "persistence-adapter",
         "reason": "token_missing"
       }

@@ -155,7 +155,7 @@ Failure handling follows [`verify-before-report.md`](../../../../shared/rules/ve
 
 ## Worked example — three tests, three runs
 
-Fictional feature `FEAT-2026-0061 — Widgets export rate-limit`, used for illustration. One `qa_execution` task `FEAT-2026-0061/T04` assigned to `clabonte/api-sample`. Plan at `/product/test-plans/FEAT-2026-0061.md` with three tests:
+Fictional feature `FEAT-2026-0061 — Widgets export rate-limit`, used for illustration. One `qa_execution` task `FEAT-2026-0061/T04` assigned to `acme/api-sample`. Plan at `/product/test-plans/FEAT-2026-0061.md` with three tests:
 
 - `widgets-export-happy-path-200ok` — covers AC-1 (endpoint responds 200 under normal load).
 - `widgets-export-rate-limit-enforced-429` — covers AC-2 (returns 429 after 100 req/min).
@@ -164,7 +164,7 @@ Fictional feature `FEAT-2026-0061 — Widgets export rate-limit`, used for illus
 ### Run 1 — clean execution against commit `abc12345…`
 
 1. Task flipped `ready → in-progress`. `task_started` emitted.
-2. Plan file resolved, round-trips cleanly against `test-plan.schema.json`. `commit_sha = abc1234567890abcdef1234567890abcdef12345` (main HEAD of `clabonte/api-sample`).
+2. Plan file resolved, round-trips cleanly against `test-plan.schema.json`. `commit_sha = abc1234567890abcdef1234567890abcdef12345` (main HEAD of `acme/api-sample`).
 3. Idempotence check: no prior `qa_execution_*` event in `/events/FEAT-2026-0061.jsonl` with matching `(task_correlation_id, commit_sha)`. Proceed.
 4. Per-test loop:
    - `widgets-export-happy-path-200ok`: `curl` returns HTTP 200, body parses as 50 widgets. `expected` matches. → pass.

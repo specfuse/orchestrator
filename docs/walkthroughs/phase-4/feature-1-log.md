@@ -16,7 +16,7 @@
 
 ## Pre-walkthrough setup
 
-- Cloned orchestrator-api-sample and orchestrator-specs-sample locally to `/Users/christian/Specfuse/`.
+- Cloned `acme/api-sample` and `acme/specs-sample` locally as siblings to the orchestration repo.
 - Created `docs/walkthroughs/phase-4/` directory.
 - Confirmed frozen surfaces untouched: no unauthorized post-freeze commits on `agents/pm/*`, `agents/component/*`, `agents/qa/*`, `shared/rules/*`. Only Phase 3 freeze-related WUs (3.8–3.13).
 - Confirmed specs agent at v1.0.0 — active Phase 4 surface.
@@ -39,7 +39,7 @@
 
 - **Invoked by:** orchestration session via `Agent` subagent, model=sonnet, fresh context. Re-read rules, specs CLAUDE.md, spec-drafting/SKILL.md, feature registry.
 - **Input:** FEAT-2026-0008 registry (state=drafting), human-provided scoping: PATCH /widgets/:id with partial update, 2 ACs.
-- **Output:** Feature narrative created at `/Users/christian/Specfuse/orchestrator-specs-sample/product/features/FEAT-2026-0008.md` with AC-1 (partial update → 200) and AC-2 (not found → 404 + widget_not_found). Registry updated with Description, Scope, Out of scope, Related specs sections.
+- **Output:** Feature narrative created at `<acme/specs-sample>/product/features/FEAT-2026-0008.md` with AC-1 (partial update → 200) and AC-2 (not found → 404 + widget_not_found). Registry updated with Description, Scope, Out of scope, Related specs sections.
 - **Verification:** Both files re-read post-write — content matches. Pre-validation review checklist: all items pass (description, scope prescriptive language, out of scope, related specs, ACs testable/single-behavior/explicit, no frontmatter mods, no OpenAPI file per task instruction).
 - **Friction:** 2 minor items:
   - (1) SKILL.md worked example uses `## Overview` heading; Phase 3 narrative files use `## Feature summary`. Followed Phase 3 precedent. Doc-consistency gap, not functional.

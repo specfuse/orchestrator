@@ -6,7 +6,7 @@ the component agent skills as a running example. It is not a real
 feature in this repo. Use it as a reference for the shape of a
 well-formed work unit issue — what each section looks like when
 filled by a competent PM agent for a realistic implementation task in
-a hypothetical API component repo `clabonte/api-sample`.
+a hypothetical API component repo `acme/api-sample`.
 
 HTML comments remain only to annotate the example; in a real issue,
 all HTML comments are deleted before posting.
@@ -16,7 +16,7 @@ all HTML comments are deleted before posting.
 correlation_id: FEAT-2026-0042/T07
 task_type: implementation
 autonomy: review
-component_repo: clabonte/api-sample
+component_repo: acme/api-sample
 depends_on: [T03]
 generated_surfaces:
   - _generated/Controllers/OrdersController.cs
@@ -45,12 +45,12 @@ T07 owns the API-side handler logic for one specific gap: rejecting requests who
 - `_generated/Controllers/OrdersController.cs` beyond the specific override authorized for this task (see `/overrides/FEAT-2026-0042-T07-orders-controller-validator-hook.yaml`). Any other change to a `_generated/` path is a spec issue, not an edit.
 - Files owned by T08 (`ApiTests/OrdersControllerTests_Patch.cs`) and T11 (`Persistence/OrderRepository.cs`) — both are in flight in parallel; do not merge changes across branches.
 - `/business/` in the product specs repo (unreadable by agents).
-- Branch protection configuration on `clabonte/api-sample` (`.github/settings.yml` and any workflow declared as a required check).
+- Branch protection configuration on `acme/api-sample` (`.github/settings.yml` and any workflow declared as a required check).
 - Any secret (`.env`, `*.pem`, `*.key`, `appsettings.Production.json` if it carries credentials in this repo's layout).
 
 ## Verification
 
-Per-task commands, run from `clabonte/api-sample` root. These are in addition to the six mandatory gates declared in `.specfuse/verification.yml` (see `agents/component/skills/verification/SKILL.md`).
+Per-task commands, run from `acme/api-sample` root. These are in addition to the six mandatory gates declared in `.specfuse/verification.yml` (see `agents/component/skills/verification/SKILL.md`).
 
 ```sh
 dotnet test ApiTests --filter "FullyQualifiedName~OrdersControllerTests" --no-build --verbosity normal

@@ -60,7 +60,7 @@ Each top-level key is a **gate name** and corresponds to one row in the structur
 ```yaml
 security_scan:
   status: not_yet_configured
-  tracking_issue: clabonte/some-repo#42
+  tracking_issue: acme/some-repo#42
 ```
 
 A gate in this state is treated as a **failing gate** for verification purposes — the agent does not emit `task_completed`. The only way to unblock is for the human to land the configuration change. This is deliberate: the alternative — "skip the gate for now" — corrodes the trust model as soon as it is allowed.
@@ -198,7 +198,7 @@ This path is distinct from spinning: the agent is not iterating against itself, 
 
 ## Worked example — clean run
 
-Task `FEAT-2026-0007/T03` adds a validation check to a handler in `clabonte/api-sample`. The repo's `.specfuse/verification.yml` declares .NET commands for the six gates.
+Task `FEAT-2026-0007/T03` adds a validation check to a handler in `acme/api-sample`. The repo's `.specfuse/verification.yml` declares .NET commands for the six gates.
 
 The agent, after writing the change and committing:
 

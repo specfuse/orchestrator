@@ -281,23 +281,23 @@ task_graph:
   - id: T01
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T02
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/persistence-sample
+    assigned_repo: acme/persistence-sample
   - id: T04
     type: qa_execution
     depends_on: [T02, T01]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
     autonomy: review
 ```
 
-T04 `qa_execution` depends on T02 (impl, `clabonte/api-sample` — the rate-limit middleware) and T01 (qa_authoring). Filtered to `type: implementation`, T04's depends_on is `[T02]` — exactly one. Q4 attribution resolves unambiguously to `FEAT-2026-0061/T02`.
+T04 `qa_execution` depends on T02 (impl, `acme/api-sample` — the rate-limit middleware) and T01 (qa_authoring). Filtered to `type: implementation`, T04's depends_on is `[T02]` — exactly one. Q4 attribution resolves unambiguously to `FEAT-2026-0061/T02`.
 
 ### Invocation A — first failure
 
@@ -332,7 +332,7 @@ Triggering event on `/events/FEAT-2026-0061.jsonl` (from WU 3.3 Run 2):
 
 - 4A.1: no prior `qa_regression_filed` with `(FEAT-2026-0061/T02, widgets-export-rate-limit-enforced-429)`. Proceed.
 - 4A.2: plan file read; test entry located; `expected = "101st request in a rolling minute window returns HTTP 429"`, `commands = [curl loop]`, `covers = "AC-2: …"`.
-- 4A.3: T02's `assigned_repo = clabonte/api-sample`.
+- 4A.3: T02's `assigned_repo = acme/api-sample`.
 - 4A.4: write `/inbox/qa-regression/FEAT-2026-0061-widgets-export-rate-limit-enforced-429.md`:
 
 ```markdown
@@ -343,7 +343,7 @@ regressed_implementation_task_correlation_id: FEAT-2026-0061/T02
 failing_qa_execution_event_ts: 2026-04-23T18:42:00Z
 failing_commit_sha: def56789abcdef0123456789abcdef0123456789
 test_plan_path: /product/test-plans/FEAT-2026-0061.md
-target_repo: clabonte/api-sample
+target_repo: acme/api-sample
 ---
 
 ## Failed test
@@ -370,7 +370,7 @@ HTTP 200 returned on 101st request; expected 429 Too Many Requests.
 - Regressed against implementation task: FEAT-2026-0061/T02
 - Failing commit: def56789abcdef0123456789abcdef0123456789
 - Failing qa_execution event timestamp: 2026-04-23T18:42:00Z
-- Target repo: clabonte/api-sample
+- Target repo: acme/api-sample
 ```
 
 Re-read confirms.
@@ -396,7 +396,7 @@ Re-read confirms.
 
 Validates (envelope + per-type payload), appended, re-read. See [`/shared/schemas/examples/qa_regression_filed.json`](../../../../shared/schemas/examples/qa_regression_filed.json) for the fixture.
 
-Invocation A returns. Time passes: a PM inbox consumer (or the human) reads the inbox file, mints a new implementation task correlation ID `FEAT-2026-0061/T05`, opens a fresh issue against `clabonte/api-sample` with the file's body as the issue body. T05 goes through its lifecycle; component agent fixes the rate-limit middleware. T05's PR merges; `task_completed` with `correlation_id = FEAT-2026-0061/T05` at new commit `0123456789abcdef0123456789abcdef01234567` appended to the feature event log. A new `qa_execution` task `FEAT-2026-0061/T06` is opened (regression re-run), reaches ready, and qa-execution runs the plan at the new commit.
+Invocation A returns. Time passes: a PM inbox consumer (or the human) reads the inbox file, mints a new implementation task correlation ID `FEAT-2026-0061/T05`, opens a fresh issue against `acme/api-sample` with the file's body as the issue body. T05 goes through its lifecycle; component agent fixes the rate-limit middleware. T05's PR merges; `task_completed` with `correlation_id = FEAT-2026-0061/T05` at new commit `0123456789abcdef0123456789abcdef01234567` appended to the feature event log. A new `qa_execution` task `FEAT-2026-0061/T06` is opened (regression re-run), reaches ready, and qa-execution runs the plan at the new commit.
 
 ### Invocation B — resolution
 

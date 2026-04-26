@@ -413,7 +413,7 @@ Failure handling per [`/shared/rules/verify-before-report.md`](../../../../share
 
 ## Worked example — FEAT-2026-0002/T01 reconstructed
 
-This example reconstructs how the issue-drafting skill would have drafted the real Phase 1 walkthrough Task B (`FEAT-2026-0002/T01 — Add DELETE /widgets/{id} endpoint` on `Bontyyy/orchestrator-api-sample`) with the discipline correctly applied. The original run, documented in [`/docs/walkthroughs/phase-1/task-B-log.md`](../../../../docs/walkthroughs/phase-1/task-B-log.md), shipped an "Out of scope" bullet claiming controller-level tests were excluded "by symmetry" — a claim that was false, as `WidgetsControllerTests.cs` already existed on `main`. The reconstruction below shows the skill catching that claim at step 4 (per-claim verification) and reformulating it at step 5 before posting, so the coverage-gate failure that forced the mid-task amendment never occurs.
+This example reconstructs how the issue-drafting skill would have drafted the real Phase 1 walkthrough Task B (`FEAT-2026-0002/T01 — Add DELETE /widgets/{id} endpoint` on `acme/api-sample`) with the discipline correctly applied. The original run, documented in [`/docs/walkthroughs/phase-1/task-B-log.md`](../../../../docs/walkthroughs/phase-1/task-B-log.md), shipped an "Out of scope" bullet claiming controller-level tests were excluded "by symmetry" — a claim that was false, as `WidgetsControllerTests.cs` already existed on `main`. The reconstruction below shows the skill catching that claim at step 4 (per-claim verification) and reformulating it at step 5 before posting, so the coverage-gate failure that forced the mid-task amendment never occurs.
 
 ### Input state
 
@@ -424,7 +424,7 @@ task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: Bontyyy/orchestrator-api-sample
+    assigned_repo: acme/api-sample
 ```
 
 (Single-repo, single-task feature. `autonomy_default: review`. `depends_on: []` → the skill owns the `pending → ready` flip in the same pass and will emit `task_ready` with trigger `no_dep_creation`.)
@@ -435,7 +435,7 @@ Work unit prompt from `/features/FEAT-2026-0002-plan.md` (approved and unchanged
 
 ### Step 1 — Intent
 
-"I will draft and open the work-unit issue for FEAT-2026-0002/T01 on Bontyyy/orchestrator-api-sample, and flip it to `state:ready` on creation (`depends_on: []`)."
+"I will draft and open the work-unit issue for FEAT-2026-0002/T01 on acme/api-sample, and flip it to `state:ready` on creation (`depends_on: []`)."
 
 ### Step 2 — Inputs read
 
@@ -451,7 +451,7 @@ The skill shapes the body against `work-unit-issue.md`. As it drafts, it enumera
 
 ### Step 4 — Per-claim verification (fresh reads against target repo)
 
-Three actions, each against a freshly-fetched `main` on `Bontyyy/orchestrator-api-sample`:
+Three actions, each against a freshly-fetched `main` on `acme/api-sample`:
 
 ```sh
 # Claim 1
@@ -498,7 +498,7 @@ None of the three claims is contradicted by its verification. No escalation. No 
 correlation_id: FEAT-2026-0002/T01
 task_type: implementation
 autonomy: review
-component_repo: Bontyyy/orchestrator-api-sample
+component_repo: acme/api-sample
 depends_on: []
 generated_surfaces: []
 ---
@@ -536,7 +536,7 @@ Policy A (idempotent, return `204 NoContent` on both existing-id and unknown-id)
 
 ## Verification
 
-Per-task commands, run from `Bontyyy/orchestrator-api-sample` root. These sit on top of the six mandatory gates declared in `.specfuse/verification.yml`.
+Per-task commands, run from `acme/api-sample` root. These sit on top of the six mandatory gates declared in `.specfuse/verification.yml`.
 
 ```sh
 dotnet test tests/OrchestratorApiSample.Tests --filter "FullyQualifiedName~WidgetServiceTests" --no-build --verbosity normal
@@ -556,7 +556,7 @@ grep -F "TryRemove" src/OrchestratorApiSample.Api/Persistence/InMemoryWidgetRepo
 ### Step 7 — Idempotency check
 
 ```sh
-gh issue list --repo Bontyyy/orchestrator-api-sample --state all \
+gh issue list --repo acme/api-sample --state all \
   --search "[FEAT-2026-0002/T01] in:title" --json number,title,state
 # → [] (empty)
 ```
@@ -567,13 +567,13 @@ Empty — no existing issue for this task. Proceed.
 
 ```sh
 gh issue create \
-  --repo Bontyyy/orchestrator-api-sample \
+  --repo acme/api-sample \
   --title "[FEAT-2026-0002/T01] Add DELETE /widgets/{id} endpoint" \
   --body-file /tmp/FEAT-2026-0002-T01.md \
   --label state:ready \
   --label type:implementation \
   --label autonomy:review
-# → https://github.com/Bontyyy/orchestrator-api-sample/issues/5
+# → https://github.com/acme/api-sample/issues/5
 ```
 
 Note: `state:ready` (not `state:pending`) because `depends_on: []`.
@@ -581,7 +581,7 @@ Note: `state:ready` (not `state:pending`) because `depends_on: []`.
 ### Step 9 — Re-read
 
 ```sh
-gh issue view 5 --repo Bontyyy/orchestrator-api-sample --json number,title,body,labels,state
+gh issue view 5 --repo acme/api-sample --json number,title,body,labels,state
 # → title, body, labels match. State `open`. Round-trip ✓.
 ```
 
@@ -595,12 +595,12 @@ gh issue view 5 --repo Bontyyy/orchestrator-api-sample --json number,title,body,
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue": "Bontyyy/orchestrator-api-sample#5",
-    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/5",
+    "issue": "acme/api-sample#5",
+    "issue_url": "https://github.com/acme/api-sample/issues/5",
     "title": "[FEAT-2026-0002/T01] Add DELETE /widgets/{id} endpoint",
     "task_type": "implementation",
     "autonomy": "review",
-    "component_repo": "Bontyyy/orchestrator-api-sample",
+    "component_repo": "acme/api-sample",
     "depends_on": [],
     "verification_count": 3
   }
@@ -619,7 +619,7 @@ Passes `scripts/validate-event.py` (exit 0). Appended to `/events/FEAT-2026-0002
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/5",
+    "issue_url": "https://github.com/acme/api-sample/issues/5",
     "trigger": "no_dep_creation"
   }
 }
@@ -646,9 +646,9 @@ ls tests/OrchestratorApiSample.Tests/WidgetsControllerTests.cs
 
 ## Worked example — FEAT-2026-0004/T03 (Python stack + `deliverable_repo`)
 
-> **Historical-reconstruction note (WU 3.10, 2026-04-24).** This worked example was authored during Phase 2 (WU 2.13), when product specs and test plans were committed to the orchestrator repo itself. From Phase 3 onwards, product specs live in a separate product specs repo (e.g., `Bontyyy/orchestrator-specs-sample` for the walkthroughs). To prevent the Phase-2-era literal target `<product-specs-owner>/<product-specs-repo>` from being copied into new deployments (F3.7 "stickiness" — confirmed as 2-feature evidence in the Phase 3 retrospective), this example now uses `<product-specs-owner>/<product-specs-repo>` as a placeholder in every `deliverable_repo` reference below. Replace the placeholder with your deployment's product specs repo coordinates when applying this example. The walkthrough path references and event shapes are otherwise unchanged from the Phase 2 reconstruction.
+> **Historical-reconstruction note (WU 3.10, 2026-04-24).** This worked example was authored during Phase 2 (WU 2.13), when product specs and test plans were committed to the orchestrator repo itself. From Phase 3 onwards, product specs live in a separate product specs repo (e.g., `acme/specs-sample` for the walkthroughs). To prevent the Phase-2-era literal target `<product-specs-owner>/<product-specs-repo>` from being copied into new deployments (F3.7 "stickiness" — confirmed as 2-feature evidence in the Phase 3 retrospective), this example now uses `<product-specs-owner>/<product-specs-repo>` as a placeholder in every `deliverable_repo` reference below. Replace the placeholder with your deployment's product specs repo coordinates when applying this example. The walkthrough path references and event shapes are otherwise unchanged from the Phase 2 reconstruction.
 
-This second example reconstructs how the issue-drafting skill drafts a `qa_authoring` task targeting `Bontyyy/orchestrator-persistence-sample` (Python stack). It was generated from the real Phase 2 WU 2.7 Feature 1 walkthrough, documented in [`/docs/walkthroughs/phase-2/feature-1-log.md`](../../../../docs/walkthroughs/phase-2/feature-1-log.md) §Step 5. The example is deliberately chosen to also showcase the `deliverable_repo` + `## Deliverables` fields added in WU 2.13: the test plan deliverable lives in the product specs repo, not in the component repo where the issue is filed.
+This second example reconstructs how the issue-drafting skill drafts a `qa_authoring` task targeting `acme/persistence-sample` (Python stack). It was generated from the real Phase 2 WU 2.7 Feature 1 walkthrough, documented in [`/docs/walkthroughs/phase-2/feature-1-log.md`](../../../../docs/walkthroughs/phase-2/feature-1-log.md) §Step 5. The example is deliberately chosen to also showcase the `deliverable_repo` + `## Deliverables` fields added in WU 2.13: the test plan deliverable lives in the product specs repo, not in the component repo where the issue is filed.
 
 ### Why a second example
 
@@ -663,7 +663,7 @@ task_graph:
   - id: T03
     type: qa_authoring
     depends_on: []
-    assigned_repo: Bontyyy/orchestrator-api-sample
+    assigned_repo: acme/api-sample
     required_templates: [test-plan]
 ```
 
@@ -675,7 +675,7 @@ Work unit prompt from `/features/FEAT-2026-0004-plan.md` (approved):
 
 ### Step 1 — Intent
 
-"I will draft and open the work-unit issue for FEAT-2026-0004/T03 on Bontyyy/orchestrator-api-sample, and flip it to `state:ready` on creation (`depends_on: []`). Because the deliverable lives in the orchestrator repo, I will set `deliverable_repo: <product-specs-owner>/<product-specs-repo>` and include a `## Deliverables` section."
+"I will draft and open the work-unit issue for FEAT-2026-0004/T03 on acme/api-sample, and flip it to `state:ready` on creation (`depends_on: []`). Because the deliverable lives in the orchestrator repo, I will set `deliverable_repo: <product-specs-owner>/<product-specs-repo>` and include a `## Deliverables` section."
 
 ### Step 2 — Inputs read
 
@@ -737,7 +737,7 @@ All four claims verified and match the draft. No reformulation, no escalation. P
 correlation_id: FEAT-2026-0004/T03
 task_type: qa_authoring
 autonomy: review
-component_repo: Bontyyy/orchestrator-api-sample
+component_repo: acme/api-sample
 deliverable_repo: <product-specs-owner>/<product-specs-repo>
 depends_on: []
 generated_surfaces: []
@@ -745,9 +745,9 @@ generated_surfaces: []
 
 ## Context
 
-This task authors the test plan covering both behaviors of **FEAT-2026-0004**: (1) the persistence port's quantity-filtered widget listing (T01, on `Bontyyy/orchestrator-persistence-sample`) and (2) the API endpoint for quantity-filtered listing (T02, on `Bontyyy/orchestrator-api-sample`). Feature registry: `features/FEAT-2026-0004.md`.
+This task authors the test plan covering both behaviors of **FEAT-2026-0004**: (1) the persistence port's quantity-filtered widget listing (T01, on `acme/persistence-sample`) and (2) the API endpoint for quantity-filtered listing (T02, on `acme/api-sample`). Feature registry: `features/FEAT-2026-0004.md`.
 
-The test plan is a product-level artifact committed to the orchestrator repo under `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md`. This issue is filed on `Bontyyy/orchestrator-api-sample` (the feature's primary API repo); the deliverable, however, is written to the orchestrator repo (`deliverable_repo: <product-specs-owner>/<product-specs-repo>`). The QA agent performing this task writes to the orchestrator repo, not to this repo's code paths.
+The test plan is a product-level artifact committed to the orchestrator repo under `docs/walkthroughs/phase-2/test-plans/FEAT-2026-0004.md`. This issue is filed on `acme/api-sample` (the feature's primary API repo); the deliverable, however, is written to the orchestrator repo (`deliverable_repo: <product-specs-owner>/<product-specs-repo>`). The QA agent performing this task writes to the orchestrator repo, not to this repo's code paths.
 
 No test plan file for FEAT-2026-0004 currently exists on this repo. No `docs/` directory exists on this repo. The existing regression suite lives at `tests/OrchestratorApiSample.Tests/` and must not be modified by this task.
 
@@ -769,7 +769,7 @@ No test plan file for FEAT-2026-0004 currently exists on this repo. No `docs/` d
 3. The plan covers the API endpoint behavior (T02): at minimum, happy path (`200 OK` with JSON array), boundary (missing `min_quantity` defaults to `0`), and invalid-input case (`400 BadRequest` on negative or non-integer `min_quantity`).
 4. Each plan case includes: brief setup, the action taken, and the expected observable outcome.
 5. The plan file contains a `## Cases` section with at least 6 case entries (3 per behavior).
-6. No source files in this repo (`Bontyyy/orchestrator-api-sample`) are modified.
+6. No source files in this repo (`acme/api-sample`) are modified.
 
 ## Do not touch
 
@@ -805,7 +805,7 @@ The `grep -c` is informational; confirm a `## Cases` section exists and contains
 ### Step 7 — Idempotency check
 
 ```sh
-gh issue list --repo Bontyyy/orchestrator-api-sample --state all \
+gh issue list --repo acme/api-sample --state all \
   --search "[FEAT-2026-0004/T03] in:title" --json number,title,state
 # → [] (empty)
 ```
@@ -816,13 +816,13 @@ Empty — no existing issue. Proceed.
 
 ```sh
 gh issue create \
-  --repo Bontyyy/orchestrator-api-sample \
+  --repo acme/api-sample \
   --title "[FEAT-2026-0004/T03] Author test plan for quantity-filtered widget listing" \
   --body-file /tmp/FEAT-2026-0004-T03.md \
   --label state:ready \
   --label type:qa-authoring \
   --label autonomy:review
-# → https://github.com/Bontyyy/orchestrator-api-sample/issues/10
+# → https://github.com/acme/api-sample/issues/10
 ```
 
 `state:ready` because `depends_on: []`.
@@ -830,7 +830,7 @@ gh issue create \
 ### Step 9 — Re-read
 
 ```sh
-gh issue view 10 --repo Bontyyy/orchestrator-api-sample --json number,title,body,labels,state
+gh issue view 10 --repo acme/api-sample --json number,title,body,labels,state
 # → title, body, labels match. State `open`. Round-trip ✓.
 ```
 
@@ -844,12 +844,12 @@ gh issue view 10 --repo Bontyyy/orchestrator-api-sample --json number,title,body
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue": "Bontyyy/orchestrator-api-sample#10",
-    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/10",
+    "issue": "acme/api-sample#10",
+    "issue_url": "https://github.com/acme/api-sample/issues/10",
     "title": "[FEAT-2026-0004/T03] Author test plan for quantity-filtered widget listing",
     "task_type": "qa_authoring",
     "autonomy": "review",
-    "component_repo": "Bontyyy/orchestrator-api-sample",
+    "component_repo": "acme/api-sample",
     "depends_on": [],
     "verification_count": 4
   }
@@ -868,7 +868,7 @@ Passes `scripts/validate-event.py` (exit 0). Appended. Re-read confirms JSON int
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/10",
+    "issue_url": "https://github.com/acme/api-sample/issues/10",
     "trigger": "no_dep_creation"
   }
 }

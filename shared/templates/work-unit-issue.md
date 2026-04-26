@@ -1,5 +1,5 @@
 <!--
-Work unit issue body template. v1.2.
+Work unit issue body template. v1.3.
 
 This template is the body of every GitHub issue that represents a task
 (implementation or QA) in a component repository. It is the contract
@@ -41,11 +41,19 @@ v1.2 changes (WU 3.10):
   clearly referring to a product specs repo). Rationale: Phase 2 predated
   the product specs repo split — product specs and test plans were
   committed to the orchestrator repo itself. From Phase 3 onwards, product
-  specs live in a separate repo (e.g., `Bontyyy/orchestrator-specs-sample`
+  specs live in a separate repo (e.g., `acme/specs-sample`
   for the walkthroughs), and the stale concrete example was inducing
   "stickiness" in cold invocations (F3.7 of the Phase 3 retrospective).
   Comment-only change; no YAML structure, frontmatter field, or mandatory
   section is modified. Fully backwards-compatible with v1.1 issues.
+
+v1.3 changes (OSS publication scrub):
+- Replaced the remaining `Bontyyy/orchestrator-specs-sample` example
+  reference in this comment block with the generic `acme/specs-sample`
+  placeholder so the upstream's normative documentation does not
+  advertise the orchestrator's development fixture repos as canonical
+  patterns. Comment-only change; no YAML structure, frontmatter field,
+  or mandatory section is modified. Fully backwards-compatible.
 -->
 
 ```yaml

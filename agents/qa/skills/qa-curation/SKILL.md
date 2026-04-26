@@ -93,7 +93,7 @@ The skill takes two inputs: the qa_curation task's correlation ID (derivable fro
 
 ### Cross-repo linkage caveat
 
-The qa_curation task issue lives in a component repo (per `assigned_repo` in the feature's task graph), but the curation PR lives in the product specs repo. The merge watcher that transitions the task issue's `in_review → done` must observe merges on the specs repo and match them to the qa_curation task via the branch name convention or an explicit `Closes clabonte/api-sample#<N>` line in the PR body. The effective configuration — which mechanism the deployment uses — is **deferred** to the Phase 3 walkthrough (WU 3.6) and retrospective (WU 3.7); this skill documents the invariant and leaves the wiring detail to the merge-watcher implementation.
+The qa_curation task issue lives in a component repo (per `assigned_repo` in the feature's task graph), but the curation PR lives in the product specs repo. The merge watcher that transitions the task issue's `in_review → done` must observe merges on the specs repo and match them to the qa_curation task via the branch name convention or an explicit `Closes acme/api-sample#<N>` line in the PR body. The effective configuration — which mechanism the deployment uses — is **deferred** to the Phase 3 walkthrough (WU 3.6) and retrospective (WU 3.7); this skill documents the invariant and leaves the wiring detail to the merge-watcher implementation.
 
 The skill does not schedule itself, does not poll, and does not persist state across invocations — every invocation reads the plan corpus, the feature registries, and the event logs fresh.
 
@@ -400,7 +400,7 @@ Event logs at `/events/FEAT-2026-0062.jsonl` and `/events/FEAT-2026-0063.jsonl` 
 
 ### Triggering invocation
 
-Drafting mode invoked on qa_curation task `FEAT-2026-0070/T05`. Feature registry `/features/FEAT-2026-0070.md` has T05 with `assigned_repo: clabonte/api-sample`.
+Drafting mode invoked on qa_curation task `FEAT-2026-0070/T05`. Feature registry `/features/FEAT-2026-0070.md` has T05 with `assigned_repo: acme/api-sample`.
 
 **Step 1** — intent stated; rules reloaded; T05 label `state:ready → state:in-progress`; `task_started` emitted on `/events/FEAT-2026-0070.jsonl` with correlation_id `FEAT-2026-0070/T05`.
 
@@ -457,10 +457,10 @@ Curation pass on behalf of FEAT-2026-0070/T05. Scope: dedup. 1 accepted, 0 refus
 
 The diff on `product/test-plans/FEAT-2026-0062.md` is the surviving test's merged form; the diff on `product/test-plans/FEAT-2026-0063.md` is the removal. Confirm the merged `covers` reads cleanly and the `commands` union does not drop any unique request shape.
 
-Closes clabonte/api-sample#87
+Closes acme/api-sample#87
 ```
 
-5. PR opened against specs repo `main`. Issue #87 in `clabonte/api-sample` is the qa_curation task's GitHub issue.
+5. PR opened against specs repo `main`. Issue #87 in `acme/api-sample` is the qa_curation task's GitHub issue.
 6. Flip `state:in-progress → state:in-review` on issue #87.
 7. Emit `task_completed`:
 
@@ -472,7 +472,7 @@ Closes clabonte/api-sample#87
   "source": "qa",
   "source_version": "1.4.0",
   "payload": {
-    "issue": "clabonte/api-sample#87"
+    "issue": "acme/api-sample#87"
   }
 }
 ```
@@ -481,7 +481,7 @@ Validates, appended.
 
 ### Post-merge invocation
 
-Time passes: the human reviews the PR, approves, and merges. The external trigger (webhook / polling loop / CLI) detects the merge and invokes the skill in post-merge mode with PR URL `https://github.com/clabonte/specs-sample/pull/24` and task correlation ID `FEAT-2026-0070/T05`.
+Time passes: the human reviews the PR, approves, and merges. The external trigger (webhook / polling loop / CLI) detects the merge and invokes the skill in post-merge mode with PR URL `https://github.com/acme/specs-sample/pull/24` and task correlation ID `FEAT-2026-0070/T05`.
 
 **Step PM.1** — intent stated, rules reloaded.
 
@@ -499,7 +499,7 @@ Time passes: the human reviews the PR, approves, and merges. The external trigge
   "source": "qa",
   "source_version": "1.4.0",
   "payload": {
-    "curation_pr_url": "https://github.com/clabonte/specs-sample/pull/24",
+    "curation_pr_url": "https://github.com/acme/specs-sample/pull/24",
     "scope": "dedup",
     "affected_test_ids": [
       "widgets-bulk-duplicate-returns-409",
@@ -521,7 +521,7 @@ Time passes: the human reviews the PR, approves, and merges. The external trigge
 
 Validates through `scripts/validate-event.py` (envelope + per-type payload). Appended to `/events/FEAT-2026-0070.jsonl`. Re-read confirms.
 
-**Step PM.5** — Return. Merge watcher (separately) transitions `clabonte/api-sample#87` from `state:in-review → state:done` on detecting the specs repo merge linked to the task issue via the `Closes` line in the PR body.
+**Step PM.5** — Return. Merge watcher (separately) transitions `acme/api-sample#87` from `state:in-review → state:done` on detecting the specs repo merge linked to the task issue via the `Closes` line in the PR body.
 
 Cycle complete. No state write on any implementation task, no state write on any other QA task. Q4 invariant holds.
 
@@ -628,7 +628,7 @@ Curation pass on behalf of FEAT-2026-0070/T05. Scope: retire_orphan. 1 accepted,
 
 The diff on `product/test-plans/FEAT-2026-0060.md` retires one orphaned test. The refused candidate on FEAT-2026-0061 is recorded for audit but not touched. Confirm the retired test's covered behavior is genuinely absent from the feature spec; if the AC was renamed rather than dropped, the curation should be aborted and the rename handled instead.
 
-Closes clabonte/api-sample#87
+Closes acme/api-sample#87
 ```
 
 5. PR opened.
@@ -651,7 +651,7 @@ Human reviews, approves, merges. External trigger invokes post-merge mode.
   "source": "qa",
   "source_version": "1.4.0",
   "payload": {
-    "curation_pr_url": "https://github.com/clabonte/specs-sample/pull/17",
+    "curation_pr_url": "https://github.com/acme/specs-sample/pull/17",
     "scope": "retire_orphan",
     "affected_test_ids": [
       "widgets-export-legacy-v1-content-type"

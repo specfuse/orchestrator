@@ -13,7 +13,7 @@ The human opens a Claude Code session and says they want to create a new feature
 The skill collects three pieces of information from the human before proceeding. All three are required; the skill does not assume defaults for title or repos.
 
 1. **Feature title** (string) — free-form prose describing the feature. Used in the registry file's Description heading and in the `feature_created` event payload. Not a machine identifier.
-2. **Involved repos** (array of `owner/repo` strings) — the component repositories this feature touches. At least one is required. Each string must match the `owner/repo` format used across the orchestrator (e.g. `Bontyyy/orchestrator-api-sample`).
+2. **Involved repos** (array of `owner/repo` strings) — the component repositories this feature touches. At least one is required. Each string must match the `owner/repo` format used across the orchestrator (e.g. `acme/api-sample`).
 3. **Autonomy default** (enum: `auto`, `review`, `supervised`) — the feature-level autonomy setting that governs how much latitude downstream agents have. If the human does not specify, prompt for it explicitly — do not silently default to `review`.
 
 ## Procedure
@@ -97,7 +97,7 @@ cat > /tmp/feature-registry-candidate.md << 'REGISTRY_EOF'
 correlation_id: FEAT-2026-0008
 state: drafting
 involved_repos:
-  - Bontyyy/orchestrator-api-sample
+  - acme/api-sample
 autonomy_default: review
 task_graph: []
 ---
@@ -176,7 +176,7 @@ Only after all checks pass does the skill report completion.
 **Human input:**
 
 - Feature title: "Widget Catalog API"
-- Involved repos: `Bontyyy/orchestrator-api-sample`
+- Involved repos: `acme/api-sample`
 - Autonomy default: `review`
 
 **Step 1 — Ordinal resolution:**
@@ -210,7 +210,7 @@ Ordinals extracted from filenames matching `FEAT-2026-NNNN.md` exactly: 0001, 00
 correlation_id: FEAT-2026-0008
 state: drafting
 involved_repos:
-  - Bontyyy/orchestrator-api-sample
+  - acme/api-sample
 autonomy_default: review
 task_graph: []
 ---
@@ -252,7 +252,7 @@ SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
 
 # Write minified event to temp file
 cat > /tmp/event.json << EOF
-{"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0008","event_type":"feature_created","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"feature_title":"Widget Catalog API","involved_repos":["Bontyyy/orchestrator-api-sample"],"autonomy_default":"review","correlation_id":"FEAT-2026-0008"}}
+{"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0008","event_type":"feature_created","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"feature_title":"Widget Catalog API","involved_repos":["acme/api-sample"],"autonomy_default":"review","correlation_id":"FEAT-2026-0008"}}
 EOF
 
 # Validate

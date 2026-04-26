@@ -15,7 +15,7 @@
   "properties": {
     "curation_pr_url": {
       "type": "string",
-      "description": "URL of the merged curation PR against the product specs repo (e.g. `https://github.com/clabonte/specs/pull/42`). The PR branch name follows the `qa-curation/<qa_curation_task_correlation_id>` convention the skill uses (e.g. `qa-curation/FEAT-2026-0070-T05`). The PR body carries the human-readable curation report; this event is the machine-readable record.",
+      "description": "URL of the merged curation PR against the product specs repo (e.g. `https://github.com/acme/specs-sample/pull/42`). The PR branch name follows the `qa-curation/<qa_curation_task_correlation_id>` convention the skill uses (e.g. `qa-curation/FEAT-2026-0070-T05`). The PR body carries the human-readable curation report; this event is the machine-readable record.",
       "pattern": "^https://github\\.com/[^/\\s]+/[^/\\s]+/pull/\\d+$",
       "minLength": 1
     },

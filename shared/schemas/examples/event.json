@@ -5,7 +5,7 @@
   "source": "component:orchestrator-api-sample",
   "source_version": "1.2.0",
   "payload": {
-    "issue_url": "https://github.com/Bontyyy/orchestrator-api-sample/issues/3",
+    "issue_url": "https://github.com/acme/api-sample/issues/3",
     "branch": "feat/FEAT-2026-0001-T01-widget-quantity-ceiling"
   }
 }

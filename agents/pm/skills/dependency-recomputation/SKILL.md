@@ -276,35 +276,35 @@ task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/persistence-sample
+    assigned_repo: acme/persistence-sample
   - id: T02
     type: implementation
     depends_on: [T01]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T04
     type: qa_execution
     depends_on: [T01, T02, T03]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
     autonomy: review
   - id: T05
     type: qa_curation
     depends_on: [T04]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
 ```
 
 Live GitHub labels on each issue, immediately after T01's PR merged and `task_completed` fired (but before this skill runs):
 
 | Task | Repo / Issue | `state:*` |
 |---|---|---|
-| T01 | `clabonte/persistence-sample#12` | `state:done` |
-| T02 | `clabonte/api-sample#47` | `state:pending` |
-| T03 | `clabonte/api-sample#48` | `state:ready` |
-| T04 | `clabonte/api-sample#49` | `state:pending` |
-| T05 | `clabonte/api-sample#50` | `state:pending` |
+| T01 | `acme/persistence-sample#12` | `state:done` |
+| T02 | `acme/api-sample#47` | `state:pending` |
+| T03 | `acme/api-sample#48` | `state:ready` |
+| T04 | `acme/api-sample#49` | `state:pending` |
+| T05 | `acme/api-sample#50` | `state:pending` |
 
 T03 was created `state:ready` by the issue-drafting skill (no deps, `trigger: "no_dep_creation"`). T02, T04, T05 were created `state:pending` (had deps). T01 transitioned `pending → ready → in_progress → in_review → done` over its normal lifecycle; the merge watcher emitted `task_completed` when its PR merged.
 
@@ -348,14 +348,14 @@ Walk order (task-ID sort): T02, then T04.
 
 ### Step 6 — Per-candidate live-reads
 
-**Candidate T02 (`clabonte/api-sample#47`)**
+**Candidate T02 (`acme/api-sample#47`)**
 
-6a. `gh issue view 47 --repo clabonte/api-sample --json number,labels,state` → `state:pending` ✓. Proceed to 6b.
+6a. `gh issue view 47 --repo acme/api-sample --json number,labels,state` → `state:pending` ✓. Proceed to 6b.
 
-6b. Dependencies: `[T01]`. Live-read T01 on `clabonte/persistence-sample#12`:
+6b. Dependencies: `[T01]`. Live-read T01 on `acme/persistence-sample#12`:
 
 ```sh
-gh issue list --repo clabonte/persistence-sample --state all \
+gh issue list --repo acme/persistence-sample --state all \
   --search "[FEAT-2026-0050/T01] in:title" --json number,labels,state
 # → [{ "number": 12, "labels": [{"name": "state:done"}, ...], "state": "closed" }]
 ```
@@ -365,9 +365,9 @@ T01 is `state:done` ✓. All T02 dependencies satisfied.
 6c. Flip:
 
 ```sh
-gh issue edit 47 --repo clabonte/api-sample \
+gh issue edit 47 --repo acme/api-sample \
   --remove-label state:pending --add-label state:ready
-# → https://github.com/clabonte/api-sample/issues/47
+# → https://github.com/acme/api-sample/issues/47
 ```
 
 Re-read: `state:ready` present ✓, `state:pending` absent ✓, exactly one `state:*` ✓.
@@ -382,7 +382,7 @@ Re-read: `state:ready` present ✓, `state:pending` absent ✓, exactly one `sta
   "source": "pm",
   "source_version": "1.0.0",
   "payload": {
-    "issue_url": "https://github.com/clabonte/api-sample/issues/47",
+    "issue_url": "https://github.com/acme/api-sample/issues/47",
     "trigger": "task_completed:T01"
   }
 }
@@ -390,14 +390,14 @@ Re-read: `state:ready` present ✓, `state:pending` absent ✓, exactly one `sta
 
 Validates through `scripts/validate-event.py --file /tmp/event.json` (exit 0). Appended to `/events/FEAT-2026-0050.jsonl` via the canonical `printf '%s\n'` pattern. Re-read confirms.
 
-**Candidate T04 (`clabonte/api-sample#49`)**
+**Candidate T04 (`acme/api-sample#49`)**
 
 6a. Live-read `#49` → `state:pending` ✓.
 
 6b. Dependencies: `[T01, T02, T03]`. Live-reads:
 
-- T01 on `clabonte/persistence-sample#12` → `state:done` ✓.
-- T02 on `clabonte/api-sample#47` → `state:ready` (just flipped in this same invocation). **Not `state:done`.** **Break.**
+- T01 on `acme/persistence-sample#12` → `state:done` ✓.
+- T02 on `acme/api-sample#47` → `state:ready` (just flipped in this same invocation). **Not `state:done`.** **Break.**
 
 T04 stays `state:pending`. No flip, no event. Continue to the next candidate.
 
@@ -417,7 +417,7 @@ Exactly one flip performed (T02). Exactly one `task_ready` event emitted. Invoca
 | T04 | `state:pending` | unchanged |
 | T05 | `state:pending` | unchanged |
 
-A component agent instantiated against `clabonte/api-sample` will now pick T02 up via its `state:ready` label and begin the implementation. When T02 eventually merges, its `task_completed` will re-invoke this skill; T04's dependencies will then be T01=done, T02=done, T03=still-ready-but-not-done, so T04 stays pending until T03 (qa_authoring) also completes. The progression is driven entirely by merge events; no further coordination needed.
+A component agent instantiated against `acme/api-sample` will now pick T02 up via its `state:ready` label and begin the implementation. When T02 eventually merges, its `task_completed` will re-invoke this skill; T04's dependencies will then be T01=done, T02=done, T03=still-ready-but-not-done, so T04 stays pending until T03 (qa_authoring) also completes. The progression is driven entirely by merge events; no further coordination needed.
 
 ## Worked example 2 — idempotent replay of the same `task_completed`
 
@@ -450,11 +450,11 @@ Same feature, same triggering event, but delivered a second time — e.g. the po
 
 Steps 1–5 reproduce Example 1 deterministically (same intent, same frontmatter, same cycle/orphan checks pass, same candidate set `[T02, T04]`, same walk order).
 
-**Candidate T02 (`clabonte/api-sample#47`)**
+**Candidate T02 (`acme/api-sample#47`)**
 
 6a. Live-read → `state:ready`. **Already flipped on the previous invocation.** **Skip silently.** No 6b, no 6c, no 6d. No event. Move on.
 
-**Candidate T04 (`clabonte/api-sample#49`)**
+**Candidate T04 (`acme/api-sample#49`)**
 
 6a. Live-read → `state:pending` ✓.
 

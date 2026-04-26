@@ -323,21 +323,21 @@ Feature `FEAT-2026-0051 — Widget search by tag`. The task-decomposition skill 
 correlation_id: FEAT-2026-0051
 state: planning
 involved_repos:
-  - clabonte/api-sample
+  - acme/api-sample
 autonomy_default: review
 task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T02
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: qa_execution
     depends_on: [T01, T02]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
 ---
 ```
 
@@ -363,36 +363,36 @@ line is regenerated on every round-trip; edits to it are ignored.
 
 ```yaml
 involved_repos:
-  - clabonte/api-sample
+  - acme/api-sample
 autonomy_default: review
 task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T02
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: qa_execution
     depends_on: [T01, T02]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
 ```
 
-## Task T01 — implementation, clabonte/api-sample
+## Task T01 — implementation, acme/api-sample
 
 ### Work unit prompt
 
 <draft the work unit prompt for this task>
 
-## Task T02 — qa_authoring, clabonte/api-sample
+## Task T02 — qa_authoring, acme/api-sample
 
 ### Work unit prompt
 
 <draft the work unit prompt for this task>
 
-## Task T03 — qa_execution, clabonte/api-sample
+## Task T03 — qa_execution, acme/api-sample
 
 ### Work unit prompt
 
@@ -420,7 +420,7 @@ The feature frontmatter's `state` flips to `plan_review`. A `plan_ready` event i
 
 The human, reviewing the plan, decides three things:
 
-1. The search logic belongs in the persistence repo, not the API repo. T01 is retargeted to `clabonte/persistence-sample`, and `involved_repos` gains that repo.
+1. The search logic belongs in the persistence repo, not the API repo. T01 is retargeted to `acme/persistence-sample`, and `involved_repos` gains that repo.
 2. The test plan (T02) should be authored after the implementation exists (the human wants to test against the real impl shape). T02's `depends_on` becomes `[T01]`.
 3. T02's work unit prompt is tightened from a placeholder to a specific directive.
 
@@ -431,49 +431,49 @@ The human edits the plan file:
 
 ```yaml
 involved_repos:
-  - clabonte/api-sample
-  - clabonte/persistence-sample
+  - acme/api-sample
+  - acme/persistence-sample
 autonomy_default: review
 task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/persistence-sample
+    assigned_repo: acme/persistence-sample
   - id: T02
     type: qa_authoring
     depends_on: [T01]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: qa_execution
     depends_on: [T01, T02]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
 ```
 
-## Task T01 — implementation, clabonte/api-sample
+## Task T01 — implementation, acme/api-sample
 
 ### Work unit prompt
 
 <draft the work unit prompt for this task>
 
-## Task T02 — qa_authoring, clabonte/api-sample
+## Task T02 — qa_authoring, acme/api-sample
 
 ### Work unit prompt
 
 Author a test plan for the tag-search widget endpoint. Cover: (a) happy-path
 lookup by single tag, (b) multi-tag intersection semantics, (c) empty-result
 behavior, (d) tag normalization (case, whitespace). Read the implementation
-in clabonte/persistence-sample's search port before finalizing assertions;
+in acme/persistence-sample's search port before finalizing assertions;
 the behavior the tests assert must match what T01 delivers, not a
 speculative contract.
 
-## Task T03 — qa_execution, clabonte/api-sample
+## Task T03 — qa_execution, acme/api-sample
 
 ### Work unit prompt
 
 <draft the work unit prompt for this task>
 ````
 
-Note: the `## Task T01 — implementation, clabonte/api-sample` heading still says `api-sample`, unchanged by the human. That heading is a rendering artifact from Phase A; **Phase B does not regenerate heading lines** (see §"Two edit surfaces" — headings are regenerated on Phase A emission only, YAML is canonical). The heading will stay stale until the next Phase A emission. The human does not need to re-write heading lines, and the machine reads T01's target repo from the YAML block, not the heading.
+Note: the `## Task T01 — implementation, acme/api-sample` heading still says `api-sample`, unchanged by the human. That heading is a rendering artifact from Phase A; **Phase B does not regenerate heading lines** (see §"Two edit surfaces" — headings are regenerated on Phase A emission only, YAML is canonical). The heading will stay stale until the next Phase A emission. The human does not need to re-write heading lines, and the machine reads T01's target repo from the YAML block, not the heading.
 
 ### Phase B — re-ingest
 
@@ -486,22 +486,22 @@ The skill, invoked by whatever external trigger detected the edit:
    correlation_id: FEAT-2026-0051  # from existing frontmatter
    state: plan_review              # forced
    involved_repos:
-     - clabonte/api-sample
-     - clabonte/persistence-sample
+     - acme/api-sample
+     - acme/persistence-sample
    autonomy_default: review
    task_graph:
      - id: T01
        type: implementation
        depends_on: []
-       assigned_repo: clabonte/persistence-sample
+       assigned_repo: acme/persistence-sample
      - id: T02
        type: qa_authoring
        depends_on: [T01]
-       assigned_repo: clabonte/api-sample
+       assigned_repo: acme/api-sample
      - id: T03
        type: qa_execution
        depends_on: [T01, T02]
-       assigned_repo: clabonte/api-sample
+       assigned_repo: acme/api-sample
    ```
 4. Schema validation: passes. ✓
 5. Cycle check: `T01 → T02 → T03`, topologically sorted. ✓
@@ -519,22 +519,22 @@ The feature frontmatter is now:
 correlation_id: FEAT-2026-0051
 state: plan_review
 involved_repos:
-  - clabonte/api-sample
-  - clabonte/persistence-sample
+  - acme/api-sample
+  - acme/persistence-sample
 autonomy_default: review
 task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/persistence-sample
+    assigned_repo: acme/persistence-sample
   - id: T02
     type: qa_authoring
     depends_on: [T01]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: qa_execution
     depends_on: [T01, T02]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
 ---
 ```
 

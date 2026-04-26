@@ -81,7 +81,7 @@ One `implementation` task per capability, with the following target-repo assignm
 1. **Single-repo feature.** If `involved_repos` has exactly one entry, every implementation task is assigned to that repo. No capability-level mapping required.
 2. **Multi-repo feature.** If `involved_repos` has two or more entries, every capability must have an explicit target-repo declaration. The skill looks in:
    - The spec file itself (frontmatter `x-repo: owner/repo`, or a `Repo: owner/repo` line in a feature-prose spec).
-   - The feature registry's `## Task routing` section, which maps capabilities to repos (e.g. `- GET /widgets/export → clabonte/api-sample`).
+   - The feature registry's `## Task routing` section, which maps capabilities to repos (e.g. `- GET /widgets/export → acme/api-sample`).
 3. **No explicit declaration.** If rule 2 applies and a capability has no explicit declaration, the skill escalates `spec_level_blocker` with reason "target repo not declared for capability: `<capability>`". **The skill does not guess from repo names, path conventions, or spec heuristics.**
 
 If a single capability is implemented across two repos (a rare but legitimate case — e.g., an API operation with a paired persistence port), the skill produces **one implementation task per repo**, with dependencies per step 5.
@@ -179,7 +179,7 @@ After all checks pass:
 ```json
 {
   "task_count": 4,
-  "involved_repos": ["clabonte/api-sample", "clabonte/persistence-sample"],
+  "involved_repos": ["acme/api-sample", "acme/persistence-sample"],
   "decomposition_pass": 1
 }
 ```
@@ -219,8 +219,8 @@ Fictional feature `FEAT-2026-0050 — Widget export endpoint`, used for illustra
 correlation_id: FEAT-2026-0050
 state: planning
 involved_repos:
-  - clabonte/api-sample
-  - clabonte/persistence-sample
+  - acme/api-sample
+  - acme/persistence-sample
 autonomy_default: auto
 task_graph: []
 ---
@@ -252,8 +252,8 @@ from the persistence component via a new repository method.
 
 ## Task routing
 
-- `GET /widgets/export` → `clabonte/api-sample`
-- `IWidgetRepository.ExportAsync` → `clabonte/persistence-sample`
+- `GET /widgets/export` → `acme/api-sample`
+- `IWidgetRepository.ExportAsync` → `acme/persistence-sample`
 ```
 
 ### Capability identification (step 2)
@@ -267,16 +267,16 @@ From the spec set, the skill identifies two capabilities:
 
 `involved_repos` has two entries, so rule 2 applies: capabilities must declare their target repo. The `## Task routing` section declares both:
 
-- `T01 implementation` → `clabonte/persistence-sample` (the port).
-- `T02 implementation` → `clabonte/api-sample` (the handler).
+- `T01 implementation` → `acme/persistence-sample` (the port).
+- `T02 implementation` → `acme/api-sample` (the handler).
 
 ### QA tasks (step 4)
 
 The API endpoint is user-observable (new HTTP response), so it gets `qa_authoring` + `qa_execution`. The persistence port is internal (no externally observable behavior), so by the rule in step 4 it does not get its own QA tasks — the API endpoint's QA covers the port indirectly via behavior. The feature gets one `qa_curation`.
 
-- `T03 qa_authoring` → `clabonte/api-sample`.
-- `T04 qa_execution` → `clabonte/api-sample`.
-- `T05 qa_curation` → `clabonte/api-sample` (dominant-suite repo: api-sample has 2 QA tasks vs 0 for persistence).
+- `T03 qa_authoring` → `acme/api-sample`.
+- `T04 qa_execution` → `acme/api-sample`.
+- `T05 qa_curation` → `acme/api-sample` (dominant-suite repo: api-sample has 2 QA tasks vs 0 for persistence).
 
 ### Dependencies (step 5)
 
@@ -304,31 +304,31 @@ T01, T02, T03, T05 have no `autonomy` field set (inherit `auto`).
 correlation_id: FEAT-2026-0050
 state: planning
 involved_repos:
-  - clabonte/api-sample
-  - clabonte/persistence-sample
+  - acme/api-sample
+  - acme/persistence-sample
 autonomy_default: auto
 task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/persistence-sample
+    assigned_repo: acme/persistence-sample
   - id: T02
     type: implementation
     depends_on: [T01]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T03
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T04
     type: qa_execution
     depends_on: [T01, T02, T03]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
     autonomy: review
   - id: T05
     type: qa_curation
     depends_on: [T04]
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
 ---
 ```
 
@@ -343,7 +343,7 @@ task_graph:
   "source_version": "1.0.0",
   "payload": {
     "task_count": 5,
-    "involved_repos": ["clabonte/api-sample", "clabonte/persistence-sample"],
+    "involved_repos": ["acme/api-sample", "acme/persistence-sample"],
     "decomposition_pass": 1
   }
 }

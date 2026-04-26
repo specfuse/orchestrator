@@ -5,7 +5,7 @@
   "source": "qa",
   "source_version": "1.4.0",
   "payload": {
-    "curation_pr_url": "https://github.com/clabonte/specs-sample/pull/17",
+    "curation_pr_url": "https://github.com/acme/specs-sample/pull/17",
     "scope": "retire_orphan",
     "affected_test_ids": [
       "widgets-export-legacy-v1-content-type"

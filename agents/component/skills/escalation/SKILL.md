@@ -174,7 +174,7 @@ The agent:
 
 ## Worked example — `spec_level_blocker` with generated-code issue
 
-Task `FEAT-2026-0042/T09` asks the agent to extend a request handler in `clabonte/api-sample`. The handler lives partly in `/_generated/Controllers/OrdersController.cs` (generated from the OpenAPI spec) and partly in a hand-written sidecar. The agent's acceptance criteria require modifying both. The generated controller currently throws on a valid input because the OpenAPI spec's enum is missing a legitimate value.
+Task `FEAT-2026-0042/T09` asks the agent to extend a request handler in `acme/api-sample`. The handler lives partly in `/_generated/Controllers/OrdersController.cs` (generated from the OpenAPI spec) and partly in a hand-written sidecar. The agent's acceptance criteria require modifying both. The generated controller currently throws on a valid input because the OpenAPI spec's enum is missing a legitimate value.
 
 The agent:
 

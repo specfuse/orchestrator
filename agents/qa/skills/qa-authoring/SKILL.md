@@ -220,7 +220,7 @@ Failure handling follows [`verify-before-report.md`](../../../../shared/rules/ve
 
 ## Worked example
 
-Fictional feature `FEAT-2026-0060 — Widgets export pagination`, used for illustration. One `qa_authoring` task on `clabonte/api-sample`, two acceptance criteria.
+Fictional feature `FEAT-2026-0060 — Widgets export pagination`, used for illustration. One `qa_authoring` task on `acme/api-sample`, two acceptance criteria.
 
 ### Feature registry (before authoring)
 
@@ -229,17 +229,17 @@ Fictional feature `FEAT-2026-0060 — Widgets export pagination`, used for illus
 correlation_id: FEAT-2026-0060
 state: in_progress
 involved_repos:
-  - clabonte/api-sample
+  - acme/api-sample
 autonomy_default: auto
 task_graph:
   - id: T01
     type: implementation
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   - id: T02
     type: qa_authoring
     depends_on: []
-    assigned_repo: clabonte/api-sample
+    assigned_repo: acme/api-sample
   # ... qa_execution, qa_curation omitted for brevity
 ---
 
@@ -279,7 +279,7 @@ The `## Scope` section is silent on `qa_authoring` cardinality. Default applies:
 
 ### Test drafting (step 5)
 
-Runtime port discovered per the §Step 5 pre-step from `clabonte/api-sample`'s `src/ApiSample.Api/Properties/launchSettings.json` profile `http` → `applicationUrl: "http://localhost:8080"` → port `8080`. Threaded into `commands[]` below and documented in `## Coverage notes`.
+Runtime port discovered per the §Step 5 pre-step from `acme/api-sample`'s `src/ApiSample.Api/Properties/launchSettings.json` profile `http` → `applicationUrl: "http://localhost:8080"` → port `8080`. Threaded into `commands[]` below and documented in `## Coverage notes`.
 
 - `test_id: widgets-export-default-page-size`
   - `covers`: "AC-1: GET /widgets/export returns the first 50 widgets when no page_size parameter is supplied."
