@@ -71,6 +71,22 @@ run() {
   fi
 }
 
+# Capture the upstream anchor (URL + commit SHA) BEFORE stripping, so we can
+# durably record where this downstream was template-cloned from. The .git
+# directory is what gives us this info; running this before the user does
+# `rm -rf .git` is the only window we have to capture it automatically.
+upstream_url=""
+upstream_sha=""
+if [[ -d .git ]]; then
+  upstream_url=$(git config --get remote.origin.url 2>/dev/null || true)
+  upstream_sha=$(git rev-parse HEAD 2>/dev/null || true)
+fi
+upstream_captured=1
+if [[ -z "$upstream_url" || -z "$upstream_sha" ]]; then
+  upstream_captured=0
+fi
+clone_date=$(date -u +"%Y-%m-%d")
+
 strip_pattern() {
   local label="$1" base_dir="$2"
   shift 2
@@ -130,9 +146,55 @@ for d in features events overrides \
   ensure_gitkeep "$d"
 done
 
+# 6. Write the UPSTREAM anchor file (only if it doesn't already exist — re-runs
+#    of the strip don't clobber a downstream's existing anchor record).
+if [[ -f UPSTREAM ]]; then
+  echo "UPSTREAM file already present — not overwriting."
+elif [[ $upstream_captured -eq 1 ]]; then
+  echo "Writing UPSTREAM (anchor captured from .git: ${upstream_sha:0:12} on ${upstream_url})"
+  if [[ $dry_run -eq 0 ]]; then
+    cat > UPSTREAM <<EOF
+# Upstream anchor
+#
+# Records which upstream Specfuse-orchestrator commit this downstream
+# orchestration repo was template-cloned from. Used as the diff base for
+# periodic upstream syncs (see docs/upstream-downstream-sync.md).
+#
+# Bump 'commit' and 'last_synced' after every upstream sync to reflect the
+# new anchor.
+
+upstream: ${upstream_url}
+commit: ${upstream_sha}
+cloned: ${clone_date}
+last_synced: ${clone_date}
+EOF
+  fi
+else
+  echo "WARNING: cannot capture upstream anchor (no .git remote.origin or HEAD found)."
+  echo "Writing UPSTREAM with placeholders — fill in manually before committing."
+  if [[ $dry_run -eq 0 ]]; then
+    cat > UPSTREAM <<EOF
+# Upstream anchor — INCOMPLETE
+#
+# This file should record the upstream URL and commit SHA at template-clone
+# time, but the strip script could not detect them automatically (typically
+# because the script ran after 'rm -rf .git').
+#
+# Fill in the values below manually, then commit.
+
+upstream: <fill in upstream URL, e.g. https://github.com/Specfuse/orchestrator.git>
+commit: <fill in upstream commit SHA at clone time>
+cloned: ${clone_date}
+last_synced: ${clone_date}
+EOF
+  fi
+fi
+
 cat <<'EOF'
 
-Strip complete.
+Strip complete. The upstream anchor has been captured in the top-level UPSTREAM
+file (URL + commit SHA at clone time). It will be used by scripts/add-upstream-remote.sh
+in step 5 below, and again whenever you sync from upstream.
 
 Next steps:
   1. Edit README.md — replace the upstream framing with a description of YOUR
@@ -145,7 +207,9 @@ Next steps:
        git commit -m "chore: initial template clone from Specfuse-orchestrator"
   4. Push to your private repo:
        gh repo create <your-org>/<your-product>-orchestration --private --source=. --push
-  5. Open a Claude Code session at the new repo with agents/onboarding/CLAUDE.md
+  5. Configure the upstream remote as read-only (uses the captured UPSTREAM file):
+       ./scripts/add-upstream-remote.sh
+  6. Open a Claude Code session at the new repo with agents/onboarding/CLAUDE.md
      as the role prompt and run repo-inventory + integration-plan (brownfield)
      or bootstrap-greenfield (greenfield).
 

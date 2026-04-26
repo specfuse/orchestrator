@@ -101,12 +101,16 @@ moment each event is constructed, per `shared/rules/verify-before-report.md` §3
 
 Strips walkthrough/feature/event content from a fresh template clone of the
 orchestrator scaffolding, preparing it for use as a downstream project's
-private orchestration repo.
+private orchestration repo. **Also captures the upstream anchor** (URL +
+commit SHA at clone time) into a top-level `UPSTREAM` file — the durable
+record of where the downstream diverged from upstream, used as the diff
+base for future syncs and read by `add-upstream-remote.sh` to configure
+the remote.
 
 ```sh
 # from inside a fresh clone of the orchestrator scaffolding:
 ./scripts/template-clone-strip.sh . --dry-run        # preview
-./scripts/template-clone-strip.sh .                  # strip in place
+./scripts/template-clone-strip.sh .                  # strip + capture UPSTREAM
 ./scripts/template-clone-strip.sh . --strip-impl-plan  # also remove the
                                                        # orchestrator's own
                                                        # implementation plan
@@ -114,7 +118,9 @@ private orchestration repo.
 
 The script removes Phase 1–4 walkthrough features, events, inbox artifacts,
 and `docs/walkthroughs/`, then seeds `.gitkeep` in the directories that must
-remain. It does **not** touch `.git` — the caller re-initializes git history.
+remain. It does **not** touch `.git` — the caller re-initializes git history
+after running. **Run it before `rm -rf .git`** so the upstream URL and HEAD
+can be captured from the clone's `.git` directory.
 
 Refuses to run if the target's `.git` remote points at the upstream
 `Specfuse/orchestrator`. Verify with `--dry-run` before applying.
@@ -122,6 +128,27 @@ Refuses to run if the target's `.git` remote points at the upstream
 See `docs/upstream-downstream-sync.md` for the full template-clone workflow,
 including how to pull upstream improvements over time and how to contribute
 fixes back upstream.
+
+---
+
+## scripts/add-upstream-remote.sh
+
+Configures the upstream Specfuse-orchestrator remote on a downstream
+orchestration repo as **read-only** (push URL set to `DISABLE` so accidental
+pushes to upstream cannot happen). Reads the upstream URL from the
+top-level `UPSTREAM` file (created by `template-clone-strip.sh`).
+
+```sh
+# run once after `gh repo create ... --source=. --push`:
+./scripts/add-upstream-remote.sh
+
+# if upstream is already configured, the script reports its current state
+# and exits without changes; pass --reset to reconfigure:
+./scripts/add-upstream-remote.sh --reset
+```
+
+Idempotent. Errors out if `UPSTREAM` is missing or contains placeholder
+values; fill in `UPSTREAM` first (the file's header documents its format).
 
 ---
 

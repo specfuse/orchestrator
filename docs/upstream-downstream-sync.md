@@ -26,11 +26,11 @@ git clone https://github.com/Specfuse/orchestrator.git my-product-orchestration
 cd my-product-orchestration
 ```
 
-**2. Run the strip script.** Removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` — content from the upstream's own development history that has no place in your downstream.
+**2. Run the strip script.** Removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` — content from the upstream's own development history that has no place in your downstream. **Also captures the upstream anchor automatically** (URL + commit SHA at clone time) into a top-level `UPSTREAM` file — this is the durable record of where your downstream diverged from upstream, used as the diff base for every future sync. **Run this before `rm -rf .git`** so the script can read the upstream URL and HEAD from `.git/`.
 
 ```bash
 ./scripts/template-clone-strip.sh . --dry-run    # preview what will be removed
-./scripts/template-clone-strip.sh .              # actually strip
+./scripts/template-clone-strip.sh .              # actually strip + capture UPSTREAM
 ```
 
 Optional flags:
@@ -40,7 +40,7 @@ Optional flags:
 
 **3. Adapt `README.md`.** The upstream README opens with framing for the Specfuse orchestrator project itself ("Specfuse Orchestrator is a filesystem-based coordination layer..."). Replace the opening paragraph and "Status" section with framing for your product's orchestration repo. The "Get started on a real project" section can stay largely as-is — it points at the onboarding agent regardless of which product runs in the repo.
 
-**4. Re-initialize git and push.** Strip the upstream's git history; start your own.
+**4. Re-initialize git and push.** Strip the upstream's git history; start your own. The `UPSTREAM` file from step 2 carries forward into the new history.
 
 ```bash
 rm -rf .git
@@ -50,15 +50,13 @@ git commit -m "chore: initial template clone from Specfuse-orchestrator"
 gh repo create my-org/my-product-orchestration --private --source=. --push
 ```
 
-**5. (Recommended) Record the upstream commit you cloned from.** Add a top-level `UPSTREAM` file with the upstream remote URL and the commit SHA:
+**5. Configure the upstream remote as read-only.** Uses the URL captured in `UPSTREAM`; idempotent.
 
-```
-upstream: https://github.com/Specfuse/orchestrator.git
-commit: <sha-from-step-1>
-cloned: 2026-04-26
+```bash
+./scripts/add-upstream-remote.sh
 ```
 
-This is the anchor for future upstream syncs — it tells you and your future-self which commit your downstream diverged from.
+This adds `upstream` as a fetch-only remote (push URL set to `DISABLE`) so accidental pushes to upstream cannot happen from this clone.
 
 **6. Run the onboarding agent.** Open a Claude Code session at the new repo with `agents/onboarding/CLAUDE.md` as the role prompt and run the appropriate skills (`repo-inventory` + `integration-plan` for brownfield, or `bootstrap-greenfield` for greenfield). See [`README.md`](../README.md) §"Get started on a real project".
 
@@ -68,13 +66,13 @@ The upstream evolves: bug fixes, Phase 5+ deliverables, new agent skills, refine
 
 ### One-time setup (per downstream repo)
 
-Add the upstream as a read-only remote. Do this once.
+The upstream remote is configured by [`scripts/add-upstream-remote.sh`](../scripts/add-upstream-remote.sh) during the initial template clone (step 5 of "Initial template clone" above). If you skipped that step or are setting up a downstream repo that didn't use the strip script, run it now:
 
 ```bash
-git remote add upstream https://github.com/Specfuse/orchestrator.git
-# Pin upstream as fetch-only — never push to it from this clone.
-git remote set-url --push upstream DISABLE
+./scripts/add-upstream-remote.sh
 ```
+
+The script reads the URL from the top-level `UPSTREAM` file, adds an `upstream` fetch remote, and disables the push URL so accidental pushes to upstream cannot happen from this clone. If `UPSTREAM` is missing or has placeholder values, fill it in first (the format is documented at the top of the file).
 
 ### Periodic sync (recommended cadence: monthly, or on upstream release)
 
@@ -108,7 +106,7 @@ This lists upstream commits that touched the scaffolding paths, omitting the ups
 
 - **Merge-with-strategy.** Best when you trust the upstream changes wholesale and just want them in. More aggressive; not recommended without familiarity with the upstream's recent direction.
 
-**3. Update the `UPSTREAM` file.** Bump the recorded commit SHA so future syncs know where you're now anchored.
+**3. Update the `UPSTREAM` file.** Bump `commit:` to the SHA you synced to and `last_synced:` to today's date, so the next sync's `git log HEAD..upstream/main` cleanly shows only what's new since your latest anchor. (Currently a manual edit; a future helper may automate this when the sync workflow is more formalized.)
 
 **4. Run the test/validation surface.** The upstream's scripts (`scripts/validate-event.py`, `scripts/validate-frontmatter.py`) round-trip your downstream's existing artifacts through the synced schemas. If a sync changes a schema, this catches whether your existing data still validates.
 
@@ -204,6 +202,7 @@ Practical implications:
 ## Reference
 
 - [`README.md`](../README.md) — project getting-started, links to onboarding agent.
-- [`scripts/template-clone-strip.sh`](../scripts/template-clone-strip.sh) — the strip script.
-- [`agents/onboarding/`](../agents/onboarding/) — onboarding agent documentation.
+- [`scripts/template-clone-strip.sh`](../scripts/template-clone-strip.sh) — the strip + UPSTREAM-capture script.
+- [`scripts/add-upstream-remote.sh`](../scripts/add-upstream-remote.sh) — upstream remote configuration helper.
+- [`agents/onboarding/README.md`](../agents/onboarding/README.md) — onboarding agent documentation.
 - [`docs/orchestrator-architecture.md`](orchestrator-architecture.md) §4 — repository topology.
