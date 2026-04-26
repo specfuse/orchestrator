@@ -140,51 +140,68 @@ Keep an eye on your role-specific `rules/` directories (e.g., `/agents/specs/rul
 
 If you find a bug, write a useful new skill, or improve a shared rule in your downstream, you may want to contribute it back. The path is more involved than upstream-pull because your downstream commits include private feature data that must not leak.
 
-### Procedure
-
-**1. Fork the upstream repo on GitHub** to your personal or org account (separate from your downstream private repo). Clone your fork.
+The recommended path is the interactive contribution helper, which reviews your downstream commits since the `UPSTREAM` anchor, identifies which touch scaffolding paths, and produces clean path-scoped patches.
 
 ```bash
-git clone https://github.com/<you>/orchestrator.git orchestrator-upstream-fork
-cd orchestrator-upstream-fork
+./scripts/contribute-upstream.sh
 ```
 
-**2. Identify the change in your downstream.** Get the diff for the specific paths your contribution touches:
+For each downstream commit since `UPSTREAM`, the script:
+
+- **Categorizes** as `scaffolding-only` (clean candidate), `mixed` (touches both scaffolding and private paths), or `private-only` (silently skipped).
+- **Shows** which scaffolding files are in the commit and, for mixed commits, which private files will be **dropped** from the extracted patch.
+- **Warns** when commit messages reference downstream-specific tokens (FEAT-YYYY-NNNN correlation IDs, ticket prefixes like `WIDG-NN` / `JIRA-NN`) that you'll need to rewrite.
+- **Prompts** take / skip / diff / quit per commit.
+- **Extracts** chosen commits as `git format-patch` files in `./upstream-contributions/<timestamp>/`, scoped to scaffolding paths only — private file diffs cannot leak even if a commit was mixed.
 
 ```bash
-# from your downstream working dir
-git log --oneline -- agents/specs/skills/spec-drafting/SKILL.md
-git format-patch <base-sha>..HEAD -- agents/specs/skills/spec-drafting/SKILL.md
+./scripts/contribute-upstream.sh --list           # read-only review (no extraction)
+./scripts/contribute-upstream.sh --since <sha>    # override the base
+./scripts/contribute-upstream.sh --output <dir>   # custom output location
 ```
 
-`git format-patch` produces one `.patch` file per commit, scoped to only the specified paths. **Verify each patch contains no private references** (feature names, repo names, customer-specific examples) before proceeding.
+After extraction, the script prints next steps. Briefly:
 
-**3. Apply patches to the upstream fork.**
+**1. Review each `.patch` file.** The path scope drops private *files*; commit messages still carry the downstream's framing. Verify no private references survive in the message bodies.
+
+**2. Fork the upstream Specfuse/orchestrator on GitHub** (one-time):
 
 ```bash
-# in the upstream fork
-cd orchestrator-upstream-fork
-git checkout -b your-feature-name
-git am < /path/to/0001-...patch
+gh repo fork Specfuse/orchestrator --clone=false
 ```
 
-**4. Adjust for upstream context.** Your downstream's commit message may reference downstream-specific context ("fix WIDG-42 spec generation"); rewrite it to match upstream conventions ("fix(specs): handle nullable enum fields"). Use `git commit --amend` or `git rebase -i` as needed.
-
-**5. Validate against upstream.** Run upstream's scripts and walkthroughs to confirm the change doesn't break anything upstream depends on.
-
-**6. Open a PR against the upstream's `main`.**
+**3. Clone your fork to a working directory outside the downstream repo, then apply:**
 
 ```bash
+cd <some-other-dir>
+gh repo clone <your-username>/orchestrator
+cd orchestrator
+git checkout -b your-contribution-name
+git am /path/to/upstream-contributions/<timestamp>/*.patch
+```
+
+**4. Sanitize commit messages.** Rewrite anything referencing downstream context that doesn't translate upstream:
+
+```bash
+git rebase -i <base>     # 'reword' the relevant commits
+```
+
+**5. Validate against upstream.** Run upstream's scripts on any schema or event-format changes.
+
+**6. Push and open the PR:**
+
+```bash
+git push -u origin your-contribution-name
 gh pr create --repo Specfuse/orchestrator --title "..." --body "..."
 ```
 
-**7. After merge, sync upstream into your downstream.** Your contribution lands upstream; the next periodic sync (above) brings the merged version back into your downstream — completing the loop and letting you drop any local-only commits that the merged version supersedes.
+**7. After merge, sync upstream into your downstream** via `scripts/sync-upstream.sh`. Your contribution lands upstream; the next sync brings the merged version back, letting you drop any local-only commits the merged version supersedes.
 
 ### What not to contribute back
 
 - **Anything project-specific.** Skills, rules, or templates that only make sense for your product are downstream-only. Upstream changes should be useful to any project running the orchestrator.
 - **Anti-pattern fixes that contain private context.** A fix that hard-codes "the Acme Widget Tracker pagination convention" doesn't belong upstream. Generalize first or keep it local.
-- **Commits with private references.** Feature names, repo URLs, customer names. `git format-patch` doesn't sanitize these — you do.
+- **Commits with private references.** Feature names, repo URLs, customer names. The script's path scope drops private files automatically and warns on common ID patterns in commit messages, but **commit message sanitization is your responsibility** — review every patch before `git am` and reword as needed.
 
 ## Compatibility considerations
 

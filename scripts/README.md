@@ -131,6 +131,29 @@ fixes back upstream.
 
 ---
 
+## scripts/contribute-upstream.sh
+
+Interactive helper for the contribute-back path. Reviews downstream commits
+since the `UPSTREAM` anchor, categorizes each as `scaffolding-only`, `mixed`
+(touches both scaffolding and private paths), or `private-only`, and
+extracts path-scoped `git format-patch` files for the chosen ones into
+`./upstream-contributions/<timestamp>/`. Private file diffs are dropped at
+extraction; commit message sanitization is flagged but left to the operator.
+
+```sh
+# from the root of a downstream orchestration repo:
+./scripts/contribute-upstream.sh                  # interactive
+./scripts/contribute-upstream.sh --list           # read-only review
+./scripts/contribute-upstream.sh --since <sha>    # override the base
+./scripts/contribute-upstream.sh --output <dir>   # custom output location
+```
+
+The script prints next steps after extraction (fork upstream, `git am`,
+sanitize messages, push, open PR). See `docs/upstream-downstream-sync.md`
+for the full contribution workflow.
+
+---
+
 ## scripts/sync-upstream.sh
 
 Interactive helper for the periodic upstream sync. Lists upstream commits
