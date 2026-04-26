@@ -1501,6 +1501,8 @@ The phase is positioned as an **interlude** — a small targeted addition betwee
 - New `/project/` directory with a README explaining its purpose and the artifacts the onboarding skills produce.
 - Root `README.md` "Get started on a real project" section with two paths (greenfield, brownfield) routing through the onboarding agent.
 - `agents/README.md` restructured into "Operational roles" and "Meta-roles" sections.
+- `scripts/template-clone-strip.sh` — automation for the strip step of the template-clone workflow (removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` from a fresh clone; seeds `.gitkeep` in directories that must remain).
+- `docs/upstream-downstream-sync.md` — workflow documentation for the upstream/downstream relationship: initial template clone, periodic upstream sync (cherry-pick / path-scoped checkout), and contribution-back path.
 
 ### Phase 4.5 status
 

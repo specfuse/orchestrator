@@ -20,7 +20,7 @@ The idea → spec → plan → implement → QA → done pipeline is operational
 
 ## Getting started on a real project
 
-The orchestration repo is the **process-state store for one product** (singleton per product). Template-clone this scaffolding to your own org as `<your-org>/<your-product>-orchestration`, strip upstream walkthrough artifacts, and start fresh — keep `/agents/`, `/shared/`, `/scripts/`, and `/docs/` (the operator runbook and pipeline reference).
+The orchestration repo is the **process-state store for one product** (singleton per product). Template-clone this scaffolding to your own org as `<your-org>/<your-product>-orchestration`, strip upstream walkthrough artifacts via [`scripts/template-clone-strip.sh`](scripts/template-clone-strip.sh), and start fresh. Full workflow — including how to **pull upstream improvements** into your downstream over time and how to **contribute fixes back upstream** — is documented in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
 
 The orchestrator engages **downstream of product discussion**. Brainstorming, business decisions, and feature ideation belong in your project's **product reference repo** (the `/product/` subtree); the orchestrator picks up at feature-intake when an idea crystallizes into a feature.
 

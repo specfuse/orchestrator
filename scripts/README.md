@@ -97,6 +97,34 @@ moment each event is constructed, per `shared/rules/verify-before-report.md` §3
 
 ---
 
+## scripts/template-clone-strip.sh
+
+Strips walkthrough/feature/event content from a fresh template clone of the
+orchestrator scaffolding, preparing it for use as a downstream project's
+private orchestration repo.
+
+```sh
+# from inside a fresh clone of the orchestrator scaffolding:
+./scripts/template-clone-strip.sh . --dry-run        # preview
+./scripts/template-clone-strip.sh .                  # strip in place
+./scripts/template-clone-strip.sh . --strip-impl-plan  # also remove the
+                                                       # orchestrator's own
+                                                       # implementation plan
+```
+
+The script removes Phase 1–4 walkthrough features, events, inbox artifacts,
+and `docs/walkthroughs/`, then seeds `.gitkeep` in the directories that must
+remain. It does **not** touch `.git` — the caller re-initializes git history.
+
+Refuses to run if the target's `.git` remote points at the upstream
+`Specfuse/orchestrator`. Verify with `--dry-run` before applying.
+
+See `docs/upstream-downstream-sync.md` for the full template-clone workflow,
+including how to pull upstream improvements over time and how to contribute
+fixes back upstream.
+
+---
+
 ## scripts/requirements.txt
 
 Declares the Python package dependencies for the scripts in this directory:

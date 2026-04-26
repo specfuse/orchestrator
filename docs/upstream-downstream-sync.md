@@ -1,0 +1,209 @@
+# Upstream / downstream sync
+
+This document explains how to **template-clone** the upstream Specfuse orchestrator scaffolding into a private downstream repo for your own product, how to **pull upstream improvements** back into the downstream over time, and how to **contribute fixes** from your downstream back to the upstream.
+
+The orchestrator is intentionally not consumed as a dependency, library, or container image — it is consumed as **scaffolding**: a directory tree of agent configurations, shared rules, schemas, templates, and scripts that you copy, adapt, and version-control alongside your project's coordination state. The trade-off is a manual sync overhead in exchange for total control over which changes apply when.
+
+## Why a separate downstream repo
+
+The orchestration repo is the **process-state store for one product**. It accumulates `/features/`, `/events/`, `/inbox/`, `/overrides/` data over time — private operational state that should not live in a public upstream repo. Conversely, the upstream evolves with new agent capabilities, fixes, and (eventually) Phase 5+ surfaces that you'll want to take selectively into your downstream.
+
+A fork is the wrong shape: the fork's history would interleave private feature data with upstream commits, making cherry-picking either direction painful. A **template clone** (copy the scaffolding, init a fresh git history, push to a new private repo) cleanly separates the two histories. You take upstream changes by selective merge or cherry-pick on a remote you set up, and contribute back by preparing scaffolding-only patches against an upstream fork.
+
+## Initial template clone
+
+### Prerequisites
+
+- The upstream repo cloned or accessible (HTTPS, SSH, or local path).
+- `gh` CLI authenticated against your private org.
+
+### Procedure
+
+**1. Clone the upstream scaffolding.** Use `--depth 1` if you don't need history; full clone if you want the upstream commits available for later syncs.
+
+```bash
+git clone https://github.com/Specfuse/orchestrator.git my-product-orchestration
+cd my-product-orchestration
+```
+
+**2. Run the strip script.** Removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` — content from the upstream's own development history that has no place in your downstream.
+
+```bash
+./scripts/template-clone-strip.sh . --dry-run    # preview what will be removed
+./scripts/template-clone-strip.sh .              # actually strip
+```
+
+Optional flags:
+
+- `--strip-impl-plan` also removes `docs/orchestrator-implementation-plan.md` (the upstream's own build plan; not relevant to your downstream's day-to-day operation, but you may want to keep it as a reference).
+- `--dry-run` prints actions without performing them.
+
+**3. Adapt `README.md`.** The upstream README opens with framing for the Specfuse orchestrator project itself ("Specfuse Orchestrator is a filesystem-based coordination layer..."). Replace the opening paragraph and "Status" section with framing for your product's orchestration repo. The "Get started on a real project" section can stay largely as-is — it points at the onboarding agent regardless of which product runs in the repo.
+
+**4. Re-initialize git and push.** Strip the upstream's git history; start your own.
+
+```bash
+rm -rf .git
+git init -b main
+git add -A
+git commit -m "chore: initial template clone from Specfuse-orchestrator"
+gh repo create my-org/my-product-orchestration --private --source=. --push
+```
+
+**5. (Recommended) Record the upstream commit you cloned from.** Add a top-level `UPSTREAM` file with the upstream remote URL and the commit SHA:
+
+```
+upstream: https://github.com/Specfuse/orchestrator.git
+commit: <sha-from-step-1>
+cloned: 2026-04-26
+```
+
+This is the anchor for future upstream syncs — it tells you and your future-self which commit your downstream diverged from.
+
+**6. Run the onboarding agent.** Open a Claude Code session at the new repo with `agents/onboarding/CLAUDE.md` as the role prompt and run the appropriate skills (`repo-inventory` + `integration-plan` for brownfield, or `bootstrap-greenfield` for greenfield). See [`README.md`](../README.md) §"Get started on a real project".
+
+## Pulling upstream changes
+
+The upstream evolves: bug fixes, Phase 5+ deliverables, new agent skills, refined shared rules. You pull these into your downstream **selectively** — taking the scaffolding changes (`/agents/`, `/shared/`, `/scripts/`, `/docs/`) without taking the upstream's volatile dirs (`/features/`, `/events/`, `/inbox/`, `/overrides/`, `/docs/walkthroughs/`).
+
+### One-time setup (per downstream repo)
+
+Add the upstream as a read-only remote. Do this once.
+
+```bash
+git remote add upstream https://github.com/Specfuse/orchestrator.git
+# Pin upstream as fetch-only — never push to it from this clone.
+git remote set-url --push upstream DISABLE
+```
+
+### Periodic sync (recommended cadence: monthly, or on upstream release)
+
+**1. Fetch and review what's new.**
+
+```bash
+git fetch upstream
+git log --oneline HEAD..upstream/main -- agents/ shared/ scripts/ docs/
+```
+
+This lists upstream commits that touched the scaffolding paths, omitting the upstream's own walkthrough/feature commits.
+
+**2. Decide what to take.** Three patterns:
+
+- **Cherry-pick specific commits.** Best for targeted fixes ("upstream fixed F4.13 in qa-execution; I want that"). Each commit becomes a clean commit on your downstream.
+
+  ```bash
+  git cherry-pick <sha>
+  # resolve any conflicts, then commit
+  ```
+
+- **Path-scoped checkout.** Best for larger refactors that touch many files but cleanly within scaffolding paths.
+
+  ```bash
+  git checkout upstream/main -- agents/ shared/ scripts/ docs/operator-runbook.md
+  git diff --staged                              # review carefully
+  git commit -m "chore: sync upstream <commit-range>"
+  ```
+
+  This brings the *full upstream state* of those paths into your working tree, replacing your downstream's version. Review the diff before committing — your downstream may have local customizations that this overwrites.
+
+- **Merge-with-strategy.** Best when you trust the upstream changes wholesale and just want them in. More aggressive; not recommended without familiarity with the upstream's recent direction.
+
+**3. Update the `UPSTREAM` file.** Bump the recorded commit SHA so future syncs know where you're now anchored.
+
+**4. Run the test/validation surface.** The upstream's scripts (`scripts/validate-event.py`, `scripts/validate-frontmatter.py`) round-trip your downstream's existing artifacts through the synced schemas. If a sync changes a schema, this catches whether your existing data still validates.
+
+**5. Bump per-agent versions if behavior changed.** Each agent under `/agents/<role>/version.md` carries its own version. If a sync changed `/agents/specs/skills/spec-drafting/SKILL.md`, the specs agent's version bumps. The upstream commits typically already carry these bumps; review the changelog entries.
+
+### What not to take
+
+The strip script's removal list is also the upstream-sync ignore list:
+
+- `features/FEAT-*.md` — upstream's walkthrough features, not yours.
+- `events/FEAT-*.jsonl` — upstream's walkthrough event logs.
+- `inbox/*/FEAT-*.md` and `inbox/spec-issue/processed/*` — upstream's walkthrough escalations/regressions.
+- `docs/walkthroughs/` — upstream's phase walkthrough logs and retrospectives.
+- `docs/orchestrator-implementation-plan.md` — upstream's own build plan (debatable; some downstreams keep it as a reference).
+
+A path-scoped checkout that explicitly lists `agents/`, `shared/`, `scripts/`, and selected `docs/` files (operator-runbook, operator-pipeline-reference, walkthrough-planning-conventions, vision, architecture, design-summary) avoids these naturally. Cherry-picks rarely touch these paths in upstream development, so conflicts there are uncommon.
+
+### Conflict resolution
+
+Conflicts between your downstream customizations and upstream changes are handled like any git conflict, with two principles:
+
+1. **Per-agent versions are authoritative.** If your downstream is at `agents/specs/version.md` v1.0.1 and upstream is at v1.1.0, the upstream's prose is generally what you want — the version bump signals deliberate change. Resolve in upstream's favor unless your downstream had a specific local override.
+2. **Shared rules are load-bearing.** Conflicts in `shared/rules/` deserve careful review. A rule that you customized locally may need to be re-customized after the sync, or your customization may have been absorbed upstream.
+
+Keep an eye on your role-specific `rules/` directories (e.g., `/agents/specs/rules/`) — those are where your downstream-specific overrides live, and upstream typically does not touch them.
+
+## Contributing back to upstream
+
+If you find a bug, write a useful new skill, or improve a shared rule in your downstream, you may want to contribute it back. The path is more involved than upstream-pull because your downstream commits include private feature data that must not leak.
+
+### Procedure
+
+**1. Fork the upstream repo on GitHub** to your personal or org account (separate from your downstream private repo). Clone your fork.
+
+```bash
+git clone https://github.com/<you>/orchestrator.git orchestrator-upstream-fork
+cd orchestrator-upstream-fork
+```
+
+**2. Identify the change in your downstream.** Get the diff for the specific paths your contribution touches:
+
+```bash
+# from your downstream working dir
+git log --oneline -- agents/specs/skills/spec-drafting/SKILL.md
+git format-patch <base-sha>..HEAD -- agents/specs/skills/spec-drafting/SKILL.md
+```
+
+`git format-patch` produces one `.patch` file per commit, scoped to only the specified paths. **Verify each patch contains no private references** (feature names, repo names, customer-specific examples) before proceeding.
+
+**3. Apply patches to the upstream fork.**
+
+```bash
+# in the upstream fork
+cd orchestrator-upstream-fork
+git checkout -b your-feature-name
+git am < /path/to/0001-...patch
+```
+
+**4. Adjust for upstream context.** Your downstream's commit message may reference downstream-specific context ("fix WIDG-42 spec generation"); rewrite it to match upstream conventions ("fix(specs): handle nullable enum fields"). Use `git commit --amend` or `git rebase -i` as needed.
+
+**5. Validate against upstream.** Run upstream's scripts and walkthroughs to confirm the change doesn't break anything upstream depends on.
+
+**6. Open a PR against the upstream's `main`.**
+
+```bash
+gh pr create --repo Specfuse/orchestrator --title "..." --body "..."
+```
+
+**7. After merge, sync upstream into your downstream.** Your contribution lands upstream; the next periodic sync (above) brings the merged version back into your downstream — completing the loop and letting you drop any local-only commits that the merged version supersedes.
+
+### What not to contribute back
+
+- **Anything project-specific.** Skills, rules, or templates that only make sense for your product are downstream-only. Upstream changes should be useful to any project running the orchestrator.
+- **Anti-pattern fixes that contain private context.** A fix that hard-codes "the Acme Widget Tracker pagination convention" doesn't belong upstream. Generalize first or keep it local.
+- **Commits with private references.** Feature names, repo URLs, customer names. `git format-patch` doesn't sanitize these — you do.
+
+## Compatibility considerations
+
+The orchestrator scaffolding doesn't have a top-level version (yet). Per-agent versions in `/agents/<role>/version.md` track behavioral changes within each role; cross-role compatibility is not currently formalized.
+
+Practical implications:
+
+- **A downstream synced months apart from upstream may drift in subtle ways.** Per-agent versions help you spot what changed; the per-event `source_version` field in the event log helps you reconstruct what produced any given event after a sync.
+- **Schema changes are the highest-risk sync category.** A change to `shared/schemas/event.schema.json` or any per-type event schema can invalidate prior events. The upstream's discipline is additive (per-type schemas added; envelope-only kept compatible), but verify against your event log after every sync.
+- **Phase 5 will likely formalize a scaffolding-version concept.** Until then, the `UPSTREAM` file recommendation above is the closest substitute — it tells you which commit you anchored on.
+
+## Recommended cadence
+
+- **Initial clone:** once per project.
+- **Upstream sync:** monthly, or whenever upstream announces a Phase release / notable fix.
+- **Contribution back:** event-driven — when you have something genuinely upstream-worthy. Don't accumulate; the longer you wait, the harder the patch extraction.
+
+## Reference
+
+- [`README.md`](../README.md) — project getting-started, links to onboarding agent.
+- [`scripts/template-clone-strip.sh`](../scripts/template-clone-strip.sh) — the strip script.
+- [`agents/onboarding/`](../agents/onboarding/) — onboarding agent documentation.
+- [`docs/orchestrator-architecture.md`](orchestrator-architecture.md) §4 — repository topology.
