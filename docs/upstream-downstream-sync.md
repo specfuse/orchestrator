@@ -76,41 +76,44 @@ The script reads the URL from the top-level `UPSTREAM` file, adds an `upstream` 
 
 ### Periodic sync (recommended cadence: monthly, or on upstream release)
 
-**1. Fetch and review what's new.**
+The recommended path is the interactive sync script, which walks you through the upstream commits since your last anchor and cherry-picks the ones you want.
 
 ```bash
-git fetch upstream
-git log --oneline HEAD..upstream/main -- agents/ shared/ scripts/ docs/
+./scripts/sync-upstream.sh
 ```
 
-This lists upstream commits that touched the scaffolding paths, omitting the upstream's own walkthrough/feature commits.
+It reads the base from `UPSTREAM`, fetches `upstream/main`, lists every commit that touches scaffolding paths (excluding `docs/walkthroughs/` and downstream-private dirs), and for each one shows the SHA, subject, and files touched, then prompts: take **[y]es**, **[n]o**, view **[d]iff**, or **[q]uit**. On a "yes," it cherry-picks; on conflict, it halts with clear instructions to resolve and re-run. At the end, it offers to advance the `UPSTREAM` anchor automatically.
 
-**2. Decide what to take.** Three patterns:
+```bash
+./scripts/sync-upstream.sh --list           # read-only review (no prompts, no picks)
+./scripts/sync-upstream.sh --target <ref>   # compare against a different upstream ref
+```
 
-- **Cherry-pick specific commits.** Best for targeted fixes ("upstream fixed F4.13 in qa-execution; I want that"). Each commit becomes a clean commit on your downstream.
+If you prefer manual control, the script is just a wrapper around three git operations you can run directly:
+
+- **Cherry-pick specific commits.** Best for targeted fixes.
 
   ```bash
+  git fetch upstream
+  git log --oneline HEAD..upstream/main -- agents/ shared/ scripts/ docs/ ':!docs/walkthroughs/'
   git cherry-pick <sha>
-  # resolve any conflicts, then commit
   ```
 
-- **Path-scoped checkout.** Best for larger refactors that touch many files but cleanly within scaffolding paths.
+- **Path-scoped checkout.** Best for larger upstream refactors.
 
   ```bash
   git checkout upstream/main -- agents/ shared/ scripts/ docs/operator-runbook.md
-  git diff --staged                              # review carefully
+  git diff --staged
   git commit -m "chore: sync upstream <commit-range>"
   ```
 
-  This brings the *full upstream state* of those paths into your working tree, replacing your downstream's version. Review the diff before committing — your downstream may have local customizations that this overwrites.
+  This brings the *full upstream state* of those paths into your working tree, replacing your downstream's version. Review carefully — local customizations may be overwritten.
 
-- **Merge-with-strategy.** Best when you trust the upstream changes wholesale and just want them in. More aggressive; not recommended without familiarity with the upstream's recent direction.
+After any sync session (script-driven or manual), do these:
 
-**3. Update the `UPSTREAM` file.** Bump `commit:` to the SHA you synced to and `last_synced:` to today's date, so the next sync's `git log HEAD..upstream/main` cleanly shows only what's new since your latest anchor. (Currently a manual edit; a future helper may automate this when the sync workflow is more formalized.)
-
-**4. Run the test/validation surface.** The upstream's scripts (`scripts/validate-event.py`, `scripts/validate-frontmatter.py`) round-trip your downstream's existing artifacts through the synced schemas. If a sync changes a schema, this catches whether your existing data still validates.
-
-**5. Bump per-agent versions if behavior changed.** Each agent under `/agents/<role>/version.md` carries its own version. If a sync changed `/agents/specs/skills/spec-drafting/SKILL.md`, the specs agent's version bumps. The upstream commits typically already carry these bumps; review the changelog entries.
+- **Run validators.** `scripts/validate-event.py` and `scripts/validate-frontmatter.py` round-trip your downstream's existing artifacts through the synced schemas. If a sync changed a schema, this catches whether your existing data still validates.
+- **Review per-agent versions.** Each agent under `/agents/<role>/version.md` carries its own version. Synced commits typically already carry the bumps and changelog entries; verify they landed.
+- **Bump UPSTREAM if you didn't let the script do it.** `commit:` to the SHA you synced to (or `upstream/main` HEAD if you reviewed everything), `last_synced:` to today.
 
 ### What not to take
 

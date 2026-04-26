@@ -131,6 +131,32 @@ fixes back upstream.
 
 ---
 
+## scripts/sync-upstream.sh
+
+Interactive helper for the periodic upstream sync. Lists upstream commits
+since the downstream's `UPSTREAM` anchor (path-scoped to scaffolding paths
+only, excluding `docs/walkthroughs/` and downstream-private dirs), then
+walks the operator through each one with a take / skip / diff / quit prompt
+and cherry-picks the chosen commits. Halts on conflict with clear resume
+instructions; offers to advance the `UPSTREAM` anchor at the end.
+
+```sh
+# from the root of a downstream orchestration repo:
+./scripts/sync-upstream.sh                  # interactive
+./scripts/sync-upstream.sh --list           # read-only review (no prompts)
+./scripts/sync-upstream.sh --target <ref>   # compare against a different ref
+```
+
+Pre-conditions: clean working tree, `upstream` remote configured, valid
+`UPSTREAM` file. The script enforces these and errors out clearly if any
+are missing.
+
+See `docs/upstream-downstream-sync.md` for the full sync workflow,
+including manual alternatives and follow-up steps (validator runs,
+per-agent version review).
+
+---
+
 ## scripts/add-upstream-remote.sh
 
 Configures the upstream Specfuse-orchestrator remote on a downstream
