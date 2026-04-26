@@ -97,7 +97,7 @@ moment each event is constructed, per `shared/rules/verify-before-report.md` §3
 
 ---
 
-## scripts/setup-downstream.sh
+## scripts/setup.sh
 
 Interactive one-shot setup for a downstream orchestration repo. Bundles
 strip + git re-init + private GitHub repo creation + upstream remote
@@ -106,7 +106,7 @@ configuration into a single guided run, and writes a personalized
 
 ```sh
 # from inside a fresh clone of the upstream scaffolding:
-./scripts/setup-downstream.sh
+./scripts/setup.sh
 ```
 
 Asks four questions: GitHub org, repo name, project name, project type

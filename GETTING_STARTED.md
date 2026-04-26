@@ -14,7 +14,7 @@ Get from "I want to try the Specfuse orchestrator" to "ready to draft my first f
 ```bash
 git clone https://github.com/Specfuse/orchestrator.git my-product-orchestration
 cd my-product-orchestration
-./scripts/setup-downstream.sh
+./scripts/setup.sh
 ```
 
 The setup script asks you four questions:

@@ -20,7 +20,7 @@ The idea → spec → plan → implement → QA → done pipeline is operational
 
 ## Getting started on a real project
 
-**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). One `git clone` + `./scripts/setup-downstream.sh` does the entire one-time setup (strip, git re-init, private GitHub repo creation, upstream remote configuration, personalized next-steps doc). Then `/onboard` in a Claude Code session walks you through the rest.
+**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). One `git clone` + `./scripts/setup.sh` does the entire one-time setup (strip, git re-init, private GitHub repo creation, upstream remote configuration, personalized next-steps doc). Then `/onboard` in a Claude Code session walks you through the rest.
 
 The orchestration repo is the **process-state store for one product** (singleton per product). Template-cloned to your own org as `<your-org>/<your-product>-orchestration`. Full workflow — including how to **pull upstream improvements** into your downstream over time and how to **contribute fixes back upstream** — is documented in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
 
@@ -31,7 +31,7 @@ Two project shapes are supported, both via the same setup script:
 - **Greenfield:** new project, no repos yet. The onboarding agent's `bootstrap-greenfield` skill produces a setup checklist covering environment prereqs, repo-creation order, per-repo conventions, and first-feature scoping.
 - **Brownfield:** existing project with code, specs, and possibly in-flight features. The onboarding agent's `repo-inventory` skill walks each repo and produces readiness assessments; `integration-plan` then drafts a phased rollout (pilot → expand → import in-flight → steady state) that brings the project under orchestrator coordination without disrupting current delivery.
 
-The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The `setup-downstream.sh` script asks for your project type and chooses the right onboarding skill for you.
+The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The `setup.sh` script asks for your project type and chooses the right onboarding skill for you.
 
 ### Day-to-day operation
 
