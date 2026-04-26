@@ -97,6 +97,133 @@ moment each event is constructed, per `shared/rules/verify-before-report.md` §3
 
 ---
 
+## scripts/setup-downstream.sh
+
+Interactive one-shot setup for a downstream orchestration repo. Bundles
+strip + git re-init + private GitHub repo creation + upstream remote
+configuration into a single guided run, and writes a personalized
+`project/NEXT_STEPS.md` tailored to the project type.
+
+```sh
+# from inside a fresh clone of the upstream scaffolding:
+./scripts/setup-downstream.sh
+```
+
+Asks four questions: GitHub org, repo name, project name, project type
+(greenfield/brownfield). Pre-flight checks: clean working tree, `gh` CLI
+authenticated, fresh-clone markers present. Idempotent on the strip step
+(skipped if the clone is already stripped).
+
+This is the recommended entry point for a new downstream — see
+`GETTING_STARTED.md`. The individual scripts below are still available
+for advanced workflows or when something goes wrong mid-setup.
+
+---
+
+## scripts/template-clone-strip.sh
+
+Strips walkthrough/feature/event content from a fresh template clone of the
+orchestrator scaffolding, preparing it for use as a downstream project's
+private orchestration repo. **Also captures the upstream anchor** (URL +
+commit SHA at clone time) into a top-level `UPSTREAM` file — the durable
+record of where the downstream diverged from upstream, used as the diff
+base for future syncs and read by `add-upstream-remote.sh` to configure
+the remote.
+
+```sh
+# from inside a fresh clone of the orchestrator scaffolding:
+./scripts/template-clone-strip.sh . --dry-run        # preview
+./scripts/template-clone-strip.sh .                  # strip + capture UPSTREAM
+./scripts/template-clone-strip.sh . --strip-impl-plan  # also remove the
+                                                       # orchestrator's own
+                                                       # implementation plan
+```
+
+The script removes Phase 1–4 walkthrough features, events, inbox artifacts,
+and `docs/walkthroughs/`, then seeds `.gitkeep` in the directories that must
+remain. It does **not** touch `.git` — the caller re-initializes git history
+after running. **Run it before `rm -rf .git`** so the upstream URL and HEAD
+can be captured from the clone's `.git` directory.
+
+Refuses to run if the target's `.git` remote points at the upstream
+`Specfuse/orchestrator`. Verify with `--dry-run` before applying.
+
+See `docs/upstream-downstream-sync.md` for the full template-clone workflow,
+including how to pull upstream improvements over time and how to contribute
+fixes back upstream.
+
+---
+
+## scripts/contribute-upstream.sh
+
+Interactive helper for the contribute-back path. Reviews downstream commits
+since the `UPSTREAM` anchor, categorizes each as `scaffolding-only`, `mixed`
+(touches both scaffolding and private paths), or `private-only`, and
+extracts path-scoped `git format-patch` files for the chosen ones into
+`./upstream-contributions/<timestamp>/`. Private file diffs are dropped at
+extraction; commit message sanitization is flagged but left to the operator.
+
+```sh
+# from the root of a downstream orchestration repo:
+./scripts/contribute-upstream.sh                  # interactive
+./scripts/contribute-upstream.sh --list           # read-only review
+./scripts/contribute-upstream.sh --since <sha>    # override the base
+./scripts/contribute-upstream.sh --output <dir>   # custom output location
+```
+
+The script prints next steps after extraction (fork upstream, `git am`,
+sanitize messages, push, open PR). See `docs/upstream-downstream-sync.md`
+for the full contribution workflow.
+
+---
+
+## scripts/sync-upstream.sh
+
+Interactive helper for the periodic upstream sync. Lists upstream commits
+since the downstream's `UPSTREAM` anchor (path-scoped to scaffolding paths
+only, excluding `docs/walkthroughs/` and downstream-private dirs), then
+walks the operator through each one with a take / skip / diff / quit prompt
+and cherry-picks the chosen commits. Halts on conflict with clear resume
+instructions; offers to advance the `UPSTREAM` anchor at the end.
+
+```sh
+# from the root of a downstream orchestration repo:
+./scripts/sync-upstream.sh                  # interactive
+./scripts/sync-upstream.sh --list           # read-only review (no prompts)
+./scripts/sync-upstream.sh --target <ref>   # compare against a different ref
+```
+
+Pre-conditions: clean working tree, `upstream` remote configured, valid
+`UPSTREAM` file. The script enforces these and errors out clearly if any
+are missing.
+
+See `docs/upstream-downstream-sync.md` for the full sync workflow,
+including manual alternatives and follow-up steps (validator runs,
+per-agent version review).
+
+---
+
+## scripts/add-upstream-remote.sh
+
+Configures the upstream Specfuse-orchestrator remote on a downstream
+orchestration repo as **read-only** (push URL set to `DISABLE` so accidental
+pushes to upstream cannot happen). Reads the upstream URL from the
+top-level `UPSTREAM` file (created by `template-clone-strip.sh`).
+
+```sh
+# run once after `gh repo create ... --source=. --push`:
+./scripts/add-upstream-remote.sh
+
+# if upstream is already configured, the script reports its current state
+# and exits without changes; pass --reset to reconfigure:
+./scripts/add-upstream-remote.sh --reset
+```
+
+Idempotent. Errors out if `UPSTREAM` is missing or contains placeholder
+values; fill in `UPSTREAM` first (the file's header documents its format).
+
+---
+
 ## scripts/requirements.txt
 
 Declares the Python package dependencies for the scripts in this directory:

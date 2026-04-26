@@ -1,0 +1,5 @@
+# `agents/onboarding/rules/` is intentionally empty at v0.1.0.
+#
+# The onboarding agent applies all shared rules unmodified. If first real-project
+# use surfaces a need for a role-specific override, add a file here with explicit
+# justification per the override procedure in `/shared/rules/README.md` §"Revision".

@@ -1480,6 +1480,40 @@ The retrospective also re-evaluates the re-deferred Phase 3 findings (F3.11, F3.
 
 ---
 
+## Phase 4.5 — Onboarding agent (interlude)
+
+### Phase 4.5 objective
+
+Add a project-level meta-role — the **onboarding agent** — that prepares a project for orchestrator coordination. Operates project-wide rather than per-feature, with three v0.1 skills: `repo-inventory`, `integration-plan` (brownfield), and `bootstrap-greenfield`. Artifacts land under `/project/` in the orchestration repo.
+
+### Phase 4.5 rationale
+
+This phase was not in the original plan. It was added on 2026-04-26, after Phase 4's freeze, to support real-project adoption. The four operational agents are all at frozen v1; the bottleneck before a real-project trial was not orchestrator capability but the absence of a project-onboarding path. A team adopting the orchestrator on a brownfield project — existing repos, existing specs, possibly in-flight features — had no documented or automated way to inventory their landscape, identify orchestrator-readiness gaps, and sequence the rollout. Greenfield adoption was similarly under-scaffolded: no checklist linking environment prereqs, repo creation, per-repo conventions, and first-feature scoping.
+
+The phase is positioned as an **interlude** — a small targeted addition between the Phase 4 freeze and the Phase 5 generator-feedback-loop work — rather than as a renumbered phase, because its scope is bounded (one new role, three skills, one new directory) and it does not modify any frozen surface. It establishes a meta-role pattern that Phase 5's config-steward agent (also a meta-role, also project-level rather than per-feature) will join.
+
+### Phase 4.5 deliverables
+
+- New role at `agents/onboarding/` with `CLAUDE.md`, `README.md`, `version.md`, empty `rules/`, and three skills:
+  - `skills/repo-inventory/SKILL.md` — inventories the project's repos, produces per-repo readiness assessments under `/project/repos/` and a project manifest at `/project/manifest.md`.
+  - `skills/integration-plan/SKILL.md` — for brownfield projects, drafts a phased transition plan at `/project/integration-plan.md`.
+  - `skills/bootstrap-greenfield/SKILL.md` — for greenfield projects, drafts a setup checklist at `/project/bootstrap-checklist.md`.
+- New `/project/` directory with a README explaining its purpose and the artifacts the onboarding skills produce.
+- Root `README.md` "Get started on a real project" section with two paths (greenfield, brownfield) routing through the onboarding agent.
+- `agents/README.md` restructured into "Operational roles" and "Meta-roles" sections.
+- `scripts/template-clone-strip.sh` — automation for the strip step of the template-clone workflow (removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` from a fresh clone; seeds `.gitkeep` in directories that must remain).
+- `docs/upstream-downstream-sync.md` — workflow documentation for the upstream/downstream relationship: initial template clone, periodic upstream sync (cherry-pick / path-scoped checkout), and contribution-back path.
+
+### Phase 4.5 status
+
+Drafted in a single multi-file commit on 2026-04-26 (branch `initial-wrap-up`). No work-unit numbering — added out of band, as the plan accommodates per `## Executing this plan` §"Pause and update the plan when reality diverges." The skills are explicitly v0.1 drafts; first real-project use is the hardening signal, and any post-use revisions will be tracked under their own commits without further phase numbering.
+
+### Phase 4.5 acceptance criteria
+
+The onboarding agent's first real-project use produces a usable inventory, a usable integration plan or bootstrap checklist, and identifies any v0.1 friction worth a v0.2 revision. The phase is "complete" when that first use either succeeds outright or surfaces concrete revision items; either outcome unblocks Phase 5.
+
+---
+
 ## Phase 5 — Generator feedback loop automation
 
 ### Phase 5 objective
