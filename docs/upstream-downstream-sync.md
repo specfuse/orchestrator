@@ -10,6 +10,23 @@ The orchestration repo is the **process-state store for one product**. It accumu
 
 A fork is the wrong shape: the fork's history would interleave private feature data with upstream commits, making cherry-picking either direction painful. A **template clone** (copy the scaffolding, init a fresh git history, push to a new private repo) cleanly separates the two histories. You take upstream changes by selective merge or cherry-pick on a remote you set up, and contribute back by preparing scaffolding-only patches against an upstream fork.
 
+## Licensing — upstream vs. downstream
+
+The upstream is **Apache 2.0**. Most downstreams hold proprietary content (project specs, integration plans, in-flight feature data) and want their LICENSE to reflect that, not the upstream's permissive terms. The strip script handles this conversion automatically:
+
+- **Replaces the upstream `LICENSE`** (Apache 2.0) with a proprietary placeholder. `setup.sh` substitutes the current year and your GitHub org as the copyright holder; you review and adjust to match your legal entity name in `project/NEXT_STEPS.md` Step 0.
+- **Writes a `NOTICES.md` at the downstream root** that attributes the upstream Apache 2.0 origin, lists which directories/files are upstream-derived, and reproduces the upstream's `LICENSE` and `NOTICE` text in full — satisfying Apache 2.0 §4.b.
+- **Removes the upstream `NOTICE`** since its content has been folded into `NOTICES.md`.
+
+License boundary in the resulting downstream:
+
+- **Upstream-derived files** (`agents/`, `shared/`, `scripts/`, `docs/`, `project/README.md`, the top-level Markdown docs, `.github/`, `.claude/`) remain available under Apache 2.0. Modifications you make to them must carry a notice that they were changed (Apache 2.0 §4.b — a commit message or changelog entry suffices).
+- **Original work added by you** (your `/features/`, `/events/`, `/inbox/` content, project-specific `/agents/<role>/rules/` additions, `/project/` content beyond `README.md`) is governed by the downstream's `LICENSE`.
+
+If your downstream is itself open-source and you want to preserve the upstream's Apache 2.0 LICENSE, the revert is one line — documented in `project/NEXT_STEPS.md` Step 0.
+
+This is a starting template, not legal advice. Consult your organization's legal counsel for the final licensing arrangement.
+
 ## Initial template clone
 
 ### Prerequisites
@@ -26,7 +43,7 @@ git clone https://github.com/Specfuse/orchestrator.git my-product-orchestration
 cd my-product-orchestration
 ```
 
-**2. Run the strip script.** Removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` — content from the upstream's own development history that has no place in your downstream. **Also captures the upstream anchor automatically** (URL + commit SHA at clone time) into a top-level `UPSTREAM` file — this is the durable record of where your downstream diverged from upstream, used as the diff base for every future sync. **Run this before `rm -rf .git`** so the script can read the upstream URL and HEAD from `.git/`.
+**2. Run the strip script.** Removes phase-walkthrough features, events, inbox artifacts, and `docs/walkthroughs/` — content from the upstream's own development history that has no place in your downstream. **Also captures the upstream anchor automatically** (URL + commit SHA at clone time) into a top-level `UPSTREAM` file — this is the durable record of where your downstream diverged from upstream, used as the diff base for every future sync. **And replaces the upstream Apache 2.0 `LICENSE` with a proprietary placeholder, writing a `NOTICES.md` that preserves Apache 2.0 attribution in full** — see "Licensing" below for the rationale and the revert path for OSS downstreams. **Run this before `rm -rf .git`** so the script can read the upstream URL and HEAD from `.git/`.
 
 ```bash
 ./scripts/template-clone-strip.sh . --dry-run    # preview what will be removed

@@ -14,7 +14,7 @@ Get from "I want to try the Specfuse orchestrator" to "ready to draft my first f
 ```bash
 git clone https://github.com/Specfuse/orchestrator.git my-product-orchestration
 cd my-product-orchestration
-./scripts/setup-downstream.sh
+./scripts/setup.sh
 ```
 
 The setup script asks you four questions:
@@ -42,6 +42,7 @@ After the script completes, **everything you need to do next is in `project/NEXT
 - The onboarding agent ready to populate `/project/`.
 - The upstream Specfuse-orchestrator wired as a read-only remote so you can pull future improvements via `/sync-upstream`.
 - A personalized `project/NEXT_STEPS.md` with your exact next commands.
+- **A proprietary `LICENSE`** (upstream's Apache 2.0 is replaced; current year and your GitHub org auto-filled as copyright holder) and a `NOTICES.md` preserving Apache 2.0 attribution for upstream-derived files. `project/NEXT_STEPS.md` Step 0 walks you through reviewing/adjusting it, including the one-line revert if your downstream is itself open-source. See [`README.md`](README.md) §"Licensing — upstream vs. downstream" for the rationale.
 
 ## What's next
 

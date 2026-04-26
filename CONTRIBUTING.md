@@ -64,7 +64,11 @@ The walkthrough log artifacts in `docs/walkthroughs/phase-N/` are the existing t
 
 ## License
 
-This project is licensed under Apache 2.0. By contributing, you agree your contributions are licensed under the same. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+The **upstream Specfuse Orchestrator scaffolding** is licensed under Apache 2.0. By contributing to *this* repository (the upstream), you agree your contributions are licensed under the same terms. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+
+Note that **downstream orchestration repos** template-cloned via [`scripts/setup.sh`](scripts/setup.sh) are configured with a proprietary placeholder LICENSE by default, with Apache 2.0 attribution preserved in a generated `NOTICES.md`. See [`README.md`](README.md) §"Licensing — upstream vs. downstream" and [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md) §"Licensing" for the full rationale and the OSS-downstream revert path.
+
+When contributing back to upstream from a downstream, the `scripts/contribute-upstream.sh` flow extracts only the scaffolding-path changes — your downstream's proprietary content cannot leak into upstream patches.
 
 ## Questions
 

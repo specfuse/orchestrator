@@ -20,7 +20,7 @@ The idea → spec → plan → implement → QA → done pipeline is operational
 
 ## Getting started on a real project
 
-**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). One `git clone` + `./scripts/setup-downstream.sh` does the entire one-time setup (strip, git re-init, private GitHub repo creation, upstream remote configuration, personalized next-steps doc). Then `/onboard` in a Claude Code session walks you through the rest.
+**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). One `git clone` + `./scripts/setup.sh` does the entire one-time setup (strip, git re-init, private GitHub repo creation, upstream remote configuration, personalized next-steps doc). Then `/onboard` in a Claude Code session walks you through the rest.
 
 The orchestration repo is the **process-state store for one product** (singleton per product). Template-cloned to your own org as `<your-org>/<your-product>-orchestration`. Full workflow — including how to **pull upstream improvements** into your downstream over time and how to **contribute fixes back upstream** — is documented in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
 
@@ -31,7 +31,7 @@ Two project shapes are supported, both via the same setup script:
 - **Greenfield:** new project, no repos yet. The onboarding agent's `bootstrap-greenfield` skill produces a setup checklist covering environment prereqs, repo-creation order, per-repo conventions, and first-feature scoping.
 - **Brownfield:** existing project with code, specs, and possibly in-flight features. The onboarding agent's `repo-inventory` skill walks each repo and produces readiness assessments; `integration-plan` then drafts a phased rollout (pilot → expand → import in-flight → steady state) that brings the project under orchestrator coordination without disrupting current delivery.
 
-The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The `setup-downstream.sh` script asks for your project type and chooses the right onboarding skill for you.
+The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The `setup.sh` script asks for your project type and chooses the right onboarding skill for you.
 
 ### Day-to-day operation
 
@@ -39,6 +39,18 @@ Once a project is wired:
 
 - [`docs/operator-runbook.md`](docs/operator-runbook.md) — quickstart for driving a feature from idea through `planning` with the specs agent. Includes environment prerequisites.
 - [`docs/operator-pipeline-reference.md`](docs/operator-pipeline-reference.md) — full-lifecycle operator reference covering PM, component, and QA sessions, inbox handling, spec-issue triage, and escalations.
+
+### Licensing — upstream vs. downstream
+
+This **upstream** repository is licensed under [Apache 2.0](LICENSE). You can incorporate the scaffolding into your own work, including proprietary work, with attribution.
+
+A **downstream** orchestration repo created via [`scripts/setup.sh`](scripts/setup.sh) holds your project's coordination state — `/features/`, `/events/`, `/inbox/`, `/project/` — alongside the upstream-derived scaffolding. Most teams want this content treated as **proprietary**, not Apache 2.0. The setup script handles this automatically:
+
+- The upstream's `LICENSE` (Apache 2.0) is replaced with a **proprietary placeholder** carrying your org name as the copyright holder and the current year.
+- A `NOTICES.md` is created at the downstream's root with full Apache 2.0 attribution and reproduces the upstream's `LICENSE` and `NOTICE` text in full — satisfying Apache 2.0 §4.b for the upstream-derived files (`agents/`, `shared/`, `scripts/`, `docs/`, the top-level Markdown docs, `.github/`, `.claude/`).
+- Modifications you make to upstream-derived files remain governed by Apache 2.0; original work added by you (`/features/`, `/events/`, `/inbox/`, project-specific `/agents/<role>/rules/`, `/project/` content beyond `README.md`) is governed by your downstream's `LICENSE`.
+
+If your downstream is itself open-source rather than proprietary, [`scripts/setup.sh`](scripts/setup.sh) documents the one-line revert to Apache 2.0 in the generated `project/NEXT_STEPS.md`. Either way, the licensing decision is **explicit and visible** in your downstream from day one — no inherited LICENSE files quietly imply terms that don't match your intent.
 
 ### Slash commands (in a Claude Code session)
 

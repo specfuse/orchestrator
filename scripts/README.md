@@ -97,7 +97,7 @@ moment each event is constructed, per `shared/rules/verify-before-report.md` §3
 
 ---
 
-## scripts/setup-downstream.sh
+## scripts/setup.sh
 
 Interactive one-shot setup for a downstream orchestration repo. Bundles
 strip + git re-init + private GitHub repo creation + upstream remote
@@ -106,7 +106,7 @@ configuration into a single guided run, and writes a personalized
 
 ```sh
 # from inside a fresh clone of the upstream scaffolding:
-./scripts/setup-downstream.sh
+./scripts/setup.sh
 ```
 
 Asks four questions: GitHub org, repo name, project name, project type
@@ -139,14 +139,18 @@ the remote.
                                                        # implementation plan
 ```
 
-The script removes Phase 1–4 walkthrough features, events, inbox artifacts,
-and `docs/walkthroughs/`, then seeds `.gitkeep` in the directories that must
-remain. It does **not** touch `.git` — the caller re-initializes git history
-after running. **Run it before `rm -rf .git`** so the upstream URL and HEAD
-can be captured from the clone's `.git` directory.
+The script:
 
-Refuses to run if the target's `.git` remote points at the upstream
-`Specfuse/orchestrator`. Verify with `--dry-run` before applying.
+- Removes Phase 1–4 walkthrough features, events, inbox artifacts, and `docs/walkthroughs/`.
+- Seeds `.gitkeep` in directories that must remain part of the scaffolding.
+- **Replaces the upstream `LICENSE` (Apache 2.0) with a proprietary placeholder** and writes `NOTICES.md` preserving Apache 2.0 attribution in full (see `docs/upstream-downstream-sync.md` §"Licensing").
+- Captures the `UPSTREAM` anchor (URL + commit SHA) from `.git/`.
+
+It does **not** touch `.git` — the caller re-initializes git history after running. **Run it before `rm -rf .git`** so the upstream URL and HEAD can be captured.
+
+The `LICENSE` placeholder uses `<YEAR>`/`<COPYRIGHT_HOLDER>` tokens; if you call this script standalone, fill them in manually. `setup.sh` substitutes them with the current year and your GitHub org automatically.
+
+Verify with `--dry-run` before applying.
 
 See `docs/upstream-downstream-sync.md` for the full template-clone workflow,
 including how to pull upstream improvements over time and how to contribute
