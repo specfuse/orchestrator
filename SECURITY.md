@@ -6,10 +6,7 @@ Thank you for helping keep the Specfuse Orchestrator and its downstream consumer
 
 **Please do not report security vulnerabilities through public GitHub issues, discussions, or pull requests.** Public reports give attackers a head start while a fix is being prepared.
 
-Use one of these channels instead:
-
-- **Preferred:** [Open a private security advisory](https://github.com/Specfuse/orchestrator/security/advisories/new) on this repository. The advisory is visible only to you and the maintainers until a fix is published.
-- **Email:** `<INSERT_SECURITY_CONTACT>` <!-- TODO: replace with real contact before publishing CoC/SECURITY widely -->.
+Instead, [**open a private security advisory**](https://github.com/specfuse/orchestrator/security/advisories/new) on this repository. The advisory is visible only to you and the maintainers until a fix is published.
 
 Please include:
 

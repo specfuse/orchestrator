@@ -6,10 +6,7 @@ In short: be respectful, be welcoming, and assume good faith. Project maintainer
 
 ## Reporting
 
-To report a code-of-conduct concern, contact the maintainers privately:
-
-- **Preferred:** email `<INSERT_CONDUCT_CONTACT>` <!-- TODO: replace with real contact before going wide -->.
-- **Alternative:** [open a private security advisory](https://github.com/Specfuse/orchestrator/security/advisories/new) and mark it as a conduct concern. (We use the private advisory channel for both security and conduct reports because it provides a confidential maintainer-only inbox.)
+To report a code-of-conduct concern, [**open a private advisory**](https://github.com/specfuse/orchestrator/security/advisories/new) on this repository and mark it clearly as a conduct concern in the title or body. We use GitHub's private advisory channel for both security and conduct reports because it provides a confidential maintainer-only inbox.
 
 All reports are handled with discretion. Maintainers are obligated to maintain confidentiality with regard to the reporter of an incident.
 
