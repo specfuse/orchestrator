@@ -300,7 +300,7 @@ def discover_repos() -> list[tuple[str, str]]:
         m = re.search(r"\*\*Repo:\*\*\s*`([^`]+)`", f.read_text())
         if m:
             out.append(("component", m.group(1)))
-    out.append(("specs", "RestoManagerApp/restomanager-specs"))
+    out.append(("specs", "acme/specs-sample"))
     return out
 
 

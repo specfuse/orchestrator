@@ -16,7 +16,7 @@ Under Model B this is the component-agent role's one retained job (the loop is c
 script is its runtime. Run it standalone or let `codegen-run` invoke it post-generation.
 
     python3 -m specfuse.orchestrator.reconcile_overrides                 # all active overrides
-    python3 -m specfuse.orchestrator.reconcile_overrides --repo RestoManagerApp/Backend
+    python3 -m specfuse.orchestrator.reconcile_overrides --repo acme/api-sample
     python3 -m specfuse.orchestrator.reconcile_overrides --dry-run
 
 Requires `gh` (tracking-issue state) and pyyaml is not needed (records are JSON).
