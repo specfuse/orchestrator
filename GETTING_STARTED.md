@@ -91,5 +91,3 @@ In a Claude Code session at the orchestration repo, the plugin provides one slas
 - Make sure `gh auth status` passes before the `gh repo create` step.
 - [`README.md`](README.md) — full project overview.
 - Open an issue on the [`specfuse-orchestrator`](https://github.com/specfuse/orchestrator) repo if the failure looks like a tooling bug.
-</content>
-</invoke>
