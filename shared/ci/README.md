@@ -24,7 +24,7 @@ The orchestrator poller (`specfuse-poller`) picks up from there: it sees the fea
 ### Install (per component repo)
 1. Copy `merge-watcher.yml` to `.github/workflows/merge-watcher.yml` in the component repo.
 2. Add two repo secrets for the **`specfuse-merge-watcher` GitHub App** (installed on
-   `RestoManagerApp/orchestrator` with `contents: write`):
+   `acme/orchestration` with `contents: write`):
    - **`SPECFUSE_APP_ID`** — the App's numeric ID.
    - **`SPECFUSE_APP_PRIVATE_KEY`** — the App's PEM private key.
    The workflow mints a short-lived, orchestrator-scoped installation token at runtime via
