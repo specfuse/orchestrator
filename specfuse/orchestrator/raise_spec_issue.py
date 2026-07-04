@@ -11,7 +11,7 @@ and records a `spec_issue_raised` event in the orchestration event log for the a
 The specs agent then monitors/acts on `specfuse:spec-issue` issues (gh-pick + spec-issue-triage).
 
     python3 -m specfuse.orchestrator.raise_spec_issue --file filled-spec-issue.md
-    python3 -m specfuse.orchestrator.raise_spec_issue --file x.md --specs-repo RestoManagerApp/restomanager-specs --dry-run
+    python3 -m specfuse.orchestrator.raise_spec_issue --file x.md --specs-repo acme/specs-sample --dry-run
 
 Filing a GitHub issue does NOT touch /product/ — it is the routing step, not a spec edit.
 Requires the `gh` CLI authenticated (for non-dry runs) and pyyaml is not needed.
@@ -29,7 +29,7 @@ from pathlib import Path
 
 from specfuse.orchestrator import paths
 from specfuse.orchestrator.validate_event import validate as validate_event
-DEFAULT_SPECS_REPO = "RestoManagerApp/restomanager-specs"
+DEFAULT_SPECS_REPO = "acme/specs-sample"
 
 REQUIRED_SECTIONS = ["## Observation", "## Location", "## Triggering task", "## Suggested resolution"]
 CORRELATION_RE = re.compile(r"Correlation ID:\s*((?:FEAT|INIT)-\d{4}-\d{4}(?:/F\d{2})?(?:/T\d{2})?)")

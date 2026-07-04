@@ -32,7 +32,7 @@ from pathlib import Path
 
 from specfuse.orchestrator import paths
 
-DEFAULT_SLUG = "RestoManagerApp/restomanager-specs"
+DEFAULT_SLUG = "acme/specs-sample"
 SPEC_LABEL = "specfuse:spec-issue"
 BUSY_LABEL = "specfuse:in-triage"
 TRIAGE_SKILL = ".specfuse/agents/specs/skills/spec-issue-triage/SKILL.md"
@@ -93,7 +93,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    specs_path = Path(args.specs_path) if args.specs_path else paths.state_root().parent / "restomanager-specs"
+    specs_path = Path(args.specs_path) if args.specs_path else paths.state_root().parent / "specs-sample"
     if not args.dry_run:
         if not specs_path.is_dir():
             sys.stderr.write(f"error: specs checkout not found: {specs_path}\n")

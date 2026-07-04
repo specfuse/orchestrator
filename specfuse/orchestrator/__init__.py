@@ -2,7 +2,7 @@
 
 from importlib import resources
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 
 
 def ownership_fragment():

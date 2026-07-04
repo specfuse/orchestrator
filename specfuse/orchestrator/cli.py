@@ -2,7 +2,7 @@
 
 `init <dir>` scaffolds the user-owned state repo (FEAT-2026-0002/T02): the
 `features/`, `events/`, `project/`, `inbox/`, `overrides/` dirs and a starter
-`roadmap.md`, replicating the state-repo half of `scripts/setup.sh`. Seed
+`roadmap.md`, replicating the state-repo half of the retired fork-era setup script. Seed
 content is embedded below as packaged data (compiled into this module, not
 read from a path in the orchestrator source tree) so it ships with the wheel.
 

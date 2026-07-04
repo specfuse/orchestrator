@@ -14,7 +14,7 @@
 #
 # INSTALL: copy to .github/workflows/merge-watcher.yml in the component repo.
 # SECRETS (component repo): SPECFUSE_APP_ID + SPECFUSE_APP_PRIVATE_KEY — credentials for the
-#   `specfuse-merge-watcher` GitHub App (installed on RestoManagerApp/orchestrator with
+#   `specfuse-merge-watcher` GitHub App (installed on acme/orchestration with
 #   contents:write). The workflow mints a short-lived, orchestrator-scoped installation token
 #   at runtime via actions/create-github-app-token. GITHUB_TOKEN (built-in) covers this repo's
 #   issues. (Replaces the former long-lived ORCH_TOKEN PAT.)
@@ -31,7 +31,7 @@ permissions:
   issues: write
 
 env:
-  ORCH_REPO: RestoManagerApp/orchestrator
+  ORCH_REPO: acme/orchestration
 
 jobs:
   on-merge:
@@ -84,14 +84,14 @@ jobs:
         with:
           app-id: ${{ secrets.SPECFUSE_APP_ID }}
           private-key: ${{ secrets.SPECFUSE_APP_PRIVATE_KEY }}
-          owner: RestoManagerApp
+          owner: acme
           repositories: orchestrator
 
       - name: Checkout orchestration repo
         if: steps.cid.outputs.skip == 'false'
         uses: actions/checkout@v4
         with:
-          repository: RestoManagerApp/orchestrator
+          repository: acme/orchestration
           token: ${{ steps.orchtoken.outputs.token }}
           path: orchestrator
 

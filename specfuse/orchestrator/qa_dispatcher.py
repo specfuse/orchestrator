@@ -10,11 +10,11 @@ pass, finds READY `specfuse:qa-feature` issues, claims each (`state:ready → st
 the dedup marker), and spawns a fresh QA-agent session to do the work.
 
 The spawned session runs in the orchestrator project (sibling repos accessible). It may write
-test plans under `restomanager-specs/product/test-plans/` — allowed by the deny-specs-edit hook's
+test plans under `specs-sample/product/test-plans/` — allowed by the deny-specs-edit hook's
 carve-out (never-touch.md §6); the rest of the specs repo stays blocked.
 
     python3 -m specfuse.orchestrator.qa_dispatcher                 # scan the initiative's involved_repos
-    python3 -m specfuse.orchestrator.qa_dispatcher --repo RestoManagerApp/Backend --dry-run
+    python3 -m specfuse.orchestrator.qa_dispatcher --repo acme/api-sample --dry-run
     python3 -m specfuse.orchestrator.qa_dispatcher --interval 300
 
 Requires the `gh` CLI authenticated and `claude` available (for non-dry runs).
@@ -89,7 +89,7 @@ def dispatch_one(issue: dict, dry: bool) -> None:
         f"{QA_LABEL}). Read {QA_CLAUDE} and the matching skill "
         f"(agents/qa/skills/qa-authoring | qa-execution | qa-curation per the issue's type:qa-* "
         f"label) and follow it: do the work (author the test plan under "
-        f"restomanager-specs/product/test-plans/ for qa_authoring; run it against the component "
+        f"specs-sample/product/test-plans/ for qa_authoring; run it against the component "
         f"code for qa_execution; curate for qa_curation), emit the QA events, honor the "
         f"cross-feature regression invariant (write no labels/state to a feature you do not own — "
         f"file a regression as a NEW feature), set this feature's state labels via the canonical "
