@@ -16,7 +16,7 @@ from specfuse.orchestrator import paths
 try:
     import yaml
 except ImportError:
-    sys.stderr.write("error: pyyaml required (pip install -r scripts/requirements.txt)\n")
+    sys.stderr.write("error: pyyaml required (pip install specfuse-orchestrator)\n")
     sys.exit(2)
 
 

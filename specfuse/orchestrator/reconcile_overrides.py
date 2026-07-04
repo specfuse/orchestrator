@@ -15,9 +15,9 @@ The codegen generator blindly overwrites `_generated/` every run, clobbering any
 Under Model B this is the component-agent role's one retained job (the loop is codegen-free); this
 script is its runtime. Run it standalone or let `codegen-run` invoke it post-generation.
 
-    python3 scripts/reconcile-overrides.py                 # all active overrides
-    python3 scripts/reconcile-overrides.py --repo RestoManagerApp/Backend
-    python3 scripts/reconcile-overrides.py --dry-run
+    python3 -m specfuse.orchestrator.reconcile_overrides                 # all active overrides
+    python3 -m specfuse.orchestrator.reconcile_overrides --repo RestoManagerApp/Backend
+    python3 -m specfuse.orchestrator.reconcile_overrides --dry-run
 
 Requires `gh` (tracking-issue state) and pyyaml is not needed (records are JSON).
 """

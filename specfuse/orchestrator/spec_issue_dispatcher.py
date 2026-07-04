@@ -2,7 +2,7 @@
 """Auto-dispatch the specs agent on new spec-issue GitHub issues.
 
 The dispatch half of the GitHub spec-issue flow (never-touch.md §6). The producer
-(scripts/raise-spec-issue.py) files spec change requests as `specfuse:spec-issue` GitHub issues
+(specfuse.orchestrator.raise_spec_issue) files spec change requests as `specfuse:spec-issue` GitHub issues
 in the product specs repo; the specs agent's spec-issue-triage skill resolves them. This loop
 removes the manual step in between: per pass it finds open `specfuse:spec-issue` issues not yet
 being triaged and spawns a fresh specs-agent session (`claude -p`) in the specs repo to run
@@ -14,9 +14,9 @@ the open set). The dispatched session edits /product/ — that is allowed becaus
 specs repo (its own project; the orchestrator's deny-specs-edit hook is scoped to the
 orchestrator project, not here).
 
-    python3 scripts/spec-issue-dispatcher.py                 # one pass, defaults
-    python3 scripts/spec-issue-dispatcher.py --dry-run       # list what would dispatch
-    python3 scripts/spec-issue-dispatcher.py --interval 300  # poll loop
+    python3 -m specfuse.orchestrator.spec_issue_dispatcher                 # one pass, defaults
+    python3 -m specfuse.orchestrator.spec_issue_dispatcher --dry-run       # list what would dispatch
+    python3 -m specfuse.orchestrator.spec_issue_dispatcher --interval 300  # poll loop
 
 Requires the `gh` CLI authenticated and a local checkout of the specs repo with the specs-agent
 config installed (orchestrator-init --target specs).

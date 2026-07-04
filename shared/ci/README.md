@@ -40,5 +40,5 @@ The orchestrator poller (`specfuse-poller`) picks up from there: it sees the fea
   carry `Feature: …/FNN/TNN` trailers but the watcher operates at feature granularity.
 - Concurrent merges racing on the same `events/<INITIATIVE>.jsonl` are handled by push-retry
   with `--rebase`; pathological contention is not (acceptable at current scale).
-- Event validation requires `scripts/requirements.txt` (installed in the job). A validation
+- Event validation requires `the specfuse-orchestrator package` (installed in the job). A validation
   failure aborts the append (the event is never written half-formed).

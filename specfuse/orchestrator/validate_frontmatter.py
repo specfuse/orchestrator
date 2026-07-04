@@ -5,11 +5,11 @@ shared/schemas/feature-frontmatter.schema.json.
 Supported invocation patterns (only two):
 
     # Stdin — pipe the full content of a feature file:
-    cat features/FEAT-2026-0004.md | python3 scripts/validate-frontmatter.py
-    python3 scripts/validate-frontmatter.py --stdin   # explicit alias (same behaviour)
+    cat features/FEAT-2026-0004.md | specfuse-validate-frontmatter
+    specfuse-validate-frontmatter --stdin   # explicit alias (same behaviour)
 
     # File — pass a path to a feature .md file:
-    python3 scripts/validate-frontmatter.py --file features/FEAT-2026-0004.md
+    specfuse-validate-frontmatter --file features/FEAT-2026-0004.md
 
 Any other form (positional arguments, --feature, --input, etc.) is rejected with
 an error pointing at the two supported patterns above.
@@ -20,7 +20,7 @@ Exit codes:
     2 — setup error (missing dependency, schema not found, no frontmatter block,
         YAML parse failure, bad input, etc.)
 
-The script is the parallel helper to scripts/validate-event.py for feature
+The script is the parallel helper to specfuse-validate-event for feature
 frontmatter validation, per shared/rules/verify-before-report.md §3 (any
 feature frontmatter that fails feature-frontmatter.schema.json is invalid;
 verify before committing).
@@ -40,7 +40,7 @@ try:
 except ImportError:
     sys.stderr.write(
         "error: the 'pyyaml' package is required.\n"
-        "       install it with: pip install -r scripts/requirements.txt\n"
+        "       install it with: pip install specfuse-orchestrator\n"
     )
     sys.exit(2)
 
@@ -49,15 +49,15 @@ try:
 except ImportError:
     sys.stderr.write(
         "error: the 'jsonschema' package is required.\n"
-        "       install it with: pip install -r scripts/requirements.txt\n"
+        "       install it with: pip install specfuse-orchestrator\n"
     )
     sys.exit(2)
 
 _UNSUPPORTED_HINT = (
     "Supported invocation patterns:\n"
-    "  cat features/FEAT-XXXX-NNNN.md | scripts/validate-frontmatter.py          # stdin\n"
-    "  scripts/validate-frontmatter.py --stdin                                     # stdin (explicit)\n"
-    "  scripts/validate-frontmatter.py --file features/FEAT-XXXX-NNNN.md          # file\n"
+    "  cat features/FEAT-XXXX-NNNN.md | specfuse-validate-frontmatter          # stdin\n"
+    "  specfuse-validate-frontmatter --stdin                                     # stdin (explicit)\n"
+    "  specfuse-validate-frontmatter --file features/FEAT-XXXX-NNNN.md          # file\n"
 )
 
 

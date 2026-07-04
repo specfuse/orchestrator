@@ -18,7 +18,7 @@ The orchestrator assumes a specific multi-repo layout and tooling baseline befor
 
 - **Claude Code CLI** installed and authenticated. The specs agent runs as a session inside Claude Code with `agents/specs/CLAUDE.md` loaded as the role prompt.
 - **Specfuse validator CLI** installed and on `$PATH`. Phase 4 walkthroughs *simulated* validation because the binary wasn't installed (retrospective F4.1, marked Won't-fix at the orchestrator level — your responsibility as operator). The spec-validation skill invokes the real validator; without it, validation produces no signal.
-- **Python 3 with the deps in [`scripts/requirements.txt`](../scripts/requirements.txt).** Used by `validate-event.py` and `validate-frontmatter.py`, which the agent shells out to at every event emission.
+- **Python 3 with the deps in [`the specfuse-orchestrator package`](../the specfuse-orchestrator package).** Used by `validate-event.py` and `validate-frontmatter.py`, which the agent shells out to at every event emission.
 - **`gh` CLI** authenticated against the GitHub org hosting the component and generator repos. Required for spec-issue filing and (later) for the PM agent's issue creation.
 - **Writable `$TMPDIR`.** The agent uses `$TMPDIR` for staging events before validation. If you run inside a sandbox that blocks `/tmp` writes, ensure `$TMPDIR` is set and writable (Phase 4 retrospective F4.2).
 

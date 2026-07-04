@@ -10,8 +10,8 @@ and records a `spec_issue_raised` event in the orchestration event log for the a
 
 The specs agent then monitors/acts on `specfuse:spec-issue` issues (gh-pick + spec-issue-triage).
 
-    python3 scripts/raise-spec-issue.py --file filled-spec-issue.md
-    python3 scripts/raise-spec-issue.py --file x.md --specs-repo RestoManagerApp/restomanager-specs --dry-run
+    python3 -m specfuse.orchestrator.raise_spec_issue --file filled-spec-issue.md
+    python3 -m specfuse.orchestrator.raise_spec_issue --file x.md --specs-repo RestoManagerApp/restomanager-specs --dry-run
 
 Filing a GitHub issue does NOT touch /product/ — it is the routing step, not a spec edit.
 Requires the `gh` CLI authenticated (for non-dry runs) and pyyaml is not needed.

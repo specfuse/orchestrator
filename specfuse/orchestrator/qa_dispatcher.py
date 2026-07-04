@@ -13,9 +13,9 @@ The spawned session runs in the orchestrator project (sibling repos accessible).
 test plans under `restomanager-specs/product/test-plans/` — allowed by the deny-specs-edit hook's
 carve-out (never-touch.md §6); the rest of the specs repo stays blocked.
 
-    python3 scripts/qa-feature-dispatcher.py                 # scan the initiative's involved_repos
-    python3 scripts/qa-feature-dispatcher.py --repo RestoManagerApp/Backend --dry-run
-    python3 scripts/qa-feature-dispatcher.py --interval 300
+    python3 -m specfuse.orchestrator.qa_dispatcher                 # scan the initiative's involved_repos
+    python3 -m specfuse.orchestrator.qa_dispatcher --repo RestoManagerApp/Backend --dry-run
+    python3 -m specfuse.orchestrator.qa_dispatcher --interval 300
 
 Requires the `gh` CLI authenticated and `claude` available (for non-dry runs).
 """
@@ -34,7 +34,7 @@ from specfuse.orchestrator import paths
 try:
     import yaml
 except ImportError:
-    sys.stderr.write("error: pyyaml required (pip install -r scripts/requirements.txt)\n")
+    sys.stderr.write("error: pyyaml required (pip install specfuse-orchestrator)\n")
     sys.exit(2)
 
 QA_LABEL = "specfuse:qa-feature"
