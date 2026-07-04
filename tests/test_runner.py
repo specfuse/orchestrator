@@ -8,8 +8,6 @@ repo and are out of scope here.
 
 from __future__ import annotations
 
-import textwrap
-
 from specfuse.orchestrator import runner
 
 

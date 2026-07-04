@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0001/T01
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 2
 planned_cost_usd: 1.00
 model: sonnet
 effort: medium
@@ -11,6 +11,10 @@ oracle_env: macos_local
 produces:
   - specfuse/orchestrator/cli.py
 gate_set: code
+duration_seconds: 371.756
+cost_usd: 2.094215
+input_tokens: 15700
+output_tokens: 20749
 ---
 
 # Make `init`'s git initialization opt-in + location-aware

@@ -195,7 +195,7 @@ def test_init_no_target_dir_errors():
 
 
 def test_init_git_and_claude_wiring(tmp_path):
-    rc = cli.main(["init", str(tmp_path)])
+    rc = cli.main(["init", "--git", str(tmp_path)])
     assert rc == 0
 
     assert (tmp_path / ".git").is_dir()
@@ -230,6 +230,28 @@ def test_init_settings_merge_preserves_existing_keys(tmp_path):
     settings = json.loads(settings_path.read_text())
     assert settings["permissions"]["allow"] == ["Bash(ls:*)"]
     assert "specfuse" in settings["extraKnownMarketplaces"]
+
+
+def test_init_no_git_by_default(tmp_path):
+    rc = cli.main(["init", str(tmp_path)])
+    assert rc == 0
+    assert not (tmp_path / ".git").exists()
+
+
+def test_init_git_flag(tmp_path):
+    rc = cli.main(["init", "--git", str(tmp_path)])
+    assert rc == 0
+    assert (tmp_path / ".git").is_dir()
+
+
+def test_init_inside_existing_repo_skips(tmp_path):
+    subprocess.run(["git", "init", "--quiet"], cwd=tmp_path, check=True)
+
+    child = tmp_path / "child"
+    rc = cli.main(["init", "--git", str(child)])
+    assert rc == 0
+
+    assert not (child / ".git").exists()
 
 
 def test_init_existing_git_repo_is_not_reinitialized(tmp_path):
