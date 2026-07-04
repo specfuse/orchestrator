@@ -1,6 +1,6 @@
 ---
 gate: 1
-status: awaiting_review
+status: passed
 ---
 
 # Gate 1 — `init` is local-first + location-agnostic (terminal)

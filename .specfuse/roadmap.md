@@ -21,20 +21,10 @@ the canonical column order below.
 
 | Feature ID     | Title | Status | Folder | Detail |
 |----------------|-------|--------|--------|--------|
-| FEAT-2026-0001 | Local-first, location-agnostic `init` (adoption feature A) | active  | — | — |
+| FEAT-2026-0001 | Local-first, location-agnostic `init` (adoption feature A) | done  | — | [→ archive](roadmap-archive.md#feat-2026-0001) |
 | FEAT-2026-0002 | Drivers resolve agent versions from the package (adoption feature B) | planned | — | — |
 
 Status: `planned` → `active` → `done` (or `abandoned`).
-
-## FEAT-2026-0001 — Local-first, location-agnostic `init` (adoption feature A)
-
-**Why.** Post-pip, `specfuse-orchestrator init` still git-inits a fresh repo, carrying the fork-era "one dedicated repo up front" assumption. Broader OSS adopters (solo, monorepo, mixed CI) often want to scaffold state into an existing repo's subdirectory, or just a local folder, with git/GitHub deferred. Accepted decision #1 of `docs/design/adoption-and-collaboration.md`.
-
-**Goal.** Make `init <dir>` local-first and location-agnostic: scaffold the user-owned state dirs into `<dir>` without forcing `git init`; never `gh repo create`. If `<dir>` is already inside a git repo, do not re-init. Add an opt-in `--git` flag to initialize a repo when the user wants one. Rewrite `project/NEXT_STEPS.md` to present the three adoption shapes (dedicated repo / subdir / local-first) with a one-liner each for publishing when ready.
-
-**Benefits.** Zero-commitment start (no repo needed to try it); fits monorepos + subdir layouts; matches how varied OSS users actually begin. Foundation for the §6 onboarding rewrite.
-
-**Status: planned.**
 
 ## FEAT-2026-0002 — Drivers resolve agent versions from the package (adoption feature B)
 

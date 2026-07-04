@@ -5,7 +5,7 @@ slug: adoption-init-local-first
 branch: feat/adoption-init-local-first
 roadmap_goal: Make `specfuse-orchestrator init` local-first — scaffold state into any dir without forcing git/GitHub — per accepted adoption decision #1.
 autonomy_default: review
-status: active
+status: done
 planned_cost_usd: 2.10
 ---
 
