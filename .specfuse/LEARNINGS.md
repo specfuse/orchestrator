@@ -57,6 +57,25 @@ project's own `lessons` work units append project-specific rules beneath them.
   obvious acceptance criterion and pass on its own verification; the original
   blocked WU then runs after, unmodified.
 
+- [FEAT-2026-0001/G1] When a behavior-change WU flips a long-standing DEFAULT
+  (here: `init` no longer auto-`git init`s), author a paired docs-update WU in
+  the same feature — not just a backwards-compat note in the retrospective. The
+  code change passed its gate while `GETTING_STARTED.md` kept teaching the old
+  flow, leaving the shipped docs contradicting the shipped behavior. Rule: a WU
+  whose diff changes a documented default must either update the doc surface or
+  name the doc follow-up in the PLAN graph, so the stale-doc gap is armed, not
+  just observed at close.
+
+- [FEAT-2026-0001/G1] Size an implementation WU's cost estimate for the number
+  of gate floors it must clear in ONE attempt, not just the code delta. T01 was
+  a small `cli.py` change but had to satisfy both `ruff` (F401) and a 90%
+  coverage floor simultaneously; the first attempt cleared neither cleanly and
+  the WU ran +62% over its estimate (one wasted attempt + an over-plan second).
+  Rule: when a WU adds/moves code under a coverage-gated module, budget for the
+  extra test-writing pass and remind the agent in the WU that both the lint and
+  coverage gates are red-lines, so it does not treat the functional change as
+  "done" before the floors are green.
+
 - [meta/loop-driver-bugs] Driver bookkeeping (frontmatter status flips,
   events.jsonl appends, per-attempt notes) must be committed if it should
   survive across WUs — uncommitted writes are wiped by the inter-attempt

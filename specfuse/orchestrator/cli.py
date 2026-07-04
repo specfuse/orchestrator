@@ -6,12 +6,16 @@
 content is embedded below as packaged data (compiled into this module, not
 read from a path in the orchestrator source tree) so it ships with the wheel.
 
-`init <dir>` additionally (FEAT-2026-0002/T03): git-initializes the target if
-it is not already a repo, wires `.claude/settings.json` + `.claude/CLAUDE.md`
-(marketplace, plugin, and deny-specs-edit hook — merge-safe, add-if-absent),
-and writes `project/NEXT_STEPS.md` — the remainder of the `scripts/setup.sh`
-replacement. `gh repo create` and the interactive org/repo prompts stay out of
-scope (operator-run or a later flag).
+`init <dir>` additionally (FEAT-2026-0002/T03): wires `.claude/settings.json` +
+`.claude/CLAUDE.md` (marketplace, plugin, and deny-specs-edit hook — merge-safe,
+add-if-absent), and writes `project/NEXT_STEPS.md` — the remainder of the
+`scripts/setup.sh` replacement. `gh repo create` and the interactive org/repo
+prompts stay out of scope (operator-run or a later flag).
+
+`init` is local-first (FEAT-2026-0001/T01): it does NOT run `git init` unless
+`--git` is passed, and even then it skips `git init` when `<dir>` already sits
+inside a git repo (walking up parent directories) so it never nests a repo
+inside one that already exists.
 
 `init --target <component|specs> <repo>` (and `init --all`, `init --help`)
 forward to `specfuse.orchestrator.init.main`, the pre-existing
@@ -89,13 +93,45 @@ This orchestration repo's state dirs (`features/`, `events/`, `project/`,
 `inbox/`, `overrides/`, `roadmap.md`) are scaffolded and `.claude/` is wired
 (marketplace, plugin, deny-specs-edit hook).
 
-## What to do next
+## 1. Install the plugin (done)
 
-1. Open a Claude Code session at this repo.
-2. Run `/onboard` — the onboarding agent inventories your repos and drafts a
-   bootstrap checklist or integration plan.
-3. Once onboarding says you're ready, draft your first feature and hand it to
-   the loop per `docs/operator-runbook.md`.
+`init` already wired `.claude/settings.json` for
+`/plugin install specfuse-orchestrator@specfuse`. Nothing to do here unless
+you're setting up a second machine.
+
+## 2. Pick where this state lives
+
+`init` doesn't require a repo of its own — pick whichever of these three
+shapes fits, now or later:
+
+- **Dedicated repo.** This directory is (or becomes) its own git repo,
+  pushed to its own remote. Best when several people share this
+  orchestration state.
+- **Subdir of an existing repo.** This directory lives inside a repo you
+  already have (a monorepo, an existing project). No separate remote needed.
+- **Local-first.** This directory stays local — no git repo, no remote —
+  while you try the loop out. Nothing below requires publishing.
+
+## 3. Run `/onboard`
+
+Open a Claude Code session at this repo and run `/onboard` — the onboarding
+agent inventories your repos and drafts a bootstrap checklist or integration
+plan.
+
+## 4. Publish, whenever you're ready (optional)
+
+None of the above requires a git remote. When/if you want to share or back up
+this state, pick the step matching the shape from step 2 — this is optional,
+not a precondition for using the loop:
+
+- Dedicated repo: `git init` (if not already done) + `git remote add origin
+  <url>` + push, or `gh repo create` if you want GitHub to host it.
+- Subdir of an existing repo: commit this directory into that repo's existing
+  history — no new remote needed.
+- Local-first: nothing to do; keep working locally for as long as you like.
+
+Once you're ready, draft your first feature and hand it to the loop per
+`docs/operator-runbook.md`.
 """
 
 ROADMAP_SEED = """\
@@ -145,14 +181,33 @@ def _scaffold_state_dirs(target_dir: Path) -> None:
         roadmap.write_text(ROADMAP_SEED)
 
 
+def _inside_existing_repo(target_dir: Path) -> bool:
+    """True if `target_dir` (or an ancestor of it) is already a git repo.
+
+    Walks up from `target_dir`'s resolved path checking for a `.git` entry at
+    each level, so a target nested inside an existing repo (e.g. a subdir of a
+    monorepo) is correctly detected even though `target_dir` itself has no
+    `.git`.
+    """
+    current = target_dir.resolve()
+    while True:
+        if (current / ".git").exists():
+            return True
+        parent = current.parent
+        if parent == current:
+            return False
+        current = parent
+
+
 def _git_init(target_dir: Path) -> None:
-    """git-init `target_dir` if it is not already a repo.
+    """git-init `target_dir` if it is not already inside a repo.
 
     Strictly scoped to `target_dir` via `cwd=`; never touches the orchestrator
-    repo's own `.git/`. A no-op when `target_dir/.git` already exists, so
-    existing history is never re-initialized or lost.
+    repo's own `.git/`. A no-op when `target_dir` is already inside a repo
+    (itself or an ancestor), so existing history is never re-initialized,
+    nested, or lost.
     """
-    if (target_dir / ".git").exists():
+    if _inside_existing_repo(target_dir):
         return
     subprocess.run(["git", "init", "--quiet"], cwd=target_dir, check=True)
 
@@ -231,16 +286,24 @@ def _run_init(argv: list[str]) -> int:
         finally:
             sys.argv = old_argv
 
-    if not argv:
+    init_parser = argparse.ArgumentParser(
+        prog="specfuse-orchestrator init", add_help=False
+    )
+    init_parser.add_argument("--git", action="store_true")
+    init_parser.add_argument("target_dir", nargs="?")
+    parsed, _unused = init_parser.parse_known_args(argv)
+
+    if not parsed.target_dir:
         sys.stderr.write(
             "error: specfuse-orchestrator init requires a target directory "
             "(or --target <component|specs> <repo>)\n"
         )
         return 2
 
-    target_dir = Path(argv[0])
+    target_dir = Path(parsed.target_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
-    _git_init(target_dir)
+    if parsed.git:
+        _git_init(target_dir)
     _scaffold_state_dirs(target_dir)
     _write_claude_md(target_dir)
     _write_settings_json(target_dir)
@@ -330,10 +393,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    subparsers.add_parser(
+    init_subparser = subparsers.add_parser(
         "init",
         help="scaffold the orchestrator substrate into a target repo",
         add_help=False,
+    )
+    init_subparser.add_argument(
+        "--git",
+        action="store_true",
+        help="also run `git init` (skipped when already inside a repo)",
     )
     subparsers.add_parser(
         "upgrade",

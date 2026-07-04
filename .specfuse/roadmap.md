@@ -21,8 +21,20 @@ the canonical column order below.
 
 | Feature ID     | Title | Status | Folder | Detail |
 |----------------|-------|--------|--------|--------|
+| FEAT-2026-0001 | Local-first, location-agnostic `init` (adoption feature A) | done  | — | [→ archive](roadmap-archive.md#feat-2026-0001) |
+| FEAT-2026-0002 | Drivers resolve agent versions from the package (adoption feature B) | planned | — | — |
 
 Status: `planned` → `active` → `done` (or `abandoned`).
+
+## FEAT-2026-0002 — Drivers resolve agent versions from the package (adoption feature B)
+
+**Why.** The drivers read `<state_repo>/agents/<role>/version.md` at runtime (event `source_version`), forcing every consumer to vendor `agents/`. Accepted decision #3 of the adoption design: a consumer should hold ONLY state.
+
+**Goal.** Have the version reader (`specfuse.orchestrator._version`) resolve agent version markers from the installed package/plugin rather than the consumer's `agents/` tree, so drivers no longer depend on vendored `agents/`. This is the enabling change for "consumer holds only state" — it retires the vendoring drift and the downstream-migration question.
+
+**Benefits.** Consumers stop vendoring `agents/`; converting an existing downstream becomes trivial (install package, keep state). Collapses the version streams; no drift.
+
+**Status: planned.**
 
 ## Notes
 
