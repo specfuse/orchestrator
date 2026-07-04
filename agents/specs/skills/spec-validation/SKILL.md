@@ -57,15 +57,15 @@ This step runs only when the feature's current state is `drafting`. On re-valida
 | `correlation_id` | `FEAT-YYYY-NNNN` |
 | `event_type` | `feature_state_changed` |
 | `source` | `specs` |
-| `source_version` | Output of `scripts/read-agent-version.sh specs` |
+| `source_version` | Output of `python3 -m specfuse.orchestrator._version specs` |
 | `payload.from_state` | `drafting` |
 | `payload.to_state` | `validating` |
 | `payload.trigger` | `validation_requested` |
 
-**2c.** Write the event to `/tmp/event.json`. Validate through `scripts/validate-event.py`:
+**2c.** Write the event to `/tmp/event.json`. Validate through `specfuse-validate-event`:
 
 ```sh
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 ```
 
 Exit 0: append to the event log using the safe append pattern:
@@ -107,7 +107,7 @@ Construct the `spec_validated` event with the aggregated results:
 | `correlation_id` | `FEAT-YYYY-NNNN` |
 | `event_type` | `spec_validated` |
 | `source` | `specs` |
-| `source_version` | Output of `scripts/read-agent-version.sh specs` |
+| `source_version` | Output of `python3 -m specfuse.orchestrator._version specs` |
 | `payload.feature_correlation_id` | `FEAT-YYYY-NNNN` |
 | `payload.pass` | `true` or `false` |
 | `payload.spec_files_checked` | Array of paths from Step 3 |
@@ -117,7 +117,7 @@ Construct the `spec_validated` event with the aggregated results:
 Write to `/tmp/event.json`, validate, and append:
 
 ```sh
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0 → append
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-YYYY-NNNN.jsonl
 ```
@@ -204,7 +204,7 @@ The PM agent can pick up the feature for task decomposition.
 | `correlation_id` | `FEAT-YYYY-NNNN` |
 | `event_type` | `feature_state_changed` |
 | `source` | `specs` |
-| `source_version` | Output of `scripts/read-agent-version.sh specs` |
+| `source_version` | Output of `python3 -m specfuse.orchestrator._version specs` |
 | `payload.from_state` | `validating` |
 | `payload.to_state` | `planning` |
 | `payload.trigger` | `validation_passed` |
@@ -212,7 +212,7 @@ The PM agent can pick up the feature for task decomposition.
 **8d.** Write to `/tmp/event.json`, validate, and append:
 
 ```sh
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0 → append
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-YYYY-NNNN.jsonl
 ```
@@ -365,7 +365,7 @@ The skill reads `/features/FEAT-2026-0042.md`. State is `drafting`. Two spec fil
 
 # Capture timestamp and version
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
+SOURCE_VERSION=$(python3 -m specfuse.orchestrator._version specs)
 
 # Construct event
 cat > /tmp/event.json << EOF
@@ -373,7 +373,7 @@ cat > /tmp/event.json << EOF
 EOF
 
 # Validate and append
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-2026-0042.jsonl
 ```
@@ -410,13 +410,13 @@ Aggregated result: `pass: false`, 1 error across 2 files.
 
 ```sh
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
+SOURCE_VERSION=$(python3 -m specfuse.orchestrator._version specs)
 
 cat > /tmp/event.json << EOF
 {"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"spec_validated","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"feature_correlation_id":"FEAT-2026-0042","pass":false,"spec_files_checked":["product/features/FEAT-2026-0042.md","product/specs/inventory-api-bookmarks.yaml"],"errors":[{"file":"product/specs/inventory-api-bookmarks.yaml","line":18,"message":"missing required property: operationId","severity":"error"}],"validator_version":"1.0.0"}}
 EOF
 
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-2026-0042.jsonl
 ```
@@ -488,13 +488,13 @@ Aggregated result: `pass: true`, 0 errors across 2 files.
 
 ```sh
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
+SOURCE_VERSION=$(python3 -m specfuse.orchestrator._version specs)
 
 cat > /tmp/event.json << EOF
 {"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"spec_validated","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"feature_correlation_id":"FEAT-2026-0042","pass":true,"spec_files_checked":["product/features/FEAT-2026-0042.md","product/specs/inventory-api-bookmarks.yaml"],"errors":[],"validator_version":"1.0.0"}}
 EOF
 
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-2026-0042.jsonl
 ```
@@ -523,13 +523,13 @@ Proceeding to hand off to the PM agent for task decomposition.
 
 ```sh
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
+SOURCE_VERSION=$(python3 -m specfuse.orchestrator._version specs)
 
 cat > /tmp/event.json << EOF
 {"timestamp":"${TIMESTAMP}","correlation_id":"FEAT-2026-0042","event_type":"feature_state_changed","source":"specs","source_version":"${SOURCE_VERSION}","payload":{"from_state":"validating","to_state":"planning","trigger":"validation_passed"}}
 EOF
 
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-2026-0042.jsonl
 ```
@@ -600,7 +600,7 @@ The event log at `/events/FEAT-2026-0042.jsonl` contains four entries (plus the 
 4. **Transitioning back to `drafting` on failure.** On a failed validation, the feature stays in `validating`. The `validating` state means "validation in progress or awaiting fix + re-validation." Transitioning back to `drafting` would force the human to re-trigger the `drafting → validating` transition unnecessarily.
 5. **Dumping raw validator output without interpretation.** The skill's value is translating machine output into human-actionable guidance. Presenting raw JSON errors without context, specific file locations, and concrete fix suggestions fails the human.
 6. **Skipping the `spec_validated` event on failure.** The `spec_validated` event is emitted on **every** run, pass or fail. The append-only log records the full validation history. Skipping the event on failure hides the failure from audit.
-7. **Eye-caching `source_version` or `validator_version`.** Both are captured at execution time — `source_version` via `scripts/read-agent-version.sh specs`, `validator_version` via `specfuse --version`. Stale version strings produce misleading audit trails.
+7. **Eye-caching `source_version` or `validator_version`.** Both are captured at execution time — `source_version` via `python3 -m specfuse.orchestrator._version specs`, `validator_version` via `specfuse --version`. Stale version strings produce misleading audit trails.
 8. **Appending events before validation.** Events must pass `validate-event.py` with exit 0 before append. An invalid event in the log corrupts the audit trail.
 9. **Modifying spec files.** The spec-validation skill does not fix specs. It reports what is wrong. The [spec-drafting skill](../spec-drafting/SKILL.md) is the tool for fixing spec content.
 10. **Performing work after the PM handoff.** The `validating → planning` transition is the last action. After emitting it, the specs agent has no further forward-path work on this feature. Any follow-up (spec-issue triage on routed issues) is a separate entry point, not a continuation of the validation session.

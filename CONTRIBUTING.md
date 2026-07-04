@@ -56,8 +56,8 @@ Scope is typically the agent role (`specs`, `pm`, `component`, `qa`, `onboarding
 Any change touching schemas, events, or frontmatter formats must round-trip through the validators:
 
 ```bash
-python3 scripts/validate-event.py --file events/<file>.jsonl
-python3 scripts/validate-frontmatter.py --file features/<file>.md
+specfuse-validate-event --file events/<file>.jsonl
+specfuse-validate-frontmatter --file features/<file>.md
 ```
 
 The walkthrough log artifacts in `docs/walkthroughs/phase-N/` are the existing test corpus — schema changes that break them require an architectural justification in the same commit.

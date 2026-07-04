@@ -86,7 +86,7 @@ The placeholders make the file valid markdown and honestly incomplete. They are 
 
 ### Step 4 — Validate the frontmatter
 
-Before writing the file to disk, validate the frontmatter against [`feature-frontmatter.schema.json`](../../../../shared/schemas/feature-frontmatter.schema.json) using [`scripts/validate-frontmatter.py`](../../../../scripts/validate-frontmatter.py).
+Before writing the file to disk, validate the frontmatter against [`feature-frontmatter.schema.json`](../../../../shared/schemas/feature-frontmatter.schema.json) using `specfuse-validate-frontmatter`.
 
 Write the file content to a temporary location first, then validate:
 
@@ -120,7 +120,7 @@ To be drafted during spec authoring.
 REGISTRY_EOF
 
 # Validate
-python3 scripts/validate-frontmatter.py --file /tmp/feature-registry-candidate.md
+specfuse-validate-frontmatter --file /tmp/feature-registry-candidate.md
 ```
 
 **Exit 0:** Frontmatter is valid. Proceed to copy the temp file to `/features/FEAT-YYYY-NNNN.md`.
@@ -137,16 +137,16 @@ Construct the event JSON object with the following fields:
 | `correlation_id` | The minted `FEAT-YYYY-NNNN` |
 | `event_type` | `feature_created` |
 | `source` | `specs` |
-| `source_version` | Output of `scripts/read-agent-version.sh specs` — never eye-cached from `version.md` |
+| `source_version` | Output of `python3 -m specfuse.orchestrator._version specs` — never eye-cached from `version.md` |
 | `payload.feature_title` | The human-provided title |
 | `payload.involved_repos` | The human-provided repo array |
 | `payload.autonomy_default` | The human-provided autonomy choice |
 | `payload.correlation_id` | The minted `FEAT-YYYY-NNNN` (duplicated for payload self-containment) |
 
-Write the event as minified single-line JSON to `/tmp/event.json`. Validate through [`scripts/validate-event.py`](../../../../scripts/validate-event.py) using the canonical invocation:
+Write the event as minified single-line JSON to `/tmp/event.json`. Validate through `specfuse-validate-event` using the canonical invocation:
 
 ```sh
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 ```
 
 **Exit 0:** Event is valid. Append to the feature's event log using the canonical safe append pattern:
@@ -237,7 +237,7 @@ To be drafted during spec authoring.
 **Step 4 — Frontmatter validation:**
 
 ```sh
-python3 scripts/validate-frontmatter.py --file /tmp/feature-registry-candidate.md
+specfuse-validate-frontmatter --file /tmp/feature-registry-candidate.md
 # Exit 0 — valid
 ```
 
@@ -248,7 +248,7 @@ File copied to `/features/FEAT-2026-0008.md`.
 ```sh
 # Capture timestamp and version at emission time
 TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-SOURCE_VERSION=$(scripts/read-agent-version.sh specs)
+SOURCE_VERSION=$(python3 -m specfuse.orchestrator._version specs)
 
 # Write minified event to temp file
 cat > /tmp/event.json << EOF
@@ -256,7 +256,7 @@ cat > /tmp/event.json << EOF
 EOF
 
 # Validate
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0 — valid
 
 # Append with safe pattern
@@ -267,11 +267,11 @@ printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-2026-0008.jsonl
 
 ```sh
 # Re-read and re-validate the registry file
-python3 scripts/validate-frontmatter.py --file features/FEAT-2026-0008.md
+specfuse-validate-frontmatter --file features/FEAT-2026-0008.md
 # Exit 0
 
 # Re-read and re-validate the event log
-python3 scripts/validate-event.py --file events/FEAT-2026-0008.jsonl
+specfuse-validate-event --file events/FEAT-2026-0008.jsonl
 # Exit 0
 
 # Confirm correlation ID consistency
@@ -310,6 +310,6 @@ Intake complete. The feature is now in `drafting` state with a valid registry en
 2. **Defaulting autonomy without asking.** The skill must not silently assume `review`. The human's autonomy choice is load-bearing for downstream agent behavior; an undeclared default hides the decision.
 3. **Drafting body content.** The body sections carry placeholder text ("To be drafted during spec authoring"), not fabricated descriptions. Drafting spec content is the spec-drafting skill's concern (WU 4.3).
 4. **Populating the task graph.** The `task_graph` is `[]` at intake. Task decomposition is the PM agent's responsibility after the feature reaches `planning`.
-5. **Eye-caching `source_version`.** The `source_version` field must be read at emission time via `scripts/read-agent-version.sh specs`, not copied from `version.md` or remembered from a prior emission.
+5. **Eye-caching `source_version`.** The `source_version` field must be read at emission time via `python3 -m specfuse.orchestrator._version specs`, not copied from `version.md` or remembered from a prior emission.
 6. **Appending the event before validation.** The event must pass `validate-event.py` with exit 0 before it is appended to the JSONL file. An invalid event in the log corrupts the audit trail.
 7. **Using `cat >>` instead of the safe append pattern.** The `printf '%s\n' "$(cat /tmp/event.json)" >> file` pattern guarantees the trailing newline. Plain `cat >>` is unsafe.

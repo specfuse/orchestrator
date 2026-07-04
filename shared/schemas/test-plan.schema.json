@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/test-plan.schema.json",
   "title": "Test plan (stub)",
-  "$comment": "Provenance: authored 2026-04-23 in WU 3.2 as the stub contract for QA-authored test plans. Stub scope: test_id / covers / commands / expected per test. Phase 4 (specs-agent-driven plans, Arazzo-backed) and Phase 5 (generator-emitted skeletons) extend this schema additively — see agents/qa/skills/qa-authoring/SKILL.md §Deferred integration. The schema validates the YAML frontmatter block of /product/test-plans/FEAT-YYYY-NNNN.md; the prose body below the frontmatter is human-authored and not schema-governed.",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.2 as the stub contract for QA-authored test plans. Stub scope: test_id / covers / commands / expected per test. Phase 4 (specs-agent-driven plans, Arazzo-backed) and Phase 5 (generator-emitted skeletons) extend this schema additively — see agents/qa/skills/qa-authoring/SKILL.md §Deferred integration. The schema validates the YAML frontmatter block of /product/test-plans/FEAT-YYYY-NNNN.md; the prose body below the frontmatter is human-authored and not schema-governed. Reframe migration (docs/naming-convention.md, additive): feature_correlation_id pattern widened from ^FEAT-\\d{4}-\\d{4}$ to ^(FEAT|INIT)-\\d{4}-\\d{4}(/F\\d{2})?$ so a plan may cover an initiative (INIT-YYYY-NNNN) or a dispatched feature (INIT-YYYY-NNNN/FNN) alongside the legacy FEAT-YYYY-NNNN form; existing plans validate unchanged.",
   "description": "Machine-readable shape of a test plan authored by the QA agent (qa-authoring skill). One plan per feature; one entry in `tests` per behavior the plan covers. The full plan file is the .md at /product/test-plans/FEAT-YYYY-NNNN.md, whose YAML frontmatter validates against this schema.",
   "type": "object",
   "additionalProperties": false,
@@ -19,8 +19,8 @@
     },
     "feature_correlation_id": {
       "type": "string",
-      "description": "Feature-level correlation ID the plan covers. Task-level IDs are not valid here — a plan is authored per feature, not per task.",
-      "pattern": "^FEAT-\\d{4}-\\d{4}$"
+      "description": "Correlation ID the plan covers: an initiative INIT-YYYY-NNNN, a dispatched feature INIT-YYYY-NNNN/FNN, or the legacy/component-local feature FEAT-YYYY-NNNN. Work-unit-level IDs (…/TNN) are not valid here — a plan is authored per feature/initiative, not per work unit. See docs/naming-convention.md.",
+      "pattern": "^(FEAT|INIT)-\\d{4}-\\d{4}(/F\\d{2})?$"
     },
     "tests": {
       "type": "array",

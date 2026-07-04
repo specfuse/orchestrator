@@ -469,8 +469,8 @@ The WU 1.6 retrospective (merged 2026-04-22) deviated from this plan's original 
 
 See [`docs/walkthroughs/phase-1/retrospective.md`](walkthroughs/phase-1/retrospective.md) §"Fix-in-Phase-1 work plan" for the full per-finding rationale, and §"Phase 1 freeze declaration" for the freeze itself. Summary:
 
-- ✅ **WU 1.7 — Event schema validation harness (Finding 1).** Shipped `scripts/validate-event.py` (Draft 2020-12 validator against `shared/schemas/event.schema.json`) and tightened `shared/rules/verify-before-report.md` §3 plus the three component skills to require validator exit `0` before any `events/*.jsonl` append. PR #8.
-- ✅ **WU 1.8 — `source_version` runtime read (Finding 2).** Shipped `scripts/read-agent-version.sh` and tightened `shared/rules/verify-before-report.md` §3 to require every event's `source_version` be read from `agents/<role>/version.md` at emission time. PR #9.
+- ✅ **WU 1.7 — Event schema validation harness (Finding 1).** Shipped `specfuse-validate-event` (Draft 2020-12 validator against `shared/schemas/event.schema.json`) and tightened `shared/rules/verify-before-report.md` §3 plus the three component skills to require validator exit `0` before any `events/*.jsonl` append. PR #8.
+- ✅ **WU 1.8 — `source_version` runtime read (Finding 2).** Shipped `python3 -m specfuse.orchestrator._version` and tightened `shared/rules/verify-before-report.md` §3 to require every event's `source_version` be read from `agents/<role>/version.md` at emission time. PR #9.
 - ✅ **WU 1.9 — PM issue-drafting "verify against repo" requirement (Finding 3).** Added `agents/pm/issue-drafting-spec.md` as a forward specification constraining the Phase 2 PM issue-drafting skill. PR #11.
 - ✅ **WU 1.10 — Spec-issue routing for specs-less features (Finding 4).** Amended `agents/component/skills/escalation/SKILL.md` §2 to route specs-less features' spec issues against the orchestrator repository. PR #10.
 - ✅ **WU 1.11 — `source: component:<name>` convention (Finding 7).** Clarified in `shared/schemas/event.schema.json` that `<name>` is the bare component repo name, no owner prefix. PR #10.
@@ -491,7 +491,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 - Phase 1 complete and component agent config frozen at v1.5.0 (declared 2026-04-22).
 - Work unit issue body template at v1 (locked contract).
 - Shared schemas for feature frontmatter, event log, and labels stable.
-- `scripts/validate-event.py` and `scripts/read-agent-version.sh` available as part of the frozen baseline — the PM agent reuses them verbatim on the emission path.
+- `specfuse-validate-event` and `python3 -m specfuse.orchestrator._version` available as part of the frozen baseline — the PM agent reuses them verbatim on the emission path.
 - `agents/pm/issue-drafting-spec.md` (from WU 1.9) — the inherited forward contract WU 2.4 must honor on day one.
 - A stub template-coverage protocol is acceptable; the real generator-query integration is deferred to Phase 5.
 
@@ -539,7 +539,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 
 1. Open `agents/pm/CLAUDE.md` and verify every architecture §6.3 transition the PM agent owns appears exactly once, with no contradictions against shared rules.
 2. Re-read `docs/walkthroughs/phase-1/retrospective.md` §Finding 6 and confirm the absorbed clause addresses the failure mode as described.
-3. Run `scripts/read-agent-version.sh pm` and confirm output is `1.0.0`.
+3. Run `python3 -m specfuse.orchestrator._version pm` and confirm output is `1.0.0`.
 4. Confirm no shared rules were silently duplicated into the role config (the §5.3 test applied in reverse).
 
 **Suggested model.** Opus 4.7. This config is re-read on every PM-agent invocation across Phase 2+.
@@ -556,7 +556,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 
 1. `agents/pm/skills/task-decomposition/SKILL.md` v1.0 exists, describing step by step: how the agent reads the feature's spec files from the product specs repo; how it identifies implementation vs. QA tasks and assigns QA subtypes; how it infers the target component repo for each task (the inference rules are documented explicitly — the skill does not guess); how it sets autonomy levels (feature-level default plus per-task override); and how it constructs the `depends_on` edges.
 2. The output task graph is written to the feature frontmatter at `/features/FEAT-YYYY-NNNN.md` and validates against `shared/schemas/feature-frontmatter.schema.json` with no orphan `depends_on` references and no cycles. The skill's verification section mandates a cycle check and an orphan check before writing.
-3. The skill emits a `task_graph_drafted` event on completion. The `shared/schemas/event.schema.json` enum is extended in this WU to include the new type (additive change — no existing events are affected). Events are validated via `scripts/validate-event.py` before appending.
+3. The skill emits a `task_graph_drafted` event on completion. The `shared/schemas/event.schema.json` enum is extended in this WU to include the new type (additive change — no existing events are affected). Events are validated via `specfuse-validate-event` before appending.
 4. A worked example in the skill shows a task graph for a small realistic feature (two component repos, one implementation task per repo, one `qa-authoring` task, one `qa-execution` task, dependencies correctly wired).
 5. The skill does not validate template coverage — that is WU 2.6's concern, called as a subsequent pipeline step by the PM `CLAUDE.md` orchestration. The skill also does not draft issue bodies — that is WU 2.4.
 6. Commit message: `feat(pm): task decomposition skill v1`.
@@ -567,7 +567,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 
 1. Round-trip the worked example's task graph through `shared/schemas/feature-frontmatter.schema.json` using `ajv` or equivalent.
 2. Run a cycle-detection check on the worked example and confirm it passes.
-3. Confirm `task_graph_drafted` events validate through `scripts/validate-event.py`.
+3. Confirm `task_graph_drafted` events validate through `specfuse-validate-event`.
 4. Read the inference rules for target-repo assignment and autonomy level: can a PM agent given an arbitrary spec produce a reproducible answer? If two reasonable readings of the rules yield different graphs, tighten the rules.
 
 **Suggested model.** Opus 4.7. The task graph shape is a hard contract for every downstream skill in Phase 2.
@@ -586,7 +586,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 2. Re-ingest discipline: the skill does not cache any portion of the plan across edits — it re-reads the plan file, re-validates the resulting graph against `feature-frontmatter.schema.json`, and either updates the feature frontmatter or escalates `spec_level_blocker` if the edit is malformed (unresolvable cycle, orphan dep, unknown repo, unknown autonomy level).
 3. The skill explicitly does not own `plan_review → generating` — that transition is the human's. The skill emits `plan_ready`, updates the feature state to `plan_review`, and waits for an external trigger (a `plan_approved` event emitted when the human signals via label or a separate file). The trigger-detection loop itself is outside this skill's scope.
 4. A worked example shows a draft plan, a non-trivial human edit that adjusts one dependency, retargets a task to a different repo, and tightens a work unit prompt, and the skill's re-ingest output with the resulting feature frontmatter re-validating cleanly.
-5. Events (`plan_ready`, and any others the skill introduces) validate through `scripts/validate-event.py`; the event schema enum is extended in this WU if needed.
+5. Events (`plan_ready`, and any others the skill introduces) validate through `specfuse-validate-event`; the event schema enum is extended in this WU if needed.
 6. Commit message: `feat(pm): plan review UX skill v1`.
 
 **Do not touch.** Do not flip feature state to `generating` from within the skill (the human owns that transition). Do not modify the task decomposition skill output shape — consume it as the upstream contract. Do not draft issue bodies (2.4).
@@ -615,7 +615,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
    - **Reformulate-or-escalate**: when a claim cannot be verified, the skill either reformulates to what *is* verifiable, or escalates `spec_level_blocker`. The skill does not ship hedged claims.
 2. Evidence logging per `issue-drafting-spec.md` §Evidence logging: the skill designates the durable surface where verifications are recorded (transcript, Context paragraph, or event payload). The choice is explicit, documented in the skill, and used consistently for every issue the skill produces. Silent drafting is forbidden.
 3. The skill opens GitHub issues against the correct component repo, title `[FEAT-YYYY-NNNN/TNN] <summary>`, body conforming to `shared/templates/work-unit-issue.md` v1, labels `state:pending` plus the applicable `type:*` and `autonomy:*` entries per `shared/schemas/labels.md`.
-4. The skill emits a `task_created` event per issue (new event type — extend `shared/schemas/event.schema.json` enum) referencing the issue's `owner/repo#number`, title, task-level correlation ID, autonomy, and target repo. For tasks whose `depends_on` array is empty, the skill additionally flips `state:pending → state:ready` and emits `task_ready` in the same pass (no-dep tasks are the only case the issue-drafting skill itself owns the ready-flip; all other ready-flips are WU 2.5's responsibility). Events validate through `scripts/validate-event.py`.
+4. The skill emits a `task_created` event per issue (new event type — extend `shared/schemas/event.schema.json` enum) referencing the issue's `owner/repo#number`, title, task-level correlation ID, autonomy, and target repo. For tasks whose `depends_on` array is empty, the skill additionally flips `state:pending → state:ready` and emits `task_ready` in the same pass (no-dep tasks are the only case the issue-drafting skill itself owns the ready-flip; all other ready-flips are WU 2.5's responsibility). Events validate through `specfuse-validate-event`.
 5. A worked example in the skill shows: a draft issue body with three claims about repo state; three verification actions taken at draft time; the resulting issue body with the verification evidence recorded on the chosen surface; and the resulting `task_created` (and, for the no-dep task, `task_ready`) event emissions.
 6. Commit message: `feat(pm): issue drafting skill v1`.
 
@@ -626,7 +626,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 1. Read the skill against `agents/pm/issue-drafting-spec.md` clause by clause and confirm every requirement is implemented, not paraphrased-away. If any clause is implicit, make it explicit.
 2. Walk the worked example against a real component repo (the Phase 1 sample repo is acceptable) and confirm every verification command actually runs and produces the cited output.
 3. Confirm the evidence-logging surface is the same across all three claims in the example — if the skill mixes surfaces, tighten.
-4. Round-trip the `task_created` and `task_ready` event payloads through `scripts/validate-event.py`.
+4. Round-trip the `task_created` and `task_ready` event payloads through `specfuse-validate-event`.
 5. Confirm issue bodies produced by the worked example round-trip against `shared/templates/work-unit-issue.md` v1 — every mandatory section present, frontmatter complete.
 
 **Suggested model.** Opus 4.7 — mandatory. This is the highest-stakes skill in Phase 2; the contract it honors prevents the dominant Phase 1 PM failure mode.
@@ -637,25 +637,25 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 
 **Context preamble.** Fifth Phase 2 work unit. This is the one skill that operates outside the initial feature-planning flow — it runs continuously (or via a polling trigger) as tasks complete and unblocks downstream ones. The correctness bar is idempotence: re-running the skill against the same event log must not produce duplicate `task_ready` events or duplicate GitHub label flips. The skill reads labels from GitHub directly (not a local cache) per the single-owner state-transition invariant. Finding 5 is absorbed here because per-type event payload schemas are the relevant territory, and the PM agent is the first role that both consumes (`task_completed`) and emits (`task_ready`) events at scale.
 
-**Inputs.** PM config v1, issue-drafting skill v1 (for the shape of `task_created` and the no-dep `task_ready`), `shared/schemas/event.schema.json`, `scripts/validate-event.py`, `shared/rules/verify-before-report.md` §3, `docs/walkthroughs/phase-1/retrospective.md` §Finding 5.
+**Inputs.** PM config v1, issue-drafting skill v1 (for the shape of `task_created` and the no-dep `task_ready`), `shared/schemas/event.schema.json`, `specfuse-validate-event`, `shared/rules/verify-before-report.md` §3, `docs/walkthroughs/phase-1/retrospective.md` §Finding 5.
 
 **Acceptance criteria.**
 
 1. `agents/pm/skills/dependency-recomputation/SKILL.md` v1.0 exists describing: the trigger (a new `task_completed` event on any feature's event log); the recomputation algorithm (walk every `pending` task on the feature, read GitHub labels of every `depends_on` target via a live query — not a cache — and if all are `state:done` flip the task to `state:ready` and emit `task_ready`); the idempotence discipline (before flipping, confirm the task is still `state:pending` on GitHub — if already `state:ready`, skip; if in any other state, escalate `spec_level_blocker`); and the label-write discipline (remove `state:pending`, add `state:ready`, verify the result via re-read before emitting `task_ready`).
 2. Finding 5 absorbed. `shared/schemas/events/` directory created. `shared/schemas/events/task_started.schema.json` defines the `task_started` payload shape with `branch` typed as `string | null`. `shared/rules/verify-before-report.md` §3 extended to describe the per-type payload validation discipline: agents validate events against the top-level event schema *and* against the per-type payload schema when one exists at `shared/schemas/events/<event_type>.schema.json`. The `shared/rules/verify-before-report.md` edit is architecturally authorized by the Phase 1 retrospective's carve-out for Finding 5 — the commit message states this.
-3. `scripts/validate-event.py` extended to apply the per-type payload schema when one exists, without altering its behavior for event types that have no per-type schema. The additive extension preserves the Phase 1 freeze contract for the component agent's existing emissions — no component-agent event shape changes, no component `version.md` bump required.
+3. `specfuse-validate-event` extended to apply the per-type payload schema when one exists, without altering its behavior for event types that have no per-type schema. The additive extension preserves the Phase 1 freeze contract for the component agent's existing emissions — no component-agent event shape changes, no component `version.md` bump required.
 4. A worked example in the skill shows a three-task feature (T01, T02 depending on T01, T03 depending on T01 and T02): T01 completes, T02 flips from `pending` to `ready` with a `task_ready` emission, T03 stays `pending`.
 5. A second worked example exercises idempotence: the same `task_completed` event replayed produces no duplicate `task_ready` and no duplicate label flip.
 6. The skill escalates `spec_level_blocker` on malformed dependency state — a `depends_on` target that no longer exists on GitHub, a cycle appearing post-hoc, labels in an unexpected state. The escalation is on the feature, not on the individual task, because the graph itself is incoherent.
 7. Commit message: `feat(pm): dependency recomputation skill v1; refactor(schemas): per-type event payload schemas with task_started precedent (closes Finding 5)`.
 
-**Do not touch.** Do not alter `scripts/validate-event.py` behavior for event types without a per-type schema — the Phase 1 freeze contract for the component agent depends on this. Do not modify component agent emission patterns (frozen). Do not bump `agents/component/version.md` — the component role's emissions are additively still valid.
+**Do not touch.** Do not alter `specfuse-validate-event` behavior for event types without a per-type schema — the Phase 1 freeze contract for the component agent depends on this. Do not modify component agent emission patterns (frozen). Do not bump `agents/component/version.md` — the component role's emissions are additively still valid.
 
 **Verification steps.**
 
-1. Run `scripts/validate-event.py` against a Phase 1 `task_started` event and confirm it still passes (additive extension preserved).
-2. Run `scripts/validate-event.py` against a new `task_started` event with `branch: null` and confirm it passes the new per-type schema.
-3. Run `scripts/validate-event.py` against a malformed `task_started` event (e.g. `branch: 42`) and confirm it fails with a useful message.
+1. Run `specfuse-validate-event` against a Phase 1 `task_started` event and confirm it still passes (additive extension preserved).
+2. Run `specfuse-validate-event` against a new `task_started` event with `branch: null` and confirm it passes the new per-type schema.
+3. Run `specfuse-validate-event` against a malformed `task_started` event (e.g. `branch: 42`) and confirm it fails with a useful message.
 4. Replay the idempotence worked example end-to-end and confirm no duplicate events and no duplicate labels.
 5. Re-read `shared/rules/verify-before-report.md` §3 and confirm the per-type discipline is described in terms the PM, QA, and specs roles can absorb when their phases arrive.
 
@@ -676,7 +676,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 3. `shared/schemas/template-coverage.schema.json` exists and defines the declaration-file structure. A worked example declaration validates against it.
 4. The skill has a `## Deferred integration` section naming Phase 5 as the place where the stub is replaced by a real generator query, and describing the expected shape of that future integration in enough detail that the Phase 5 WU inherits a concrete brief (not a re-discovery pass).
 5. Two worked examples: a feature that passes coverage (all templates declared across all involved repos), and a feature that fails (one declared-missing template in one repo; skill produces the `spec_level_blocker` escalation with a clear message).
-6. Events (`template_coverage_checked`, `template_coverage_gap`, or equivalent — extend `shared/schemas/event.schema.json` enum as needed) validate through `scripts/validate-event.py`.
+6. Events (`template_coverage_checked`, `template_coverage_gap`, or equivalent — extend `shared/schemas/event.schema.json` enum as needed) validate through `specfuse-validate-event`.
 7. Commit message: `feat(pm): template coverage check skill v1 (stub protocol)`.
 
 **Do not touch.** Do not modify the frozen `agents/component/skills/verification/SKILL.md` or rename the `.specfuse/verification.yml` convention — additive only. Do not implement a real generator query — that is Phase 5. Do not silently treat absence of a declaration file as coverage — absence is a `spec_level_blocker` so the human either adds the declaration or abandons the task.
@@ -707,7 +707,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
    Produces `docs/walkthroughs/phase-2/feature-2-log.md`.
 3. Logs are honest — friction, workarounds, surprises are recorded, not sanitized. Per-section: what worked, what did not, what was ambiguous, what config or skill needed a tweak.
 4. Any config or skill changes prompted by the walkthrough are committed as they happen, with `agents/pm/version.md` bumps and changelog entries.
-5. Every event emitted across both features validates through `scripts/validate-event.py` without exception.
+5. Every event emitted across both features validates through `specfuse-validate-event` without exception.
 6. Commit messages per feature: `chore(phase-2): walkthrough feature 1 complete` and `chore(phase-2): walkthrough feature 2 complete`.
 
 **Do not touch.** Do not change architectural decisions during the walkthrough; if an architectural problem surfaces, log it and proceed with a workaround — it is a retrospective input. Do not modify the frozen component agent surface. Do not silently edit shared rules to make an issue go away — if a shared rule needs adjusting, surface it as a retrospective finding.
@@ -715,7 +715,7 @@ Automate task-graph generation and GitHub issue creation from an approved featur
 **Verification steps.**
 
 1. Each feature reaches either the expected end state or a clearly documented stop with a rationale.
-2. Both feature event logs are syntactically valid JSONL (`while read line; do echo "$line" | jq .; done`) and pass `scripts/validate-event.py` line by line.
+2. Both feature event logs are syntactically valid JSONL (`while read line; do echo "$line" | jq .; done`) and pass `specfuse-validate-event` line by line.
 3. Both walkthrough logs have concrete per-section observations, not generic prose.
 4. Correlation IDs thread through: feature registry, event log, issue titles, branch names (for downstream component-agent work), commits, PRs.
 
@@ -817,7 +817,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 
 1. Open `agents/qa/CLAUDE.md` and verify every architecture §6.3 transition the QA agent owns appears exactly once, with no contradictions against shared rules.
 2. Confirm the `## Cross-task regression semantics` section states the invariant unambiguously — a reader who has not yet read WU 3.4 understands that QA does not flip implementation task state.
-3. Run `scripts/read-agent-version.sh qa` and confirm output is `1.0.0`.
+3. Run `python3 -m specfuse.orchestrator._version qa` and confirm output is `1.0.0`.
 4. Confirm no shared rules were silently duplicated into the role config.
 
 **Suggested model.** Opus 4.7. This config is re-read on every QA-agent invocation across Phase 3+.
@@ -844,7 +844,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 **Verification steps.**
 
 1. Round-trip the worked example's plan file through `shared/schemas/test-plan.schema.json` using `ajv` or equivalent.
-2. Confirm `test_plan_authored` events validate through `scripts/validate-event.py`.
+2. Confirm `test_plan_authored` events validate through `specfuse-validate-event`.
 3. Read the `## Deferred integration` section and confirm the Phase 4/5 brief is concrete enough that the Phase 4/5 author does not have to re-derive it.
 
 **Suggested model.** Opus 4.7. The test-plan schema shape outlives the stub — precision here pays back across Phase 4+5.
@@ -855,7 +855,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 
 **Context preamble.** Third Phase 3 work unit. The skill operates on a pickup cadence — a ready `qa_execution` task — but its output (failing events) triggers the WU 3.4 regression pipeline. The correctness bar is idempotence under replay: running the same plan against the same commit twice must not produce contradictory events or duplicate regression signals downstream. The skill does not build the component under test — it assumes the component agent's verification has already produced buildable artifacts. **Q6 check (Phase 1 Finding 8):** if, during this WU's authoring, the author determines that `--no-build` stales in `agents/component/skills/verification/SKILL.md` v1.1 create a risk of QA executing against stale artifacts, surface the finding as a new Phase 3 fix-ladder item (authorized carve-out from the Phase 1 freeze, analogous to WU 2.5's carve-out for Finding 5). If no risk surfaces, Finding 8 remains on the carry list for Phase 5.
 
-**Inputs.** QA config v1 from 3.1, qa-authoring skill + test-plan schema from 3.2, `shared/schemas/event.schema.json`, `scripts/validate-event.py`, `shared/rules/verify-before-report.md`, architecture §6.4 (regression-vs-escalation rule).
+**Inputs.** QA config v1 from 3.1, qa-authoring skill + test-plan schema from 3.2, `shared/schemas/event.schema.json`, `specfuse-validate-event`, `shared/rules/verify-before-report.md`, architecture §6.4 (regression-vs-escalation rule).
 
 **Acceptance criteria.**
 
@@ -864,7 +864,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 3. Per-type payload schemas: `shared/schemas/events/qa_execution_completed.schema.json` and `shared/schemas/events/qa_execution_failed.schema.json` define the payload contracts. The `event_type` enum is extended additively.
 4. A worked example: a test plan with three tests; first execution all-pass → `qa_execution_completed` with commit SHA; second execution after a hypothetical code regression → `qa_execution_failed` with one entry in `failed_tests` naming the failing test's `test_id` and its first-signal output; third execution replayed against the same commit → no new event, skill reports idempotent-skip.
 5. The skill explicitly does not file the regression issue on failure — that is WU 3.4's concern, triggered by the `qa_execution_failed` event.
-6. Events validate through `scripts/validate-event.py`.
+6. Events validate through `specfuse-validate-event`.
 7. Commit message: `feat(qa): qa-execution skill v1 (+ Finding 8 disposition)`.
 
 **Do not touch.** Do not file regression issues (3.4). Do not curate the regression suite (3.5). Do not modify the frozen component agent verification skill — the Q6 outcome is either "carried further" or "surfaced for a follow-on authorized WU", never silently edited here. Do not cache plan files or build artifacts — always resolve fresh from the specs repo at execution time.
@@ -901,7 +901,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 
 **Verification steps.**
 
-1. Walk both worked examples end-to-end and confirm every emitted event validates per-type through `scripts/validate-event.py`.
+1. Walk both worked examples end-to-end and confirm every emitted event validates per-type through `specfuse-validate-event`.
 2. Confirm the orphan inbox file `FEAT-2026-0005-plan-review-cycle.md` is retired in this WU's commit with a corresponding `escalation_resolved` event appended to `events/FEAT-2026-0005.jsonl`.
 3. Confirm the Q4 invariant: grep the skill for any mention of writing labels or state to the implementation task under test — there should be none.
 4. Re-read `docs/walkthroughs/phase-2/retrospective.md` §"Finding F2.10" and confirm the absorbed clause addresses the failure mode as described (no machine-readable resolution signal, inbox file orphaned).
@@ -949,7 +949,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 2. **Feature 2 (regression cycle)** — primary candidate: qa-execution fails first-try, qa-regression files a new implementation task via the inbox, component agent picks it up and fixes, re-execution passes, `qa_regression_resolved` + `escalation_resolved` events emitted, qa-curation consolidates if the regression exposed a consolidation opportunity. Backup candidate (only if regression cycle is impractical): qa-curation stress — a suite growing past threshold with dedup/orphan opportunities. Chosen at walkthrough time. Produces `docs/walkthroughs/phase-3/feature-2-log.md`.
 3. Logs are honest — friction, workarounds, surprises are recorded, not sanitized.
 4. Any config or skill changes prompted by the walkthrough are committed as they happen, with `agents/qa/version.md` bumps and changelog entries.
-5. Every event emitted across both features validates through `scripts/validate-event.py` without exception.
+5. Every event emitted across both features validates through `specfuse-validate-event` without exception.
 6. **Cross-task-flow audit.** The walkthrough explicitly verifies that the Q4 invariant held across Feature 2 — no implementation task the QA did not own had its state or labels mutated by QA actions.
 7. Commit messages per feature: `chore(phase-3): walkthrough feature 1 complete` and `chore(phase-3): walkthrough feature 2 complete`.
 
@@ -958,7 +958,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 **Verification steps.**
 
 1. Each feature reaches either its expected end state or a clearly documented stop with a rationale.
-2. Both feature event logs are syntactically valid JSONL and pass `scripts/validate-event.py` line by line.
+2. Both feature event logs are syntactically valid JSONL and pass `specfuse-validate-event` line by line.
 3. Both walkthrough logs have concrete per-section observations, not generic prose.
 4. The Q4 audit in Feature 2's log is a specific enumeration, not a blanket assertion.
 
@@ -1091,7 +1091,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 
 **Acceptance criteria.**
 
-1. `agents/pm/skills/issue-drafting/SKILL.md` gains a new §Step 12 "Feature-state transition check" after §Step 11 (task_ready emission for no-dep tasks). The step specifies: after appending `task_created` and (if applicable) `task_ready` for the current task, the skill re-reads the feature's event log end-to-end fresh, and checks whether (a) at least one `task_created` event exists for the feature (any task; no "all tasks" requirement at v1), and (b) no prior `feature_state_changed` event with `from_state: generating, to_state: in_progress` exists on the log. If both hold, the skill constructs and emits `feature_state_changed(generating → in_progress, trigger: "first_round_issues_opened")` per `shared/schemas/events/feature_state_changed.schema.json`, validates via `scripts/validate-event.py` (exit 0), and appends to `/events/<feature_correlation_id>.jsonl`. If either condition fails, the step is a no-op. The idempotence guard is load-bearing: in a per-task invocation model, only the first invocation's Step 12 passes the "no prior transition" check; subsequent invocations skip silently. Phase 4+ may refine to "all tasks opened" semantics; documented as a Phase 4+ carry-note in the step itself.
+1. `agents/pm/skills/issue-drafting/SKILL.md` gains a new §Step 12 "Feature-state transition check" after §Step 11 (task_ready emission for no-dep tasks). The step specifies: after appending `task_created` and (if applicable) `task_ready` for the current task, the skill re-reads the feature's event log end-to-end fresh, and checks whether (a) at least one `task_created` event exists for the feature (any task; no "all tasks" requirement at v1), and (b) no prior `feature_state_changed` event with `from_state: generating, to_state: in_progress` exists on the log. If both hold, the skill constructs and emits `feature_state_changed(generating → in_progress, trigger: "first_round_issues_opened")` per `shared/schemas/events/feature_state_changed.schema.json`, validates via `specfuse-validate-event` (exit 0), and appends to `/events/<feature_correlation_id>.jsonl`. If either condition fails, the step is a no-op. The idempotence guard is load-bearing: in a per-task invocation model, only the first invocation's Step 12 passes the "no prior transition" check; subsequent invocations skip silently. Phase 4+ may refine to "all tasks opened" semantics; documented as a Phase 4+ carry-note in the step itself.
 2. `agents/pm/skills/issue-drafting/SKILL.md` §Scope bullet list is extended to include the new feature_state_changed emission: "Emitting `feature_state_changed(generating → in_progress)` on the first invocation to successfully append a `task_created` event for the feature — the skill's idempotence guard (event-log read of prior transitions) ensures at most one emission per feature."
 3. `agents/pm/skills/issue-drafting/SKILL.md` §"Outputs" section's closing line ("No writes to component-repo code paths. ... No other state transitions on the feature — the feature stays in whatever state the invoking pass placed it in") is corrected: the `generating → in_progress` transition is now owned by the skill per §Step 12, so the "no other state transitions" claim is replaced with "The only feature-state transition the skill owns is `generating → in_progress`, emitted via §Step 12; no other feature-level transitions are performed by this skill."
 4. `agents/pm/skills/issue-drafting/SKILL.md` §Step 2 gains a "Plan-file fallback" paragraph documenting: when the feature's plan file exists (the normal path), the skill reads `### Work unit prompt` sections per task as currently specified; when no plan file exists (unusual — e.g., plan-review was handled inline or the feature is minimal), the skill falls back to deriving work-unit prompts from the feature registry's per-AC descriptions. The fallback is honest — it is explicitly flagged as a deviation from the normal flow. **In production, plan-file absence for a non-trivial task graph (>1 task, or any task with non-empty `depends_on`) is a `spec_level_blocker` escalation condition**, because the plan file is the mechanism by which the human validates the task decomposition. For single-task simple features, the fallback is acceptable without escalation.
@@ -1125,7 +1125,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 
 **Acceptance criteria.**
 
-1. `shared/rules/verify-before-report.md` §3 "Verify" gains five additive clauses under a new sub-section "Event-emission operational discipline" (placed immediately before the existing "Any other emitted JSON or YAML must parse" bullet, or as new bullets within the existing "Additional generic checks apply in specific situations" list — authoring decides the cleaner placement): **(F3.13 timestamps)** "Event timestamps must be produced at emission time via `date -u +%Y-%m-%dT%H:%M:%SZ`. Never synthesize a timestamp from context, memory, or prior event-log entries — observed anomaly: F1 Sessions 1–4 produced timestamps one full day off (2026-04-23 vs. 2026-04-24) before the discipline was prompt-pinned in later sessions." **(F3.10 validate-event.py canonical pattern)** "Prefer `scripts/validate-event.py --file /tmp/event.json` as the canonical invocation. Stdin/pipe invocations via `/dev/stdin` fail with exit `2` on some macOS configurations (observed 4 instances in F1; 0 in F2 with `--file` pinned). Write the constructed event to a temp file first, then validate via `--file`." **(F3.25 JSONL single-line)** "Event JSON must be a single line (JSONL format) before validation or append. Multi-line pretty-printed JSON is rejected by validate-event.py (one validation error per line). Minify before piping to the validator." **(F3.28 canonical safe append — CRITICAL)** "To append a validated event to `events/*.jsonl`, use `printf '%s\n' \"$(cat /tmp/event.json)\" >> events/FEAT-YYYY-NNNN.jsonl`. The `printf '%s\n'` wrapper guarantees the trailing newline that separates JSONL entries regardless of the source file's trailing-newline state. Plain `cat temp >> log` concatenation can silently merge multiple events onto one line when the source lacks a trailing newline (observed in F2 S4: 6 events concatenated, required `JSONDecoder.raw_decode()` recovery). JSONL corruption has no second-chance recovery; the canonical pattern prevents the failure mode." **(F3.5 orchestration-repo commit discipline)** new top-level operational rule (not a verify-step bullet — more fundamental): "Do not `git commit` on the orchestration repo from within a role-switch subagent session. Role-switch subagents append events to the JSONL log file and return control; the orchestration session or human operator commits. This preserves the orchestration repo's PR-based merge history (observed effectiveness: F1 = 4 unauthorized subagent commits; F2 with the preamble clause pinned = 0 commits)."
+1. `shared/rules/verify-before-report.md` §3 "Verify" gains five additive clauses under a new sub-section "Event-emission operational discipline" (placed immediately before the existing "Any other emitted JSON or YAML must parse" bullet, or as new bullets within the existing "Additional generic checks apply in specific situations" list — authoring decides the cleaner placement): **(F3.13 timestamps)** "Event timestamps must be produced at emission time via `date -u +%Y-%m-%dT%H:%M:%SZ`. Never synthesize a timestamp from context, memory, or prior event-log entries — observed anomaly: F1 Sessions 1–4 produced timestamps one full day off (2026-04-23 vs. 2026-04-24) before the discipline was prompt-pinned in later sessions." **(F3.10 validate-event.py canonical pattern)** "Prefer `specfuse-validate-event --file /tmp/event.json` as the canonical invocation. Stdin/pipe invocations via `/dev/stdin` fail with exit `2` on some macOS configurations (observed 4 instances in F1; 0 in F2 with `--file` pinned). Write the constructed event to a temp file first, then validate via `--file`." **(F3.25 JSONL single-line)** "Event JSON must be a single line (JSONL format) before validation or append. Multi-line pretty-printed JSON is rejected by validate-event.py (one validation error per line). Minify before piping to the validator." **(F3.28 canonical safe append — CRITICAL)** "To append a validated event to `events/*.jsonl`, use `printf '%s\n' \"$(cat /tmp/event.json)\" >> events/FEAT-YYYY-NNNN.jsonl`. The `printf '%s\n'` wrapper guarantees the trailing newline that separates JSONL entries regardless of the source file's trailing-newline state. Plain `cat temp >> log` concatenation can silently merge multiple events onto one line when the source lacks a trailing newline (observed in F2 S4: 6 events concatenated, required `JSONDecoder.raw_decode()` recovery). JSONL corruption has no second-chance recovery; the canonical pattern prevents the failure mode." **(F3.5 orchestration-repo commit discipline)** new top-level operational rule (not a verify-step bullet — more fundamental): "Do not `git commit` on the orchestration repo from within a role-switch subagent session. Role-switch subagents append events to the JSONL log file and return control; the orchestration session or human operator commits. This preserves the orchestration repo's PR-based merge history (observed effectiveness: F1 = 4 unauthorized subagent commits; F2 with the preamble clause pinned = 0 commits)."
 2. `agents/component/CLAUDE.md` §"Output artifacts and where they go" — the enumeration of events the component role emits is extended with inline per-type schema path references wherever a schema exists. Specifically: `task_started` references [`shared/schemas/events/task_started.schema.json`](...); `human_escalation` references [`shared/schemas/events/human_escalation.schema.json`](...). Other events the component role emits (`task_completed`, `task_blocked`, `override_applied`, `override_expired`, `spec_issue_raised`) are envelope-only; no schema reference is added, but a single clarifying sentence notes "events without an inline schema path reference are envelope-only at v1.5.2" so a cold reader distinguishes per-type-schema events from envelope-only. No other content on the component CLAUDE.md is modified. Phase 1 freeze-compatibility: additive cross-references only.
 3. `agents/pm/CLAUDE.md` §"Output artifacts and where they go" — same pattern. Inline per-type schema references added for: `feature_state_changed` → [`shared/schemas/events/feature_state_changed.schema.json`](...); `template_coverage_checked` → [`shared/schemas/events/template_coverage_checked.schema.json`](...); `human_escalation` → [`shared/schemas/events/human_escalation.schema.json`](...). Envelope-only events (`task_graph_drafted`, `plan_ready`, `task_created`, `task_ready`) are flagged with the clarifying sentence. Phase 2 freeze-compatibility: additive.
 4. `agents/qa/CLAUDE.md` §"Output artifacts" — same pattern. Inline schema references added for: `test_plan_authored`, `qa_execution_completed`, `qa_execution_failed`, `qa_regression_filed`, `qa_regression_resolved`, `escalation_resolved`, `regression_suite_curated`, `task_started`, `human_escalation`. Envelope-only events flagged (`task_completed`, `task_blocked`, `spec_issue_raised`, `override_applied`, `override_expired`). Phase 3 in-phase amendment — no freeze-compat justification needed.
@@ -1134,7 +1134,7 @@ Plug the QA agent into the pipeline for test plan authoring, execution, and regr
 7. Version bumps: `agents/component/version.md` 1.5.1 → 1.5.2 (patch — post-freeze additive, CLAUDE.md cross-refs only); `agents/pm/version.md` 1.6.2 → 1.6.3 (patch — post-freeze additive, CLAUDE.md cross-refs + issue-drafting + dep-recomputation F3.14); `agents/qa/version.md` 1.5.1 → 1.5.2 (patch — in-phase CLAUDE.md cross-refs). No shared-rule version file exists (shared/rules/ uses per-file provenance comments rather than a version.md); the edits to verify-before-report.md are self-documenting via git blame + the Phase 3 retrospective cross-reference in the new clauses. No skill internal version bump for issue-drafting (v1.3 → v1.4) or dep-recomputation (v1.0 → v1.1) — F3.14 is payload-shape standardization, not new behavior; authoring decides whether to bump given conservative semver practice — suggested: bump both skills' internal versions.
 8. Commit message: `chore(phase-3): WU 3.11 shared substrate operational discipline`. Body cites all seven findings, the 2-feature evidence per finding where applicable, the Phase 1 + Phase 2 freeze-compat posture, and the CRITICAL designation of F3.28.
 
-**Do not touch.** Do not modify `shared/schemas/event.schema.json` — the envelope schema needs no change; all new clauses are operational discipline, not schema constraints. Do not modify any existing per-type payload schema — F3.14 is a prose-convention standardization, not a schema change; adding per-type schemas for `task_created` and `task_ready` is explicitly deferred to Phase 4+ per F3.15's triage decision. Do not modify `scripts/validate-event.py` — the fix for F3.10 is a documentation prescription of the canonical invocation, not a script-side fix (a future script-level fix to `/dev/stdin` handling would be a separate WU in Phase 4+ or in a scripts-hygiene pass). Do not modify any existing step body in any skill; all skill edits are field-rename within event-payload samples + worked-example updates. Do not modify any other shared rule (`correlation-ids.md`, `state-vocabulary.md`, `never-touch.md`, `override-registry.md`, `escalation-protocol.md`, `role-switch-hygiene.md`, `security-boundaries.md`). Do not modify other role skills outside issue-drafting and dep-recomputation. Do not emit events.
+**Do not touch.** Do not modify `shared/schemas/event.schema.json` — the envelope schema needs no change; all new clauses are operational discipline, not schema constraints. Do not modify any existing per-type payload schema — F3.14 is a prose-convention standardization, not a schema change; adding per-type schemas for `task_created` and `task_ready` is explicitly deferred to Phase 4+ per F3.15's triage decision. Do not modify `specfuse-validate-event` — the fix for F3.10 is a documentation prescription of the canonical invocation, not a script-side fix (a future script-level fix to `/dev/stdin` handling would be a separate WU in Phase 4+ or in a scripts-hygiene pass). Do not modify any existing step body in any skill; all skill edits are field-rename within event-payload samples + worked-example updates. Do not modify any other shared rule (`correlation-ids.md`, `state-vocabulary.md`, `never-touch.md`, `override-registry.md`, `escalation-protocol.md`, `role-switch-hygiene.md`, `security-boundaries.md`). Do not modify other role skills outside issue-drafting and dep-recomputation. Do not emit events.
 
 **Verification steps.**
 
@@ -1225,7 +1225,7 @@ Automate the conversational spec-drafting phase and bring the specs agent from i
 ### Phase 4 acceptance criteria
 
 - The specs agent, given a human's feature idea in an interactive session, produces valid, reviewable OpenAPI / AsyncAPI / Arazzo specs under `/product/` with demonstrably less human effort than pre-Phase-4 manual drafting.
-- Feature registry entries are created programmatically with correct correlation IDs, frontmatter validating against `feature-frontmatter.schema.json`, and a `feature_created` event emitted and validated through `scripts/validate-event.py`.
+- Feature registry entries are created programmatically with correct correlation IDs, frontmatter validating against `feature-frontmatter.schema.json`, and a `feature_created` event emitted and validated through `specfuse-validate-event`.
 - Specfuse validation failures produce actionable, structured feedback the human can act on without re-reading generator source or validation internals.
 - The `drafting → validating → planning` state transitions are automated end-to-end with `feature_state_changed` event emissions — no manual state-bumping required between the specs agent's work and the PM agent's pickup.
 - Spec issues routed from downstream agents via `/inbox/spec-issue/` are triaged by the specs agent and either resolved (spec fix applied, event emitted) or re-routed (generator issue filed) without human intervention in the triage step itself.
@@ -1278,7 +1278,7 @@ The Phase 3 retrospective carried ten deferred findings and three negative-resul
 1. Open `agents/specs/CLAUDE.md` and verify every architecture §6.3 transition the specs agent owns appears exactly once, with no contradictions against shared rules.
 2. Confirm the `## Interaction model` section clearly distinguishes session-driven from task-driven and names all four skills.
 3. Confirm the `## Output surfaces` section lists all three repos with correct write boundaries.
-4. Run `scripts/read-agent-version.sh specs` and confirm output is `1.0.0`.
+4. Run `python3 -m specfuse.orchestrator._version specs` and confirm output is `1.0.0`.
 5. Confirm no shared rules were silently duplicated into the role config.
 
 **Suggested model.** Opus 4.7. This config is re-read on every specs-agent invocation across Phase 4+.
@@ -1289,11 +1289,11 @@ The Phase 3 retrospective carried ten deferred findings and three negative-resul
 
 **Context preamble.** Second Phase 4 work unit. This skill has been performed manually since Phase 0 (WU 0.6 created the first feature registry entry by hand, and every subsequent walkthrough feature was human-authored). The skill automates what the human has done ten times across four phases, so the pattern is well-understood and the risk is low. The skill's output — a feature registry markdown file with validated frontmatter and a `feature_created` event — is the input the spec-drafting skill (WU 4.3) operates on. Getting the correlation ID format, frontmatter schema, and event payload right is load-bearing: every downstream agent consumes the correlation ID, and schema violations here cascade through the entire feature lifecycle.
 
-**Inputs.** Specs agent config v1 from 4.1, `shared/rules/correlation-ids.md` (the correlation ID scheme — minting the next ID requires reading existing `/features/FEAT-YYYY-NNNN.md` files to determine the next ordinal), `shared/schemas/feature-frontmatter.schema.json`, `shared/schemas/event.schema.json`, `shared/templates/feature-registry.md`, `scripts/validate-event.py`, `scripts/validate-frontmatter.py`, `shared/rules/verify-before-report.md` (event-emission operational discipline).
+**Inputs.** Specs agent config v1 from 4.1, `shared/rules/correlation-ids.md` (the correlation ID scheme — minting the next ID requires reading existing `/features/FEAT-YYYY-NNNN.md` files to determine the next ordinal), `shared/schemas/feature-frontmatter.schema.json`, `shared/schemas/event.schema.json`, `shared/templates/feature-registry.md`, `specfuse-validate-event`, `specfuse-validate-frontmatter`, `shared/rules/verify-before-report.md` (event-emission operational discipline).
 
 **Acceptance criteria.**
 
-1. `agents/specs/skills/feature-intake/SKILL.md` v1.0 exists, describing step by step: how the specs agent asks the human for the feature's title, involved repos, and autonomy default; how it reads existing `/features/FEAT-YYYY-*.md` files to determine the next available ordinal; how it mints the correlation ID per `correlation-ids.md`; how it creates `/features/FEAT-YYYY-NNNN.md` populated from the `feature-registry.md` template with frontmatter values (`correlation_id`, `state: drafting`, `involved_repos`, `autonomy_default`, `task_graph: []`); how it validates the frontmatter against `feature-frontmatter.schema.json` using `scripts/validate-frontmatter.py`; and how it emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl` validated through `scripts/validate-event.py`.
+1. `agents/specs/skills/feature-intake/SKILL.md` v1.0 exists, describing step by step: how the specs agent asks the human for the feature's title, involved repos, and autonomy default; how it reads existing `/features/FEAT-YYYY-*.md` files to determine the next available ordinal; how it mints the correlation ID per `correlation-ids.md`; how it creates `/features/FEAT-YYYY-NNNN.md` populated from the `feature-registry.md` template with frontmatter values (`correlation_id`, `state: drafting`, `involved_repos`, `autonomy_default`, `task_graph: []`); how it validates the frontmatter against `feature-frontmatter.schema.json` using `specfuse-validate-frontmatter`; and how it emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl` validated through `specfuse-validate-event`.
 2. The skill handles the collision case: if a `FEAT-YYYY-NNNN.md` file already exists at the computed ordinal, the skill increments until a free ordinal is found. The collision-handling logic is documented explicitly.
 3. The skill does not populate the body sections (`Description`, `Scope`, `Out of scope`, `Related specs`) beyond minimal stubs — that is the spec-drafting skill's concern. The body sections carry placeholder text ("To be drafted during spec authoring") so the file is valid markdown but honestly incomplete.
 4. A `feature_created` per-type payload schema at `shared/schemas/events/feature_created.schema.json` is authored. The `feature_created` event type already exists in `event.schema.json`'s enum; the per-type payload schema is additive (following the WU 2.5 precedent). Payload fields: `feature_title` (string), `involved_repos` (array of strings), `autonomy_default` (enum), `correlation_id` (string matching `FEAT-YYYY-NNNN` pattern).
@@ -1305,8 +1305,8 @@ The Phase 3 retrospective carried ten deferred findings and three negative-resul
 
 **Verification steps.**
 
-1. Round-trip the worked example's feature frontmatter through `scripts/validate-frontmatter.py` and confirm it passes.
-2. Round-trip the worked example's `feature_created` event through `scripts/validate-event.py` (with the new per-type schema) and confirm it passes.
+1. Round-trip the worked example's feature frontmatter through `specfuse-validate-frontmatter` and confirm it passes.
+2. Round-trip the worked example's `feature_created` event through `specfuse-validate-event` (with the new per-type schema) and confirm it passes.
 3. Confirm the collision-handling logic is explicit and deterministic — two invocations on the same day with the same ordinal must produce different IDs.
 4. Confirm body sections carry honest placeholder text, not fabricated content.
 
@@ -1354,7 +1354,7 @@ F3.32 absorption: Phase 3 walkthroughs surfaced that the word "expected" in feat
 
 The skill operates in two modes: first-pass validation (the human says "run validation" during a drafting session — the skill runs it and reports back in the same session) and re-validation (the human has fixed issues and asks for another pass). Both modes must be handled, and the skill must be idempotent — running validation twice on unchanged specs produces the same result without duplicate state-transition events.
 
-**Inputs.** Specs agent config v1 from 4.1, spec-drafting skill from 4.3 (for the output file conventions under `/product/`), `shared/schemas/event.schema.json`, `shared/schemas/events/feature_state_changed.schema.json`, `scripts/validate-event.py`, architecture §6.1 (feature state machine — the specs agent owns `drafting → validating` and `validating → planning`), architecture §6.3 (transition ownership).
+**Inputs.** Specs agent config v1 from 4.1, spec-drafting skill from 4.3 (for the output file conventions under `/product/`), `shared/schemas/event.schema.json`, `shared/schemas/events/feature_state_changed.schema.json`, `specfuse-validate-event`, architecture §6.1 (feature state machine — the specs agent owns `drafting → validating` and `validating → planning`), architecture §6.3 (transition ownership).
 
 **Acceptance criteria.**
 
@@ -1367,7 +1367,7 @@ The skill operates in two modes: first-pass validation (the human says "run vali
 4. **Actionable failure feedback.** The skill does not dump raw validator output to the human. It interprets each error and provides: (a) the specific file and line; (b) what went wrong in plain language; (c) a concrete suggestion for fixing it (e.g., "add `operationId` to the GET /widgets endpoint" rather than "missing required property: operationId"). The skill's interpretation table covers the most common Specfuse validation errors. For errors outside the table, the skill presents the raw error with a caveat ("this error is not in my interpretation table — please review the raw validator output below").
 5. **Idempotence under re-validation.** The skill tracks validation attempts by reading the event log for prior `spec_validated` events on this feature. A re-validation after a fix produces a new `spec_validated` event (the event log is append-only — prior failures are preserved). The `validating → planning` transition is emitted only once per feature (guarded by checking for a prior `feature_state_changed(validating → planning)` event, same pattern as WU 3.10's Step 12 idempotence guard).
 6. A worked example shows: a feature with two spec files; first validation run fails on one file (missing `operationId`); the skill reports the error with remediation; the human fixes the spec; second validation run passes; the skill emits `validating → planning` and reports "feature FEAT-YYYY-NNNN is ready for PM planning."
-7. Events validate through `scripts/validate-event.py`.
+7. Events validate through `specfuse-validate-event`.
 8. Commit message: `feat(specs): spec-validation skill v1`.
 
 **Do not touch.** Do not draft specs (that is 4.3). Do not create the task graph or open issues (that is the PM agent's territory). Do not modify `shared/schemas/event.schema.json`'s enum (the `spec_validated` type already exists) — the only addition is the per-type payload schema. Do not modify the PM agent's task-decomposition skill or any downstream configuration. Do not modify shared rules.
@@ -1375,7 +1375,7 @@ The skill operates in two modes: first-pass validation (the human says "run vali
 **Verification steps.**
 
 1. Walk the worked example end-to-end and confirm: (a) the first validation emits `drafting → validating` + `spec_validated(pass: false)`; (b) the re-validation emits `spec_validated(pass: true)` + `validating → planning`; (c) no duplicate state transitions.
-2. Round-trip the `spec_validated` events through `scripts/validate-event.py` with the new per-type schema.
+2. Round-trip the `spec_validated` events through `specfuse-validate-event` with the new per-type schema.
 3. Confirm the actionable feedback is genuinely actionable — a human reading the worked example's error output should know exactly what to fix without consulting external documentation.
 4. Confirm the `validating → planning` transition is the last thing the skill does — there is no further specs-agent work after the handoff.
 
@@ -1398,7 +1398,7 @@ The skill operates reactively — it is triggered by inbox files under `/inbox/s
 3. **Triage decision tree.** The skill documents explicit criteria for the spec-vs-generator classification: (a) if the issue names a file under `/product/` and the fix is a spec-content change (wrong endpoint path, missing field, incorrect type), it is a spec fix; (b) if the issue names a file under `_generated/` or equivalent and the problem is in the generated code's shape (missing boilerplate, wrong template output), it is a generator issue; (c) if the issue names a file under `_generated/` but the root cause is a spec error that propagated through generation, it is a spec fix (fix the spec, regenerate); (d) if the classification is unclear after reading the issue and the affected files, escalate to the human. Case (c) is the subtlest — the skill documents it with a worked example showing a generated controller with a wrong route because the OpenAPI spec had a typo in the path.
 4. **Inbox lifecycle.** The skill documents the inbox file lifecycle: read → triage → act → archive. Archived files are moved to `/inbox/spec-issue/processed/` (consistent with the inbox flow described in architecture §7.4). The skill never deletes inbox files.
 5. Two worked examples: (a) a spec fix — component agent filed a spec issue because an OpenAPI endpoint returns `200` but the spec says `201`; the specs agent fixes the spec, re-validates, emits `spec_issue_resolved`; (b) a generator routing — QA agent filed a spec issue because a generated test fixture is missing a required field; the specs agent determines the field is absent from the template (not the spec), files a generator issue, emits `spec_issue_routed`.
-6. Events validate through `scripts/validate-event.py`.
+6. Events validate through `specfuse-validate-event`.
 7. Commit message: `feat(specs): spec-issue triage skill v1`.
 
 **Do not touch.** Do not modify `shared/templates/spec-issue.md` beyond what the per-type payload schemas require (if any). Do not modify the component or QA agents' spec-issue filing behavior. Do not implement the generator feedback loop (that is Phase 5). Do not modify generated code — the skill files an issue against the generator project, it does not fix the generated code directly. Do not modify shared rules.
@@ -1406,7 +1406,7 @@ The skill operates reactively — it is triggered by inbox files under `/inbox/s
 **Verification steps.**
 
 1. Walk both worked examples end-to-end and confirm: the spec-fix example resolves the issue without touching generated code; the generator-routing example files an issue without touching specs.
-2. Round-trip the new event types through `scripts/validate-event.py` with their per-type schemas.
+2. Round-trip the new event types through `specfuse-validate-event` with their per-type schemas.
 3. Confirm the triage decision tree handles case (c) — the "spec error propagated through generation" case — explicitly and correctly routes it to a spec fix, not a generator issue.
 4. Confirm inbox files are archived, not deleted.
 
@@ -1429,7 +1429,7 @@ Phase 4's walkthrough has an additional responsibility that Phase 2 and Phase 3 
 3. **"First round" semantics observation.** The walkthrough explicitly records whether WU 3.10's v1 "first round" semantics (first-task-opened) for the `generating → in_progress` transition produced correct observable behavior, or whether the Phase 4+ refinement to "all tasks opened" is warranted. This is an observation, not a test — the walkthrough records what happened, and the retrospective triages.
 4. Logs are honest — friction, workarounds, surprises are recorded, not sanitized.
 5. Any config or skill changes prompted by the walkthrough are committed as they happen, with `agents/specs/version.md` bumps and changelog entries.
-6. Every event emitted across both features validates through `scripts/validate-event.py` without exception.
+6. Every event emitted across both features validates through `specfuse-validate-event` without exception.
 7. **Q4 cross-attribution audit.** The walkthrough explicitly verifies that the Q4 invariant held across Feature 2's regression cycle — the QA agent filed a NEW implementation task via inbox; it did not write labels or state to the original implementation task.
 8. Commit messages per feature: `chore(phase-4): walkthrough feature 1 complete` and `chore(phase-4): walkthrough feature 2 complete`.
 
@@ -1438,7 +1438,7 @@ Phase 4's walkthrough has an additional responsibility that Phase 2 and Phase 3 
 **Verification steps.**
 
 1. Each feature reaches either its expected end state or a clearly documented stop with a rationale.
-2. Both feature event logs are syntactically valid JSONL and pass `scripts/validate-event.py` line by line.
+2. Both feature event logs are syntactically valid JSONL and pass `specfuse-validate-event` line by line.
 3. Both walkthrough logs have concrete per-section observations, not generic prose.
 4. Feature 2's log includes explicit documentation of whether the qa-regression path was exercised naturally or via fallback, and the Q4 audit is a specific enumeration.
 5. Correlation IDs thread through every artifact: feature registry, event log, spec files, plan file, issue titles, branch names, commits, PRs.

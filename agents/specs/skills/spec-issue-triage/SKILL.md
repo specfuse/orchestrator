@@ -140,7 +140,7 @@ Construct the event:
 | `correlation_id` | `FEAT-YYYY-NNNN` (feature-level, extracted from the triggering task's correlation ID) |
 | `event_type` | `spec_issue_resolved` |
 | `source` | `specs` |
-| `source_version` | Output of `scripts/read-agent-version.sh specs` |
+| `source_version` | Output of `python3 -m specfuse.orchestrator._version specs` |
 | `payload.original_issue_correlation_id` | The task-level correlation ID from the inbox file's `## Triggering task` (e.g. `FEAT-2026-0042/T09`) |
 | `payload.affected_files` | Array of spec file paths edited (relative to product specs repo root) |
 | `payload.resolution_summary` | One-sentence description of what was fixed and why |
@@ -148,7 +148,7 @@ Construct the event:
 Write to `/tmp/event.json`, validate, and append:
 
 ```sh
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0 → append
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-YYYY-NNNN.jsonl
 ```
@@ -170,7 +170,7 @@ The inbox file is **never deleted**. The processed directory preserves the full 
 Per [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md):
 
 1. Re-read the edited spec file(s) and confirm the fix landed as intended.
-2. Re-read the event log and confirm the `spec_issue_resolved` event round-trips through `scripts/validate-event.py` with exit 0.
+2. Re-read the event log and confirm the `spec_issue_resolved` event round-trips through `specfuse-validate-event` with exit 0.
 3. Confirm the inbox file is in `/inbox/spec-issue/processed/`, not in `/inbox/spec-issue/`.
 4. Confirm no written path is in [`never-touch.md`](../../../../shared/rules/never-touch.md).
 
@@ -205,7 +205,7 @@ Construct the event:
 | `correlation_id` | `FEAT-YYYY-NNNN` (feature-level) |
 | `event_type` | `spec_issue_routed` |
 | `source` | `specs` |
-| `source_version` | Output of `scripts/read-agent-version.sh specs` |
+| `source_version` | Output of `python3 -m specfuse.orchestrator._version specs` |
 | `payload.original_issue_correlation_id` | The task-level correlation ID from the inbox file's `## Triggering task` |
 | `payload.target_project` | The `owner/repo` of the generator project |
 | `payload.filed_issue_reference` | The GitHub issue reference returned by `gh issue create` (e.g. `acme/specfuse-generator#42`) |
@@ -213,7 +213,7 @@ Construct the event:
 Write to `/tmp/event.json`, validate, and append:
 
 ```sh
-python3 scripts/validate-event.py --file /tmp/event.json
+specfuse-validate-event --file /tmp/event.json
 # Exit 0 → append
 printf '%s\n' "$(cat /tmp/event.json)" >> events/FEAT-YYYY-NNNN.jsonl
 ```
@@ -227,7 +227,7 @@ Move the inbox file to `/inbox/spec-issue/processed/`. Never delete.
 Per [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md):
 
 1. Confirm the GitHub issue was created (re-read via `gh issue view`).
-2. Re-read the event log and confirm the `spec_issue_routed` event round-trips through `scripts/validate-event.py` with exit 0.
+2. Re-read the event log and confirm the `spec_issue_routed` event round-trips through `specfuse-validate-event` with exit 0.
 3. Confirm the inbox file is in `/inbox/spec-issue/processed/`.
 4. Confirm no spec files under `/product/` were modified (the generator-routing path does not touch specs).
 5. Confirm no generated code was modified (the specs agent files an issue, it does not fix generated code).
@@ -346,7 +346,7 @@ current "200" response description to "Bookmark already exists
    {"timestamp":"2026-04-25T14:30:00Z","correlation_id":"FEAT-2026-0042","event_type":"spec_issue_resolved","source":"specs","source_version":"1.0.0","payload":{"original_issue_correlation_id":"FEAT-2026-0042/T09","affected_files":["product/specs/inventory-api-bookmarks.yaml"],"resolution_summary":"Added HTTP 201 response to POST /users/{user_id}/bookmarks for first-creation case; HTTP 200 retained for idempotent repeat. Fixes missing status code that caused generated controller to return 200 on all creations."}}
    ```
 
-   Validated through `scripts/validate-event.py` with exit 0. Appended to `events/FEAT-2026-0042.jsonl`.
+   Validated through `specfuse-validate-event` with exit 0. Appended to `events/FEAT-2026-0042.jsonl`.
 
 5. **Archive.** `mv inbox/spec-issue/FEAT-2026-0042-T09-wrong-status.md inbox/spec-issue/processed/FEAT-2026-0042-T09-wrong-status.md`
 
@@ -445,7 +445,7 @@ The spec is correct — `created_at` is required and properly typed. The generat
    {"timestamp":"2026-04-25T15:10:00Z","correlation_id":"FEAT-2026-0042","event_type":"spec_issue_routed","source":"specs","source_version":"1.0.0","payload":{"original_issue_correlation_id":"FEAT-2026-0042/T12","target_project":"acme/specfuse-generator","filed_issue_reference":"acme/specfuse-generator#42"}}
    ```
 
-   Validated through `scripts/validate-event.py` with exit 0. Appended to `events/FEAT-2026-0042.jsonl`.
+   Validated through `specfuse-validate-event` with exit 0. Appended to `events/FEAT-2026-0042.jsonl`.
 
 3. **Archive.** `mv inbox/spec-issue/FEAT-2026-0042-T12-fixture-field.md inbox/spec-issue/processed/FEAT-2026-0042-T12-fixture-field.md`
 
@@ -477,7 +477,7 @@ Emitted when the skill routes a spec issue to the generator project by filing a 
 | `target_project` | `string` | `owner/repo` of the generator project |
 | `filed_issue_reference` | `string` | GitHub issue reference (`owner/repo#N`) |
 
-Both event types follow the standard event envelope schema at [`event.schema.json`](../../../../shared/schemas/event.schema.json). The `source` is always `specs`; the `source_version` is read at emission time via `scripts/read-agent-version.sh specs`.
+Both event types follow the standard event envelope schema at [`event.schema.json`](../../../../shared/schemas/event.schema.json). The `source` is always `specs`; the `source_version` is read at emission time via `python3 -m specfuse.orchestrator._version specs`.
 
 ## Artifacts produced
 

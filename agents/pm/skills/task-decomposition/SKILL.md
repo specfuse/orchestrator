@@ -168,9 +168,9 @@ After all checks pass:
    - `correlation_id`: the feature-level ID (no task suffix).
    - `event_type`: `task_graph_drafted`.
    - `source`: `pm`.
-   - `source_version`: produced by `scripts/read-agent-version.sh pm` at emission time — never eye-cached from `version.md`.
+   - `source_version`: produced by `python3 -m specfuse.orchestrator._version pm` at emission time — never eye-cached from `version.md`.
    - `payload`: see shape below.
-4. Pipe the event through `scripts/validate-event.py`. Require exit 0 before appending.
+4. Pipe the event through `specfuse-validate-event`. Require exit 0 before appending.
 5. Append the event to `/events/<correlation_id>.jsonl`.
 6. Re-read the appended event line and confirm it matches what was constructed.
 
@@ -203,8 +203,8 @@ Before emitting `task_graph_drafted`, every check from step 7 must have passed w
 Beyond the skill's local checks, the universal checks from [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) apply:
 
 - Re-read the feature registry file after writing (step 8 above).
-- Round-trip the `task_graph_drafted` event through `scripts/validate-event.py` with exit 0.
-- Confirm `source_version` is produced by `scripts/read-agent-version.sh pm` at emission time.
+- Round-trip the `task_graph_drafted` event through `specfuse-validate-event` with exit 0.
+- Confirm `source_version` is produced by `python3 -m specfuse.orchestrator._version pm` at emission time.
 - Confirm the feature file path being written is not in [`never-touch.md`](../../../../shared/rules/never-touch.md).
 - Confirm no state-machine transition was performed (the skill does not transition state; `state` remains `planning`).
 
@@ -349,7 +349,7 @@ task_graph:
 }
 ```
 
-The event passes `scripts/validate-event.py` (exit 0) and is appended to `/events/FEAT-2026-0050.jsonl`.
+The event passes `specfuse-validate-event` (exit 0) and is appended to `/events/FEAT-2026-0050.jsonl`.
 
 ## What this skill does not do
 

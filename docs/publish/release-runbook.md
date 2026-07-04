@@ -1,0 +1,70 @@
+# Release runbook
+
+Operator steps to cut a release of `specfuse-orchestrator` to PyPI. Publishing
+runs from the upstream **`specfuse/orchestrator`** repo, not this fork
+(`RestoManagerApp/orchestrator`): development happens here, but the tag that
+triggers `.github/workflows/release.yml` (FEAT-2026-0004/T01) must be pushed on
+`specfuse/orchestrator`. This is a cross-repo, human-run flow — the loop driver
+does not push tags or touch PyPI; it only stages `release.yml` and this runbook.
+
+## 1. PyPI trusted-publisher setup (one-time, BEFORE the first tag)
+
+The release workflow publishes via OIDC trusted publishing — no stored API
+token. This must be configured on PyPI **before** the first `v*` tag is pushed;
+if it is missing, the `publish` job's OIDC exchange fails and the release is
+left as a built-but-unpublished artifact.
+
+1. Sign in to PyPI as an owner/maintainer of the `specfuse-orchestrator`
+   project (create the project first if it does not exist yet).
+2. Go to the project's **Publishing** settings and add a new trusted publisher
+   with:
+   - Owner: `specfuse`
+   - Repository name: `orchestrator`
+   - Workflow name: `release.yml`
+   - Environment name: `pypi`
+3. Save. No token is generated or copied — the trust relationship is the
+   `(owner, repo, workflow, environment)` tuple above, matched against the
+   OIDC claims GitHub Actions presents at publish time.
+
+## 2. Version bump + tag + push
+
+1. On `specfuse/orchestrator`, bump `__version__` in
+   `specfuse/orchestrator/__init__.py` to the new version, e.g. `1.0.0`.
+2. Commit the version bump.
+3. Tag the commit `v<version>` (the tag must match `__version__` exactly — the
+   workflow's tag/version agreement check fails the build otherwise):
+   ```
+   git tag v1.0.0
+   ```
+4. Push the commit and the tag to `specfuse/orchestrator`:
+   ```
+   git push origin main
+   git push origin v1.0.0
+   ```
+5. Pushing the `v*` tag triggers `release.yml`: `build-test` builds the wheel +
+   sdist, installs the wheel into a clean venv, runs the full test suite
+   against the installed package, and checks tag/version agreement; `publish`
+   then runs only if `build-test` passed and only on a tag, publishing to PyPI
+   via OIDC.
+
+## 3. Post-publish verification
+
+After the workflow's `publish` job succeeds:
+
+1. Confirm the new version is visible on PyPI for `specfuse-orchestrator`.
+2. Verify a plain install works from a clean environment:
+   ```
+   pip install specfuse-orchestrator
+   ```
+3. Verify the umbrella-extra install path works once the umbrella package
+   (`specfuse`, in `specfuse/specfuse`) carries the `orchestrator` extra — see
+   [`umbrella-orchestrator-extra.md`](umbrella-orchestrator-extra.md):
+   ```
+   pipx install specfuse[orchestrator]
+   ```
+4. Confirm the installed console scripts run: `specfuse-orchestrator --help`,
+   `specfuse-poller --help`, `specfuse-runner --help`,
+   `specfuse-validate-event --help`, `specfuse-validate-frontmatter --help`.
+5. If any check fails, treat it as a release defect: do not re-tag the same
+   version (PyPI rejects re-uploads of an existing version) — fix the issue,
+   bump to the next version, and repeat from step 2 of section 2.

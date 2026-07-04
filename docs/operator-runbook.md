@@ -27,7 +27,7 @@ The orchestrator assumes a specific multi-repo layout and tooling baseline befor
 Before the first session, run from the orchestration repo root:
 
 ```bash
-scripts/read-agent-version.sh specs   # expect 1.0.1
+python3 -m specfuse.orchestrator._version specs   # expect 1.0.1
 specfuse --version                     # validator must be on PATH
 python -c "import jsonschema, yaml"    # event/frontmatter validators import OK
 gh auth status                         # gh authenticated
@@ -58,8 +58,8 @@ The agent then:
 1. Reads `/features/FEAT-YYYY-*.md` to find the next available ordinal.
 2. Mints a correlation ID `FEAT-YYYY-NNNN` per [`shared/rules/correlation-ids.md`](../shared/rules/correlation-ids.md).
 3. Creates `/features/FEAT-YYYY-NNNN.md` from the [feature-registry template](../shared/templates/feature-registry.md) with `state: drafting` and your inputs in frontmatter; body sections carry placeholder text.
-4. Validates the frontmatter via `scripts/validate-frontmatter.py`.
-5. Emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl`, validated via `scripts/validate-event.py`.
+4. Validates the frontmatter via `specfuse-validate-frontmatter`.
+5. Emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl`, validated via `specfuse-validate-event`.
 
 **Verify before continuing.** Re-read the feature file, confirm the correlation ID, and confirm the event landed. The agent does this automatically per [`shared/rules/verify-before-report.md`](../shared/rules/verify-before-report.md), but it's worth a glance — every downstream artifact threads through this correlation ID.
 

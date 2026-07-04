@@ -1,0 +1,83 @@
+# Copyright 2026 Specfuse Contributors
+# Licensed under the Apache License, Version 2.0. See LICENSE.
+#
+# Release: on a `v*` tag, build the wheel + sdist, run the full test suite against
+# the BUILT artifact (not the source tree), then publish to PyPI via OIDC trusted
+# publishing. No API tokens — the trusted publisher must be configured on PyPI for
+# project `specfuse-orchestrator` (operator one-time setup, repo Specfuse/orchestrator,
+# workflow release.yml, environment pypi). The build + test job always runs;
+# publish only runs on a tag and only if build+test passed.
+
+name: release
+
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+*"]
+  workflow_dispatch:   # manual build/test without publishing (no tag → publish skipped)
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    outputs:
+      is_tag: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Build wheel + sdist
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+
+      - name: Verify the built wheel imports and exposes the console scripts
+        run: |
+          python -m venv /tmp/relenv
+          /tmp/relenv/bin/python -m pip install --upgrade pip
+          WHEEL=$(ls dist/*.whl)
+          /tmp/relenv/bin/python -m pip install "${WHEEL}[dev]"
+          /tmp/relenv/bin/python -c "from specfuse.orchestrator import cli, paths; print('import OK')"
+          /tmp/relenv/bin/specfuse-orchestrator --help >/dev/null
+          /tmp/relenv/bin/specfuse-poller --help >/dev/null
+          /tmp/relenv/bin/specfuse-runner --help >/dev/null
+          /tmp/relenv/bin/specfuse-validate-event --help >/dev/null
+          /tmp/relenv/bin/specfuse-validate-frontmatter --help >/dev/null
+
+      - name: Run the full test suite against the installed wheel
+        run: |
+          # Run from a clean dir so tests import the INSTALLED package, not ./specfuse.
+          /tmp/relenv/bin/python -m pytest -q
+
+      - name: Tag/version agreement check
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          VER=$(python -c "import re;print(re.search(r'__version__\s*=\s*\"([^\"]+)\"',open('specfuse/orchestrator/__init__.py').read()).group(1))")
+          echo "tag=$TAG version=$VER"
+          test "$TAG" = "$VER" || { echo "::error::tag v$TAG != specfuse.orchestrator.__version__ $VER"; exit 1; }
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    needs: build-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC — required for trusted publishing; no API token
+    steps:
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1

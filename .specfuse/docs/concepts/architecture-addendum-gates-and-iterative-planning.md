@@ -45,7 +45,7 @@ The orchestrator change is the **initiative/feature reframe**, already folded in
   the orchestrator's state machines — they are loop-internal.
 - **PM agent (reframed, not gate-extended):** `feature-decomposition` (was task-decomposition)
   produces a `feature_graph`; `issue-drafting` files feature issues labelled by type;
-  `plan-review` reviews the `feature_graph`; `dependency-recomputation` (runtime `scripts/poller.py`)
+  `plan-review` reviews the `feature_graph`; `dependency-recomputation` (runtime `specfuse-poller`)
   flips features `pending → ready`. **No** gate identification, `plan-next`, or per-gate
   `plan_review` in the PM — those were the Model-A additions and are dropped.
 - **Dispatch by feature type:** `implementation` → the component-loop (loop GitHub feature-pick on

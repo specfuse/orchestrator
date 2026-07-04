@@ -1,0 +1,70 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "specfuse-orchestrator"
+dynamic = ["version"]
+description = "Specfuse orchestrator: initiative coordination drivers for multi-repo Specfuse loops."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Specfuse contributors" }]
+keywords = ["specfuse", "agents", "planning", "gate-cycle", "orchestrator"]
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Intended Audience :: Developers",
+  "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+  "jsonschema>=4.18",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "coverage>=7.0",
+  "build>=1.0",
+]
+
+[project.scripts]
+specfuse-orchestrator = "specfuse.orchestrator.cli:main"
+specfuse-poller = "specfuse.orchestrator.poller:main"
+specfuse-runner = "specfuse.orchestrator.runner:main"
+specfuse-validate-event = "specfuse.orchestrator.validate_event:main"
+specfuse-validate-frontmatter = "specfuse.orchestrator.validate_frontmatter:main"
+
+[project.entry-points."specfuse.ownership"]
+orchestrator = "specfuse.orchestrator:ownership_fragment"
+
+[project.urls]
+Homepage = "https://github.com/Specfuse/orchestrator"
+Source = "https://github.com/Specfuse/orchestrator"
+
+[tool.ruff]
+target-version = "py310"
+# This pyproject.toml stands up the specfuse-orchestrator package only; the
+# pre-existing scripts/** and agents/** trees are not part of this package
+# (scripts/** driver migration is gate 2 — see distribution-phase1-workunits.md)
+# and are not yet linted as part of any packaging deliverable.
+extend-exclude = ["scripts", "agents", "dist", "build"]
+
+[tool.hatch.version]
+path = "specfuse/orchestrator/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["specfuse"]
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "specfuse",
+  "shared",
+  "hatch_build.py",
+  "README.md",
+  "LICENSE",
+]

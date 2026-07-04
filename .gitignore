@@ -28,3 +28,7 @@
 .specfuse/.loop.lock
 .specfuse/.scratch-*
 .specfuse/scripts/__pycache__/
+
+# specfuse-orchestrator packaging
+/specfuse/orchestrator/_substrate/
+/dist/

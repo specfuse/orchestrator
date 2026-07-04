@@ -1,0 +1,336 @@
+# Specfuse distribution ownership manifest
+#
+# The single source of truth for what the init distributors scaffold into COMPONENT and
+# SPECS repos, from which canonical source, who may upgrade it, and whether it ships now or
+# is deferred. Consumed by the orchestrator init (Track C2, not yet built) and by loop's
+# init.sh; authored to make the two inits compose without clobbering one another.
+#
+# Governing docs: collaboration-charter §2 (the 3 categories), §3 (authority: orchestrator's
+# frozen artifacts win on overlap; loop authors the gate layer), §4 (defer the vendoring
+# graph around still-moving contracts → ship `stable`, defer `moving`). See README.md.
+#
+# THE LOAD-BEARING INVARIANT: every (target, install path) pair has exactly ONE `upgrader`.
+# That is what lets the loop-init and orchestrator-init overlay the same component repo
+# without fighting. Validated by README.md §"Invariants".
+
+version: 1
+
+# ---- vocabulary (documented in README.md) ------------------------------------------------
+categories: [shared-core, loop-owned, orchestrator-owned]
+authorities: [orchestrator-frozen, loop-authored]   # who governs the content (charter §3)
+stabilities:  [stable, moving]                       # ship-now vs defer (charter §4)
+upgraders:    [orchestrator-init, loop-init, methodology, manual]  # exactly one per install
+targets:      [component, specs]                     # orchestrator repo is a SOURCE, never a target
+
+# canonical_source.repo is one of: orchestrator | loop
+# Paths are relative to that repo's root.
+
+# GitHub labels the orchestrator expects on target repos. orchestrator-init's label-sync step
+# creates the non-templated ones (gh label create --force, idempotent, per --target); canonical
+# taxonomy: shared/schemas/labels.md.
+# `templated: true` means the concrete label is minted per initiative (the INIT-YYYY-NNNN suffix)
+# — not synced by init; created when an initiative is registered.
+labels:
+  - name: specfuse:feature
+    description: Loop-pickable IMPLEMENTATION feature issue (loop's pick query)
+    color: "1D76DB"
+    targets: [component]
+  - name: specfuse:qa-feature
+    description: QA feature issue (type:qa-*) — dispatched to the QA agent, not a loop
+    color: "006B75"
+    targets: [component, specs]
+  - name: specfuse:spec-issue
+    description: Spec change request routed to the specs agent (never-touch.md §6)
+    color: "D93F0B"
+    targets: [specs]
+  - name: specfuse:in-triage
+    description: Spec-issue currently dispatched to the specs agent (auto-dispatcher de-dup marker)
+    color: "FBCA04"
+    targets: [specs]
+  - name: "initiative:INIT-YYYY-NNNN"
+    description: Links an issue to its initiative
+    color: "5319E7"
+    templated: true
+    targets: [component, specs]
+
+entries:
+
+  # ========================================================================================
+  # shared-core — methodology contracts; mean the same on both surfaces (charter §2 list).
+  # Authority split per charter §3: artifacts already frozen in the orchestrator are
+  # orchestrator-frozen (loop aligns down); the gate layer is loop-authored (still moving).
+  # ========================================================================================
+
+  # Model-B audit note: only the COMPONENT repo needs LOCAL rule copies — loop loads
+  # .specfuse/rules/ as session context for the grind. The specs/PM/QA agents run with
+  # orchestrator-repo access and read the rule masters from there, so no rule installs to the
+  # specs target. The rules a STANDALONE loop user needs are shipped by loop-init (charter §1:
+  # loop is independently adoptable → it owns distribution of those); their CONTENT authority
+  # stays orchestrator-frozen (charter §3: loop's copy aligns to the orchestrator master,
+  # hand-synced per §4). authority and upgrader are independent axes.
+
+  - id: rule-correlation-ids
+    category: shared-core
+    canonical_source: { repo: loop, path: .specfuse/rules/correlation-ids.md }  # content master: orchestrator shared/rules/correlation-ids.md (§3 hand-sync)
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: loop-init   # loop ships it (needed for standalone loop); orchestrator-init no longer double-ships
+    install:
+      - { target: component, path: .specfuse/rules/correlation-ids.md }
+
+  - id: rule-never-touch
+    category: shared-core
+    canonical_source: { repo: loop, path: .specfuse/rules/never-touch.md }  # content master: orchestrator shared/rules/never-touch.md (§3)
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: loop-init
+    install:
+      - { target: component, path: .specfuse/rules/never-touch.md }
+
+  - id: rule-security-boundaries
+    category: shared-core
+    canonical_source: { repo: loop, path: .specfuse/rules/security-boundaries.md }  # content master: orchestrator shared/rules/security-boundaries.md (§3)
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: loop-init
+    install:
+      - { target: component, path: .specfuse/rules/security-boundaries.md }
+
+  - id: rule-verify-before-report
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/verify-before-report.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): loop's result-contract.md is the single-repo expression of this
+      discipline and events are emitted via the merge-watcher (orchestrator-resident). The
+      component-loop may not need a local copy — confirm against Track B before keeping/cutting.
+    install:
+      - { target: component, path: .specfuse/rules/verify-before-report.md }
+
+  - id: rule-escalation-protocol
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/escalation-protocol.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): how the component-loop surfaces blocked_human to the
+      orchestrator is unsettled.
+    install:
+      - { target: component, path: .specfuse/rules/escalation-protocol.md }
+
+  - id: rule-state-vocabulary
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/state-vocabulary.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): likely orchestrator-resident — the poller and merge-watcher
+      manage feature/issue labels, not the component-loop. Candidate to make install: [].
+    install:
+      - { target: component, path: .specfuse/rules/state-vocabulary.md }
+
+  - id: rule-override-registry
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/override-registry.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: Codegen override<->regen reconciliation (architecture §9.3) — a component-repo activity loop does not cover (loop is codegen-free). Genuinely orchestrator-owned.
+    install:
+      - { target: component, path: .specfuse/rules/override-registry.md }
+
+  - id: rule-role-switch-hygiene
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/role-switch-hygiene.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): multi-agent role-switch discipline; the component-loop uses
+      fresh-dispatch-per-WU and does not role-switch. Likely orchestrator-resident (install: []).
+    install:
+      - { target: component, path: .specfuse/rules/role-switch-hygiene.md }
+
+  - id: schemas-core
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/schemas/ }   # *.schema.json + events/*.schema.json + labels.md
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). The schemas live in
+      the orchestration repo; an agent emitting an event appends to the orchestration repo's
+      /events log and validates there (same pattern as the merge-watcher checkout). Listed for
+      completeness/authority. Additively widened for INIT-/FNN in the reframe migration.
+    install: []
+
+  - id: event-validators
+    category: shared-core
+    canonical_source:
+      repo: orchestrator
+      path: scripts/
+      files: [validate-event.py, validate-frontmatter.py, read-agent-version.sh, requirements.txt]
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). validate-event.py
+      resolves its schema dir relative to the orchestration repo layout and is run from the
+      orchestration repo checkout when emitting events, not from a component-local copy.
+    install: []
+
+  # ---- shared-core, gate layer (loop authors; MOVING; defer per charter §4) ----------------
+  # These are the methodology's gate-cycle contracts loop is proving (FEAT-2026-0003 etc.).
+  # They are NOT shipped by orchestrator-init yet; loop-init owns them until the gate cycle
+  # is proven and `specfuse/methodology` is extracted (then upgrader -> methodology).
+
+  - id: methodology-gate-cycle
+    category: shared-core
+    canonical_source: { repo: loop, path: docs/methodology.md }
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    note: Gate-cycle definition; folds to specfuse/methodology once contracts stop moving.
+    install:
+      - { target: component, path: .specfuse/docs/methodology.md }
+
+  - id: rule-result-contract
+    category: shared-core
+    canonical_source: { repo: loop, path: .specfuse/rules/result-contract.md }
+    authority: orchestrator-frozen   # content governed by orchestrator's task_completed shape
+    stability: moving
+    upgrader: loop-init
+    install:
+      - { target: component, path: .specfuse/rules/result-contract.md }
+
+  - id: skill-authoring-work-units
+    category: shared-core
+    canonical_source: { repo: loop, path: .specfuse/skills/authoring-work-units/ }
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    install:
+      - { target: component, path: .specfuse/skills/authoring-work-units/ }
+
+  # ========================================================================================
+  # loop-owned — single-repo execution implementation (charter §2 "local implementation" +
+  # surface-specific). The loop kit a component repo needs to grind. MOVING until the loop
+  # GitHub feature-pick (Track B) lands, since that is what makes loop the Model-B executor.
+  # ========================================================================================
+
+  - id: loop-driver
+    category: loop-owned
+    canonical_source: { repo: loop, path: .specfuse/scripts/ }   # loop.py, _miniyaml.py, lint_plan.py
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    install:
+      - { target: component, path: .specfuse/scripts/ }
+
+  - id: loop-gate-templates
+    category: loop-owned
+    canonical_source: { repo: loop, path: .specfuse/templates/ }  # PLAN/GATE/WU .template.md
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    install:
+      - { target: component, path: .specfuse/templates/ }
+
+  - id: loop-skills
+    category: loop-owned
+    canonical_source: { repo: loop, path: .specfuse/skills/ }     # verification, derive-verification, draft-feature, pick-feature, arm-gate, gate-status, feature-conversion
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    note: Excludes authoring-work-units (shared-core, listed above).
+    install:
+      - { target: component, path: .specfuse/skills/ }
+
+  - id: loop-roadmap-and-verification-seed
+    category: loop-owned
+    canonical_source: { repo: loop, path: .specfuse/roadmap.template.md }  # + verification.yml.example
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    note: User-authored seeds (roadmap.md, verification.yml) created on INIT, never on upgrade.
+    install:
+      - { target: component, path: .specfuse/ }
+
+  # ========================================================================================
+  # orchestrator-owned — agent configs, CI, codegen wiring. Frozen substrate; STABLE; ship
+  # now. The orchestrator's own poller/inbox/event-log machinery stays in the orchestrator
+  # repo and is NOT distributed (no install target).
+  # ========================================================================================
+
+  - id: component-agent-config
+    category: orchestrator-owned
+    canonical_source:
+      repo: orchestrator
+      path: agents/component/                # CLAUDE.md + skills/
+      exclude: [version.md, README.md, rules]  # version churn / cold-open / empty overrides dir
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      Reframed for Model B (component v1.6.0): the component-LOOP performs the grind; the
+      verification/pr-submission/escalation skills here are the CONTRACT the loop honors (+ the
+      fallback when no loop is installed). The role's distinct live job narrows to codegen
+      override reconciliation (architecture §9.3; loop is codegen-free). Kept (not retired) —
+      full retirement of the grind config awaits Track B's gate-cycle proof.
+    install:
+      - { target: component, path: .specfuse/agents/component/ }
+
+  - id: specs-agent-config
+    category: orchestrator-owned
+    canonical_source:
+      repo: orchestrator
+      path: agents/specs/
+      exclude: [version.md, README.md, rules]
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    install:
+      - { target: specs, path: .specfuse/agents/specs/ }
+
+  - id: merge-watcher
+    category: orchestrator-owned
+    canonical_source: { repo: orchestrator, path: shared/ci/merge-watcher.yml }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: Owns in_review->done; needs ORCH_TOKEN secret in the component repo. See shared/ci/README.md.
+    install:
+      - { target: component, path: .github/workflows/merge-watcher.yml }
+
+  - id: shared-issue-templates
+    category: orchestrator-owned
+    canonical_source:
+      repo: orchestrator
+      path: shared/templates/
+      exclude: [README.md, work-unit-issue.example.md]
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): specs install dropped — the specs agent reads templates from
+      orchestrator context. The component install is for spec-issue / human-escalation filing
+      during a grind; confirm the component-loop's escalation path needs these locally.
+    install:
+      - { target: component, path: .specfuse/issue-templates/ }
+
+  - id: codegen-coverage-declaration
+    category: orchestrator-owned
+    canonical_source: { repo: orchestrator, path: shared/templates/ }   # ships a templates.yaml STUB the repo fills in
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: manual   # each component declares its OWN template coverage; init seeds a stub only
+    note: >
+      .specfuse/templates.yaml — the component's codegen template-coverage declaration, read
+      by the PM template-coverage-check skill. Init seeds a stub; the repo owner fills it.
+      Paired with the `_generated/` (or gen-src/) boundary the never-touch rule protects.
+    install:
+      - { target: component, path: .specfuse/templates.yaml }

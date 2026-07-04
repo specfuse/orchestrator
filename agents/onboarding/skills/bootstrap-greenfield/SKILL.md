@@ -91,7 +91,7 @@ Append an `onboarding_artifact_produced` event to `/events/PROJ-<slug>.jsonl` fo
 
 - [ ] Template-clone the upstream Specfuse-orchestrator scaffolding to `<your-org>/<your-product>-orchestration` (or chosen name).
 - [ ] Strip any upstream walkthrough artifacts (`docs/walkthroughs/`, prior `/features/`, `/events/`, `/inbox/` content) — keep `/agents/`, `/shared/`, `/scripts/`, `/docs/` (the operator runbook and pipeline reference).
-- [ ] Verify the four operational agents and the onboarding agent are at expected versions: `scripts/read-agent-version.sh specs|pm|component|qa|onboarding`.
+- [ ] Verify the four operational agents and the onboarding agent are at expected versions: `python3 -m specfuse.orchestrator._version specs|pm|component|qa|onboarding`.
 - [ ] First commit on your downstream repo's `main`: "chore: initial template clone from Specfuse-orchestrator vX.Y.Z".
 
 ## Phase 3 — Product reference repo creation

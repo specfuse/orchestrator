@@ -30,6 +30,8 @@ import json
 import sys
 from pathlib import Path
 
+from specfuse.orchestrator import paths
+
 try:
     from jsonschema import Draft202012Validator
 except ImportError:
@@ -39,22 +41,9 @@ except ImportError:
     )
     sys.exit(2)
 
-SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent
-    / "shared"
-    / "schemas"
-    / "event.schema.json"
-)
-
-PER_TYPE_SCHEMA_DIR = (
-    Path(__file__).resolve().parent.parent
-    / "shared"
-    / "schemas"
-    / "events"
-)
-
 
 def load_validator() -> Draft202012Validator:
+    SCHEMA_PATH = paths.substrate("schemas", "event.schema.json")
     if not SCHEMA_PATH.is_file():
         sys.stderr.write(f"error: schema not found at {SCHEMA_PATH}\n")
         sys.exit(2)
@@ -78,7 +67,7 @@ def load_per_type_validator(event_type: str) -> Draft202012Validator | None:
     if event_type in _PER_TYPE_CACHE:
         return _PER_TYPE_CACHE[event_type]
 
-    schema_file = PER_TYPE_SCHEMA_DIR / f"{event_type}.schema.json"
+    schema_file = paths.substrate("schemas", "events", f"{event_type}.schema.json")
     if not schema_file.is_file():
         _PER_TYPE_CACHE[event_type] = None
         return None
@@ -138,6 +127,19 @@ def validate_line(
                 path = f"payload/{sub_path}" if sub_path != "(root)" else "payload"
                 errors.append(format_error(source, line_number, path, err.message))
 
+    return errors
+
+
+def validate(path: Path | str) -> list[str]:
+    """Validate a .jsonl file of events against event.schema.json.
+
+    Returns a list of error strings; empty means every event validated.
+    """
+    path = Path(path)
+    validator = load_validator()
+    errors: list[str] = []
+    for lineno, raw in iter_lines_from_file(path):
+        errors.extend(validate_line(validator, str(path), lineno, raw))
     return errors
 
 
@@ -213,19 +215,18 @@ def main() -> int:
         )
         return 2
 
-    validator = load_validator()
-
     if args.file is not None:
         source = str(args.file)
         entries = iter_lines_from_file(args.file)
+        all_errors = validate(args.file)
     else:
         # Both explicit --stdin and the no-flag default route here.
         source = "<stdin>"
         entries = iter_lines_from_stdin()
-
-    all_errors: list[str] = []
-    for lineno, raw in entries:
-        all_errors.extend(validate_line(validator, source, lineno, raw))
+        validator = load_validator()
+        all_errors = []
+        for lineno, raw in entries:
+            all_errors.extend(validate_line(validator, source, lineno, raw))
 
     if all_errors:
         for msg in all_errors:
@@ -236,8 +237,8 @@ def main() -> int:
         return 1
 
     sys.stdout.write(
-        f"ok: {len(entries)} event(s) validated against {SCHEMA_PATH.name}"
-        f" (with per-type payload schemas under {PER_TYPE_SCHEMA_DIR.name}/ where present)\n"
+        f"ok: {len(entries)} event(s) validated against event.schema.json"
+        f" (with per-type payload schemas under events/ where present)\n"
     )
     return 0
 

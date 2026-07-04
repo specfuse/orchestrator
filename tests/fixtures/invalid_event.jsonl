@@ -1,0 +1,3 @@
+{not valid json
+{"timestamp": "2026-04-21T20:14:45Z", "correlation_id": "FEAT-2026-0001/T01", "event_type": "task_started", "source": "component:orchestrator-api-sample", "source_version": "1.2.0", "payload": {"issue_url": "not-a-github-url", "branch": null}}
+{"timestamp": "2026-04-21T20:14:45Z", "correlation_id": "FEAT-2026-0001/T01", "event_type": "task_started", "source": "component:orchestrator-api-sample", "payload": {"issue_url": "https://github.com/acme/api-sample/issues/3", "branch": null}}

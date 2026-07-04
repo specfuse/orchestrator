@@ -1,0 +1,52 @@
+# Copyright 2026 Specfuse Contributors
+# Licensed under the Apache License, Version 2.0. See LICENSE.
+#
+# CI: build the wheel, install it into a clean environment (not editable),
+# and run pytest against the installed wheel. On a tag/release event, assert
+# the package __version__ matches the git tag. Publishing (OIDC PyPI) is
+# phase 4 and is deliberately out of scope for this workflow.
+
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  release:
+    types: [published]
+
+jobs:
+  build-test-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Build wheel
+        run: python3 -m build --wheel
+
+      - name: Install wheel + dev extras into a clean environment
+        run: python -m pip install "$(echo dist/*.whl)[dev]"
+
+      - name: Run pytest against the installed wheel
+        run: python3 -m pytest -q
+
+      - name: Assert __version__ matches git tag
+        if: github.ref_type == 'tag' || github.event_name == 'release'
+        run: |
+          PKG_VERSION=$(python3 -c "import specfuse.orchestrator as o; print(o.__version__)")
+          TAG_NAME="${GITHUB_REF_NAME#v}"
+          if [ "$PKG_VERSION" != "$TAG_NAME" ]; then
+            echo "version mismatch: package __version__=$PKG_VERSION, git tag=$GITHUB_REF_NAME"
+            exit 1
+          fi

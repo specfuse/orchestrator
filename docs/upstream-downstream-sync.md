@@ -128,7 +128,7 @@ If you prefer manual control, the script is just a wrapper around three git oper
 
 After any sync session (script-driven or manual), do these:
 
-- **Run validators.** `scripts/validate-event.py` and `scripts/validate-frontmatter.py` round-trip your downstream's existing artifacts through the synced schemas. If a sync changed a schema, this catches whether your existing data still validates.
+- **Run validators.** `specfuse-validate-event` and `specfuse-validate-frontmatter` round-trip your downstream's existing artifacts through the synced schemas. If a sync changed a schema, this catches whether your existing data still validates.
 - **Review per-agent versions.** Each agent under `/agents/<role>/version.md` carries its own version. Synced commits typically already carry the bumps and changelog entries; verify they landed.
 - **Bump UPSTREAM if you didn't let the script do it.** `commit:` to the SHA you synced to (or `upstream/main` HEAD if you reviewed everything), `last_synced:` to today.
 
