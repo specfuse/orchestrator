@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0001/T02
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.70
 model: sonnet
 effort: medium
@@ -11,6 +11,12 @@ oracle_env: macos_local
 produces:
   - specfuse/orchestrator/cli.py
 gate_set: code
+driver_version: 0.3.5
+started_at: 2026-07-04T21:52:58.141901+00:00
+duration_seconds: 135.169
+cost_usd: 0.65843
+input_tokens: 7834
+output_tokens: 5001
 ---
 
 # Rewrite NEXT_STEPS.md for the three adoption shapes

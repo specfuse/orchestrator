@@ -216,6 +216,17 @@ def test_init_git_and_claude_wiring(tmp_path):
     assert (tmp_path / "project" / "NEXT_STEPS.md").is_file()
 
 
+def test_next_steps_adoption_shapes(tmp_path):
+    rc = cli.main(["init", str(tmp_path)])
+    assert rc == 0
+
+    content = (tmp_path / "project" / "NEXT_STEPS.md").read_text().lower()
+    assert "dedicated" in content
+    assert "subdir" in content or "subdirectory" in content
+    assert "local" in content
+    assert "/plugin install specfuse-orchestrator@specfuse" in content
+
+
 def test_init_settings_merge_preserves_existing_keys(tmp_path):
     claude_dir = tmp_path / ".claude"
     claude_dir.mkdir(parents=True)

@@ -93,13 +93,45 @@ This orchestration repo's state dirs (`features/`, `events/`, `project/`,
 `inbox/`, `overrides/`, `roadmap.md`) are scaffolded and `.claude/` is wired
 (marketplace, plugin, deny-specs-edit hook).
 
-## What to do next
+## 1. Install the plugin (done)
 
-1. Open a Claude Code session at this repo.
-2. Run `/onboard` — the onboarding agent inventories your repos and drafts a
-   bootstrap checklist or integration plan.
-3. Once onboarding says you're ready, draft your first feature and hand it to
-   the loop per `docs/operator-runbook.md`.
+`init` already wired `.claude/settings.json` for
+`/plugin install specfuse-orchestrator@specfuse`. Nothing to do here unless
+you're setting up a second machine.
+
+## 2. Pick where this state lives
+
+`init` doesn't require a repo of its own — pick whichever of these three
+shapes fits, now or later:
+
+- **Dedicated repo.** This directory is (or becomes) its own git repo,
+  pushed to its own remote. Best when several people share this
+  orchestration state.
+- **Subdir of an existing repo.** This directory lives inside a repo you
+  already have (a monorepo, an existing project). No separate remote needed.
+- **Local-first.** This directory stays local — no git repo, no remote —
+  while you try the loop out. Nothing below requires publishing.
+
+## 3. Run `/onboard`
+
+Open a Claude Code session at this repo and run `/onboard` — the onboarding
+agent inventories your repos and drafts a bootstrap checklist or integration
+plan.
+
+## 4. Publish, whenever you're ready (optional)
+
+None of the above requires a git remote. When/if you want to share or back up
+this state, pick the step matching the shape from step 2 — this is optional,
+not a precondition for using the loop:
+
+- Dedicated repo: `git init` (if not already done) + `git remote add origin
+  <url>` + push, or `gh repo create` if you want GitHub to host it.
+- Subdir of an existing repo: commit this directory into that repo's existing
+  history — no new remote needed.
+- Local-first: nothing to do; keep working locally for as long as you like.
+
+Once you're ready, draft your first feature and hand it to the loop per
+`docs/operator-runbook.md`.
 """
 
 ROADMAP_SEED = """\
