@@ -33,6 +33,8 @@ import json
 import sys
 from pathlib import Path
 
+from specfuse.orchestrator import paths
+
 try:
     import yaml
 except ImportError:
@@ -51,13 +53,6 @@ except ImportError:
     )
     sys.exit(2)
 
-SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent
-    / "shared"
-    / "schemas"
-    / "feature-frontmatter.schema.json"
-)
-
 _UNSUPPORTED_HINT = (
     "Supported invocation patterns:\n"
     "  cat features/FEAT-XXXX-NNNN.md | scripts/validate-frontmatter.py          # stdin\n"
@@ -67,10 +62,11 @@ _UNSUPPORTED_HINT = (
 
 
 def load_validator() -> Draft202012Validator:
-    if not SCHEMA_PATH.is_file():
-        sys.stderr.write(f"error: schema not found at {SCHEMA_PATH}\n")
+    schema_path = paths.substrate("schemas", "feature-frontmatter.schema.json")
+    if not schema_path.is_file():
+        sys.stderr.write(f"error: schema not found at {schema_path}\n")
         sys.exit(2)
-    with SCHEMA_PATH.open("r", encoding="utf-8") as f:
+    with schema_path.open("r", encoding="utf-8") as f:
         schema = json.load(f)
     Draft202012Validator.check_schema(schema)
     return Draft202012Validator(schema)
@@ -118,6 +114,24 @@ def extract_frontmatter(content: str, source: str) -> dict:
         sys.exit(2)
 
     return data
+
+
+def validate(path: Path | str) -> list[str]:
+    """Validate a feature file's YAML frontmatter against feature-frontmatter.schema.json.
+
+    Returns a list of error strings; empty means the frontmatter validated.
+    """
+    path = Path(path)
+    validator = load_validator()
+    content = read_content_from_file(path)
+    frontmatter = extract_frontmatter(content, str(path))
+    errors = sorted(
+        validator.iter_errors(frontmatter), key=lambda e: list(e.absolute_path)
+    )
+    return [
+        f"{path} at {'/'.join(str(p) for p in err.absolute_path) or '(root)'}: {err.message}"
+        for err in errors
+    ]
 
 
 def read_content_from_file(path: Path) -> str:
@@ -172,31 +186,30 @@ def main() -> int:
         )
         return 2
 
-    validator = load_validator()
-
     if args.file is not None:
         source = str(args.file)
-        content = read_content_from_file(args.file)
+        errors = validate(args.file)
     else:
         source = "<stdin>"
         content = read_content_from_stdin()
-
-    frontmatter = extract_frontmatter(content, source)
-
-    errors = sorted(
-        validator.iter_errors(frontmatter), key=lambda e: list(e.absolute_path)
-    )
+        validator = load_validator()
+        frontmatter = extract_frontmatter(content, source)
+        errors = [
+            f"{source} at {'/'.join(str(p) for p in err.absolute_path) or '(root)'}: {err.message}"
+            for err in sorted(
+                validator.iter_errors(frontmatter), key=lambda e: list(e.absolute_path)
+            )
+        ]
 
     if errors:
         for err in errors:
-            path = "/".join(str(p) for p in err.absolute_path) or "(root)"
-            sys.stderr.write(f"{source} at {path}: {err.message}\n")
+            sys.stderr.write(err + "\n")
         sys.stderr.write(
             f"\n{len(errors)} validation error(s) in frontmatter of {source}.\n"
         )
         return 1
 
-    sys.stdout.write(f"ok: {source} frontmatter validated against {SCHEMA_PATH.name}\n")
+    sys.stdout.write(f"ok: {source} frontmatter validated against feature-frontmatter.schema.json\n")
     return 0
 
 

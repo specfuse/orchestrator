@@ -1,0 +1,179 @@
+# Orchestrator's slice of the Specfuse distribution ownership manifest.
+#
+# Phase-1 fragment (per docs/distribution-migration-plan.md "Ownership manifest" item 2 and
+# §1d): each suite package ships only the entries it is authoritative for and registers the
+# fragment under the `specfuse.ownership` entry-point group so a composing CLI can enumerate
+# contributors without a hardcoded list. The phase-2 merge + invariant-validation lib (item 3)
+# composes this fragment against loop's; that lib is NOT built here.
+#
+# Source of truth for the full monolith (pre-split): shared/distribution/ownership-manifest.yaml.
+# This fragment is the subset of that monolith's `entries[]` whose `canonical_source.repo` is
+# `orchestrator` (equivalently: every entry categorized `orchestrator-owned`, plus the
+# orchestrator-authored `shared-core` entries upgraded by `orchestrator-init`). Field shape
+# (`version`, `entries[]` with `category`/`authority`/`stability`/`upgrader`/`install[].target`)
+# is preserved unchanged from the monolith so the phase-2 merge lib composes without a schema
+# mismatch. No entry here carries `canonical_source.repo: loop`.
+
+version: 1
+
+entries:
+
+  # ---- shared-core, orchestrator-authored (upgrader: orchestrator-init) --------------------
+
+  - id: rule-verify-before-report
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/verify-before-report.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): loop's result-contract.md is the single-repo expression of this
+      discipline and events are emitted via the merge-watcher (orchestrator-resident). The
+      component-loop may not need a local copy — confirm against Track B before keeping/cutting.
+    install:
+      - { target: component, path: .specfuse/rules/verify-before-report.md }
+
+  - id: rule-escalation-protocol
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/escalation-protocol.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): how the component-loop surfaces blocked_human to the
+      orchestrator is unsettled.
+    install:
+      - { target: component, path: .specfuse/rules/escalation-protocol.md }
+
+  - id: rule-state-vocabulary
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/state-vocabulary.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): likely orchestrator-resident — the poller and merge-watcher
+      manage feature/issue labels, not the component-loop. Candidate to make install: [].
+    install:
+      - { target: component, path: .specfuse/rules/state-vocabulary.md }
+
+  - id: rule-override-registry
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/override-registry.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: Codegen override<->regen reconciliation (architecture §9.3) — a component-repo activity loop does not cover (loop is codegen-free). Genuinely orchestrator-owned.
+    install:
+      - { target: component, path: .specfuse/rules/override-registry.md }
+
+  - id: rule-role-switch-hygiene
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/rules/role-switch-hygiene.md }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): multi-agent role-switch discipline; the component-loop uses
+      fresh-dispatch-per-WU and does not role-switch. Likely orchestrator-resident (install: []).
+    install:
+      - { target: component, path: .specfuse/rules/role-switch-hygiene.md }
+
+  - id: schemas-core
+    category: shared-core
+    canonical_source: { repo: orchestrator, path: shared/schemas/ }   # *.schema.json + events/*.schema.json + labels.md
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). The schemas live in
+      the orchestration repo; an agent emitting an event appends to the orchestration repo's
+      /events log and validates there (same pattern as the merge-watcher checkout). Listed for
+      completeness/authority. Additively widened for INIT-/FNN in the reframe migration.
+    install: []
+
+  - id: event-validators
+    category: shared-core
+    canonical_source:
+      repo: orchestrator
+      path: scripts/
+      files: [validate-event.py, validate-frontmatter.py, read-agent-version.sh, requirements.txt]
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). validate-event.py
+      resolves its schema dir relative to the orchestration repo layout and is run from the
+      orchestration repo checkout when emitting events, not from a component-local copy.
+    install: []
+
+  # ---- orchestrator-owned (agent configs, CI, codegen wiring; upgrader: orchestrator-init or manual) --
+
+  - id: component-agent-config
+    category: orchestrator-owned
+    canonical_source:
+      repo: orchestrator
+      path: agents/component/                # CLAUDE.md + skills/
+      exclude: [version.md, README.md, rules]  # version churn / cold-open / empty overrides dir
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      Reframed for Model B (component v1.6.0): the component-LOOP performs the grind; the
+      verification/pr-submission/escalation skills here are the CONTRACT the loop honors (+ the
+      fallback when no loop is installed). The role's distinct live job narrows to codegen
+      override reconciliation (architecture §9.3; loop is codegen-free). Kept (not retired) —
+      full retirement of the grind config awaits Track B's gate-cycle proof.
+    install:
+      - { target: component, path: .specfuse/agents/component/ }
+
+  - id: specs-agent-config
+    category: orchestrator-owned
+    canonical_source:
+      repo: orchestrator
+      path: agents/specs/
+      exclude: [version.md, README.md, rules]
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    install:
+      - { target: specs, path: .specfuse/agents/specs/ }
+
+  - id: merge-watcher
+    category: orchestrator-owned
+    canonical_source: { repo: orchestrator, path: shared/ci/merge-watcher.yml }
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: Owns in_review->done; needs ORCH_TOKEN secret in the component repo. See shared/ci/README.md.
+    install:
+      - { target: component, path: .github/workflows/merge-watcher.yml }
+
+  - id: shared-issue-templates
+    category: orchestrator-owned
+    canonical_source:
+      repo: orchestrator
+      path: shared/templates/
+      exclude: [README.md, work-unit-issue.example.md]
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: orchestrator-init
+    note: >
+      MODEL-B REVIEW (Track B): specs install dropped — the specs agent reads templates from
+      orchestrator context. The component install is for spec-issue / human-escalation filing
+      during a grind; confirm the component-loop's escalation path needs these locally.
+    install:
+      - { target: component, path: .specfuse/issue-templates/ }
+
+  - id: codegen-coverage-declaration
+    category: orchestrator-owned
+    canonical_source: { repo: orchestrator, path: shared/templates/ }   # ships a templates.yaml STUB the repo fills in
+    authority: orchestrator-frozen
+    stability: stable
+    upgrader: manual   # each component declares its OWN template coverage; init seeds a stub only
+    note: >
+      .specfuse/templates.yaml — the component's codegen template-coverage declaration, read
+      by the PM template-coverage-check skill. Init seeds a stub; the repo owner fills it.
+      Paired with the `_generated/` (or gen-src/) boundary the never-touch rule protects.
+    install:
+      - { target: component, path: .specfuse/templates.yaml }
