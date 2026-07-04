@@ -13,7 +13,7 @@ In scope:
 - Consuming one `qa_execution_failed` or `qa_execution_completed` event per invocation as the trigger.
 - Resolving the `implementation_task_correlation_id` being regressed against from the feature task graph (Q4 algorithm; see §"Step 3 — Resolve implementation_task_correlation_id from the task graph").
 - Writing the regression inbox artifact on first failure, using the [`qa-regression-issue.md`](../../../../shared/templates/qa-regression-issue.md) template (v0.2).
-- Emitting `qa_regression_filed`, `qa_regression_resolved`, and `escalation_resolved` events through [`scripts/validate-event.py`](../../../../scripts/validate-event.py).
+- Emitting `qa_regression_filed`, `qa_regression_resolved`, and `escalation_resolved` events through `specfuse-validate-event`.
 - Escalating `spinning_detected` on the original implementation task on the repeat-failure path, via a `human_escalation` event and an inbox file under `/inbox/human-escalation/`.
 - Enforcing the idempotence key `(implementation_task_correlation_id, test_id)` across first-failure, repeat-failure, and resolution paths.
 
@@ -46,7 +46,7 @@ Per invocation, depending on path:
 - **Resolution path** — one `qa_regression_resolved` event appended. If the paired regression had been escalated, additionally one `escalation_resolved` event (`resolution_kind: qa_regression_resolved`) appended.
 - **Idempotent-skip paths** — zero writes; the invocation returns cleanly.
 
-No writes to the implementation task under test. No writes to feature frontmatter. No writes to component-repo code paths, to `/product/`, or to `/overrides/`. Every event round-trips through [`scripts/validate-event.py`](../../../../scripts/validate-event.py) before append; every file write is re-read afterward per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3.
+No writes to the implementation task under test. No writes to feature frontmatter. No writes to component-repo code paths, to `/product/`, or to `/overrides/`. Every event round-trips through `specfuse-validate-event` before append; every file write is re-read afterward per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3.
 
 ## Trigger — external invocation
 
@@ -133,7 +133,7 @@ Re-read the written file and confirm the frontmatter and body match what was com
   "correlation_id": "<feature_correlation_id>",
   "event_type": "qa_regression_filed",
   "source": "qa",
-  "source_version": "<from scripts/read-agent-version.sh qa>",
+  "source_version": "<from python3 -m specfuse.orchestrator._version qa>",
   "payload": {
     "implementation_task_correlation_id": "<feature>/<impl_TNN>",
     "test_id": "<test_id>",
@@ -144,7 +144,7 @@ Re-read the written file and confirm the frontmatter and body match what was com
 }
 ```
 
-Pipe through [`scripts/validate-event.py`](../../../../scripts/validate-event.py); require exit `0`. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line.
+Pipe through `specfuse-validate-event`; require exit `0`. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line.
 
 ### Step 4B — Repeat-failure path (triggered by `qa_execution_failed`, prior filing exists)
 
@@ -167,7 +167,7 @@ Branch:
 
 **4B.4 — Emit `human_escalation`.** Correlation ID task-level (original impl task). Payload per [`human_escalation.schema.json`](../../../../shared/schemas/events/human_escalation.schema.json): `{"reason": "spinning_detected", "inbox_file": "inbox/human-escalation/<feature>-<impl_TNN>-qa-regression-spinning.md", "summary": "<one sentence: test_id `<X>` re-failed after a linked fix attempt on `<spawned task>`; spinning on original implementation task `<impl_TNN>`>"}`.
 
-Validate via `scripts/validate-event.py`, append, re-read. Do **not** file a second `qa_regression_filed` (anti-pattern #6 in [`../../CLAUDE.md`](../../CLAUDE.md)).
+Validate via `specfuse-validate-event`, append, re-read. Do **not** file a second `qa_regression_filed` (anti-pattern #6 in [`../../CLAUDE.md`](../../CLAUDE.md)).
 
 **4B.5 — Stop.** No state transition on the original implementation task: the QA agent does not flip its label (per [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md) §"State machine effects of raising an escalation" — that section governs the escalating agent's OWN task's transition; the QA task here is the qa_execution task which already reached `in_review` when the failed event was emitted; the original implementation task is NOT a QA-owned task and is therefore not transitioned by this skill. If the human decides the spinning warrants a `blocked_human` label on the implementation task, the human applies it; QA does not).
 
@@ -195,7 +195,7 @@ If both conditions hold, proceed to 4C.3. Otherwise skip.
   "correlation_id": "<feature_correlation_id>",
   "event_type": "qa_regression_resolved",
   "source": "qa",
-  "source_version": "<from scripts/read-agent-version.sh qa>",
+  "source_version": "<from python3 -m specfuse.orchestrator._version qa>",
   "payload": {
     "implementation_task_correlation_id": "<feature>/<impl_TNN>",
     "test_id": "<test_id>",
@@ -216,7 +216,7 @@ Validate, append, re-read.
   "correlation_id": "<impl_task correlation_id>",
   "event_type": "escalation_resolved",
   "source": "qa",
-  "source_version": "<from scripts/read-agent-version.sh qa>",
+  "source_version": "<from python3 -m specfuse.orchestrator._version qa>",
   "payload": {
     "resolution_kind": "qa_regression_resolved",
     "resolved_escalation_event_ts": "<human_escalation ts>",
@@ -264,8 +264,8 @@ Before returning from any invocation, the skill confirms the following. **The fi
 - The triggering event's `event_type` was `qa_execution_failed` or `qa_execution_completed` and its payload round-tripped through its per-type schema at parse time.
 - The `implementation_task_correlation_id` resolved in step 3 via the Q4 algorithm is a task ID that appears in the feature registry's `task_graph`, with `type: implementation`.
 - On the first-failure path: the inbox artifact at `inbox/qa-regression/<feature>-<test_id>.md` was written AND re-read AND its frontmatter parses AND its frontmatter fields match the triggering event's payload.
-- On every emission path: every event round-trips through [`scripts/validate-event.py`](../../../../scripts/validate-event.py) with exit `0` (envelope + per-type payload), was appended to the feature event log, and was re-read as a valid JSONL line.
-- `source_version` on every skill-emitted event (`qa_regression_filed`, `qa_regression_resolved`, `human_escalation`, `escalation_resolved`) was produced by [`scripts/read-agent-version.sh qa`](../../../../scripts/read-agent-version.sh) at emission time.
+- On every emission path: every event round-trips through `specfuse-validate-event` with exit `0` (envelope + per-type payload), was appended to the feature event log, and was re-read as a valid JSONL line.
+- `source_version` on every skill-emitted event (`qa_regression_filed`, `qa_regression_resolved`, `human_escalation`, `escalation_resolved`) was produced by `python3 -m specfuse.orchestrator._version` at emission time.
 - No secret-looking value appears in any written payload or inbox file per [`/shared/rules/security-boundaries.md`](../../../../shared/rules/security-boundaries.md) §"Log hygiene" (the `first_signal` carried from the upstream `qa_execution_failed` has already been redacted by qa-execution, but the skill re-checks before inclusion in the inbox body).
 - Every correlation ID written matches the pattern in [`/shared/rules/correlation-ids.md`](../../../../shared/rules/correlation-ids.md): feature-level for `qa_regression_filed` / `qa_regression_resolved` envelopes; task-level (original impl task) for `human_escalation` / `escalation_resolved` envelopes on the repeat-failure and its resolution.
 - No path written is in [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md). Specifically: `inbox/qa-regression/` is a new inbox subdirectory, additive per architecture §7.4's extensibility clause; `inbox/human-escalation/` is the existing escalation inbox governed by [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md); `/events/<feature>.jsonl` is the feature event log.
@@ -634,5 +634,5 @@ A v1 limitation worth naming explicitly (Phase 4 home):
 - [`/shared/rules/correlation-ids.md`](../../../../shared/rules/correlation-ids.md) — the patterns this skill emits.
 - [`/shared/rules/security-boundaries.md`](../../../../shared/rules/security-boundaries.md) §"Log hygiene" — redaction discipline for inbox artifact body and payload fields.
 - [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md) — re-confirmed: no written path in this skill is in the never-touch list.
-- [`/scripts/validate-event.py`](../../../../scripts/validate-event.py) — applies the per-type payload schemas.
-- [`/scripts/read-agent-version.sh`](../../../../scripts/read-agent-version.sh) — produces `source_version` at emission time.
+- `specfuse-validate-event` — applies the per-type payload schemas.
+- `python3 -m specfuse.orchestrator._version` — produces `source_version` at emission time.

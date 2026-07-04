@@ -18,7 +18,7 @@ It reacts only *after* a PR is merged, so by definition all required checks have
 3. Appends a validated `task_completed` event (`source: merge-watcher`) to the orchestration
    repo's `events/<INITIATIVE>.jsonl` and pushes it (retries with rebase on concurrent merges).
 
-The orchestrator poller (`scripts/poller.py`) picks up from there: it sees the feature done
+The orchestrator poller (`specfuse-poller`) picks up from there: it sees the feature done
 (via the `state:done` label / closed issue) and recomputes dependents `pending → ready`.
 
 ### Install (per component repo)

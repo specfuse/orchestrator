@@ -32,3 +32,33 @@ def read_agent_version(repo: Path | str, role: str) -> str:
         raise ValueError(f"no 'Current version: **X.Y.Z**' line found in {version_file}")
 
     return match.group(1)
+
+
+def main(argv=None) -> int:
+    """CLI: print the current version marker for an agent role.
+
+    Replaces the retired `scripts/read-agent-version.sh <role>`. The repo holding
+    `agents/<role>/version.md` defaults to the resolved state root; override with
+    `--repo`.
+    """
+    import argparse
+
+    ap = argparse.ArgumentParser(
+        prog="python3 -m specfuse.orchestrator._version",
+        description="Print the current version marker for an agent role.",
+    )
+    ap.add_argument("role", help="agent role, e.g. pm / specs / component / qa")
+    ap.add_argument("--repo", default=None,
+                    help="repo root holding agents/ (default: resolved state root)")
+    args = ap.parse_args(argv)
+    if args.repo is not None:
+        repo = args.repo
+    else:
+        from specfuse.orchestrator import paths
+        repo = paths.state_root()
+    print(read_agent_version(repo, args.role))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
