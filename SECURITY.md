@@ -21,8 +21,7 @@ We aim to acknowledge reports within 7 days and provide a remediation timeline w
 
 In scope:
 
-- Vulnerabilities in the orchestrator's scaffolding: scripts under `scripts/`, schemas, agent configurations that could lead to prompt injection, escalation bypass, or unauthorized writes outside documented surfaces.
-- Vulnerabilities in the bidirectional sync workflow that could leak private downstream content into upstream contributions, or upstream content into downstream private state.
+- Vulnerabilities in the orchestrator's scaffolding: the `specfuse-orchestrator` CLI (`init` / `upgrade`), schemas, agent configurations that could lead to prompt injection, escalation bypass, or unauthorized writes outside documented surfaces.
 - Documentation that could mislead an operator into an insecure setup (missing `never-touch.md` boundary, unsafe `gh` permission scopes, etc.).
 
 Out of scope:
@@ -39,4 +38,3 @@ After a fix lands, we'll publish an advisory describing the issue and credit the
 
 - `shared/rules/never-touch.md` enumerates filesystem paths agents must never read or write (secrets, generated directories, `/business/` in product specs, branch protection settings).
 - `shared/rules/security-boundaries.md` documents what agents may and may not exfiltrate or transmit.
-- `scripts/template-clone-strip.sh` and `scripts/contribute-upstream.sh` are designed to keep private downstream content out of upstream contributions; report any way to bypass that intent as a security issue.

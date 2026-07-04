@@ -32,3 +32,7 @@
 # specfuse-orchestrator packaging
 /specfuse/orchestrator/_substrate/
 /dist/
+
+# Python bytecode
+__pycache__/
+*.pyc
