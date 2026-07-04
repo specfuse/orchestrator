@@ -12,18 +12,18 @@ Overlay semantics (loop init.sh tradition): managed files are overwritten with t
 copy; everything else in the target is preserved. `manual` stubs are seeded only if absent.
 Re-running is an in-place upgrade. Use --dry-run to preview.
 
-    python3 scripts/orchestrator-init.py --target component /path/to/component-repo
-    python3 scripts/orchestrator-init.py --target specs     /path/to/specs-repo --dry-run
-    python3 scripts/orchestrator-init.py --all --dry-run     # every known repo (loop kit + substrate)
-    python3 scripts/orchestrator-init.py --all               # deploy everything (init; refuses where already installed)
-    python3 scripts/orchestrator-init.py --all --upgrade     # overlay an existing deploy (passes --upgrade to loop init too)
+    python3 -m specfuse.orchestrator.init --target component /path/to/component-repo
+    python3 -m specfuse.orchestrator.init --target specs     /path/to/specs-repo --dry-run
+    python3 -m specfuse.orchestrator.init --all --dry-run     # every known repo (loop kit + substrate)
+    python3 -m specfuse.orchestrator.init --all               # deploy everything (init; refuses where already installed)
+    python3 -m specfuse.orchestrator.init --all --upgrade     # overlay an existing deploy (passes --upgrade to loop init too)
 
 `--all` discovers component repos from `project/repos/*.md` (their `**Repo:**` slug) + the product
 specs repo, resolves each checkout under `--repos-root` (default: the orchestrator's parent), and
 for each component runs loop `init.sh` (from `--loop-root`) then the substrate install; specs gets
 the substrate only.
 
-Requires pyyaml (scripts/requirements.txt); `gh` for label-sync; `bash` + the loop checkout for --all.
+Requires pyyaml (bundled with the specfuse-orchestrator package); `gh` for label-sync; `bash` + the loop checkout for --all.
 """
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ from pathlib import Path
 try:
     import yaml
 except ImportError:
-    sys.stderr.write("error: pyyaml required (pip install -r scripts/requirements.txt)\n")
+    sys.stderr.write("error: pyyaml required (pip install specfuse-orchestrator)\n")
     sys.exit(2)
 
 SRC_ROOT = Path(__file__).resolve().parent.parent

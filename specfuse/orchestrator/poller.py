@@ -41,12 +41,12 @@ State writers respected: this poller is the single writer of the feature-level
 perform any transition it does not own.
 
 Invocation:
-    python3 scripts/poller.py                      # newest INIT-*.md registry, one pass
-    python3 scripts/poller.py --feature features/INIT-2026-0001.md
-    python3 scripts/poller.py --dry-run            # no label writes, no events, no dispatch
-    python3 scripts/poller.py --interval 60        # loop every 60s (Ctrl-C to stop)
+    specfuse-poller                      # newest INIT-*.md registry, one pass
+    specfuse-poller --feature features/INIT-2026-0001.md
+    specfuse-poller --dry-run            # no label writes, no events, no dispatch
+    specfuse-poller --interval 60        # loop every 60s (Ctrl-C to stop)
 
-Requires: pyyaml (scripts/requirements.txt) and the `gh` CLI authenticated.
+Requires: pyyaml (bundled with the specfuse-orchestrator package) and the `gh` CLI authenticated.
 """
 
 from __future__ import annotations
@@ -72,7 +72,7 @@ try:
     import yaml
 except ImportError:
     sys.stderr.write(
-        "error: pyyaml required. install: pip install -r scripts/requirements.txt\n"
+        "error: pyyaml required. install: pip install specfuse-orchestrator\n"
     )
     sys.exit(2)
 
@@ -99,7 +99,7 @@ NEXT_STEP_DEFAULTS = {
         "owner": "pm-agent",
     },
     "in_progress": {
-        "summary": "Re-run `python3 scripts/runner.py`; dispatch any ready `qa_*` features via `python3 scripts/qa-feature-dispatcher.py`.",
+        "summary": "Re-run `specfuse-runner`; dispatch any ready `qa_*` features via `python3 -m specfuse.orchestrator.qa_dispatcher`.",
         "owner": "runner",
     },
     "blocked": {
@@ -544,7 +544,7 @@ class StubDispatch(DispatchBackend):
     def dispatch(self, init: Initiative, feat: Feature, dry_run: bool) -> None:
         target = executor_for(feat)
         pending = ("loop adopt not invoked (stub)" if target == "component-loop"
-                   else "handled by scripts/qa-feature-dispatcher.py")
+                   else "handled by specfuse.orchestrator.qa_dispatcher")
         print(f"    [stub] ready to dispatch {init.correlation_id}/{feat.fid} ({feat.ftype}) "
               f"-> {target} @ {feat.assigned_repo} (#{feat.issue_number}); {pending}")
 
@@ -570,7 +570,7 @@ class LoopDispatch(DispatchBackend):
     def dispatch(self, init: Initiative, feat: Feature, dry_run: bool) -> None:
         if executor_for(feat) != "component-loop":
             print(f"    [skip] {init.correlation_id}/{feat.fid} ({feat.ftype}) -> qa-agent: "
-                  f"not loop-dispatchable; handled by scripts/qa-feature-dispatcher.py")
+                  f"not loop-dispatchable; handled by specfuse.orchestrator.qa_dispatcher")
             return
         slug = feat.issue_repo or feat.assigned_repo
         path = self._checkout(slug)

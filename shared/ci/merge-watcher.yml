@@ -111,7 +111,7 @@ jobs:
         run: |
           set -euo pipefail
           cd orchestrator
-          pip install -q -r scripts/requirements.txt
+          pip install specfuse-orchestrator
           python3 - "$CID" "$INIT" "$PR_URL" "$MERGE_SHA" "$GITHUB_REPOSITORY" "${ISSUE_NUM:-}" <<'PY'
           import json, sys, datetime, subprocess, pathlib
           cid, init, pr, sha, repo, num = sys.argv[1:7]
@@ -128,7 +128,7 @@ jobs:
           }
           line = json.dumps(ev)
           tmp = pathlib.Path("/tmp/mw_event.jsonl"); tmp.write_text(line + "\n")
-          r = subprocess.run(["python3", "scripts/validate-event.py", "--file", str(tmp)],
+          r = subprocess.run(["specfuse-validate-event", "--file", str(tmp)],
                              capture_output=True, text=True)
           if r.returncode != 0:
               sys.stderr.write(r.stdout + r.stderr)

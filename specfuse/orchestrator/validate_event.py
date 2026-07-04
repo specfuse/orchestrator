@@ -4,12 +4,12 @@
 Supported invocation patterns (only two):
 
     # Stdin — pipe a single event or a JSONL file:
-    echo '{"timestamp": "...", ...}' | python3 scripts/validate-event.py
-    cat events/FEAT-2026-0001.jsonl | python3 scripts/validate-event.py
-    python3 scripts/validate-event.py --stdin   # explicit alias for stdin (same behaviour)
+    echo '{"timestamp": "...", ...}' | specfuse-validate-event
+    cat events/FEAT-2026-0001.jsonl | specfuse-validate-event
+    specfuse-validate-event --stdin   # explicit alias for stdin (same behaviour)
 
     # File — pass a path to a .jsonl file:
-    python3 scripts/validate-event.py --file events/FEAT-2026-0001.jsonl
+    specfuse-validate-event --file events/FEAT-2026-0001.jsonl
 
 Any other form (positional arguments, --event, --input, --file /dev/stdin, etc.)
 is rejected with an error pointing at the two supported patterns above.
@@ -37,7 +37,7 @@ try:
 except ImportError:
     sys.stderr.write(
         "error: the 'jsonschema' package is required.\n"
-        "       install it with: pip install -r scripts/requirements.txt\n"
+        "       install it with: pip install specfuse-orchestrator\n"
     )
     sys.exit(2)
 
@@ -171,9 +171,9 @@ def iter_lines_from_stdin() -> list[tuple[int, str]]:
 
 _UNSUPPORTED_HINT = (
     "Supported invocation patterns:\n"
-    "  cat events/FEAT-XXXX-NNNN.jsonl | scripts/validate-event.py          # stdin\n"
-    "  scripts/validate-event.py --stdin                                      # stdin (explicit)\n"
-    "  scripts/validate-event.py --file events/FEAT-XXXX-NNNN.jsonl          # file\n"
+    "  cat events/FEAT-XXXX-NNNN.jsonl | specfuse-validate-event          # stdin\n"
+    "  specfuse-validate-event --stdin                                      # stdin (explicit)\n"
+    "  specfuse-validate-event --file events/FEAT-XXXX-NNNN.jsonl          # file\n"
 )
 
 
