@@ -1,27 +1,12 @@
 # Contributing to the Specfuse Orchestrator
 
-The Specfuse orchestrator is a filesystem-based coordination layer for multi-agent software development. This repository holds the **upstream scaffolding** — agent configurations, shared rules, schemas, templates, and tooling — that downstream projects template-clone into their own private orchestration repos.
+The Specfuse orchestrator is a filesystem-based coordination layer for multi-agent software development. This repository is the source for the `specfuse-orchestrator` pip package — agent configurations, shared rules, schemas, templates, and the CLI (`init` / `upgrade`) that projects install from PyPI and use to scaffold their own orchestration repos.
 
-Two contributor paths exist, and the right one depends on which side of the upstream/downstream relationship you're on.
+Contributions are normal pull requests against this repository. If you've improved something — a clearer skill, a sharper rule, a fix to a shared schema, a CLI fix — branch, commit, and open a PR here.
 
-## I'm a downstream consumer with an improvement to share
+## Working on the package
 
-If you're running the orchestrator on a real project (you template-cloned this scaffolding to your own private repo) and you've improved something — a clearer skill, a sharper rule, a better script, a fix to a shared schema — the contribution path is automated and documented:
-
-```bash
-./scripts/contribute-upstream.sh
-```
-
-The script reviews your downstream commits since the `UPSTREAM` anchor, identifies which touch scaffolding paths (the contributable subset), and produces clean path-scoped patch files for the ones you select. Private file diffs are dropped automatically; commit-message sanitization is flagged where likely needed. The full workflow — fork, `git am`, sanitize, push, open PR — is in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md) §"Contributing back to upstream".
-
-What's contributable and what isn't:
-
-- **Yes:** changes to `agents/`, `shared/`, `scripts/`, `docs/` (excluding `docs/walkthroughs/`), `project/README.md`, `README.md`, `LICENSE`, `NOTICE` — anything in the scaffolding that any project running the orchestrator could benefit from.
-- **No:** anything project-specific (your features, events, inbox artifacts, integration plan, repo inventory, custom rules that only make sense for your product). The script's path scope keeps these out of the patches automatically; the rule is so that in writing PR descriptions you keep the framing project-agnostic.
-
-## I want to work on the upstream itself
-
-If you're contributing to the orchestrator scaffolding directly (not through a downstream), the relevant context is:
+The relevant context is:
 
 - [`docs/orchestrator-vision.md`](docs/orchestrator-vision.md) — goals and design rationale.
 - [`docs/orchestrator-architecture.md`](docs/orchestrator-architecture.md) — the authoritative architecture document. When skills, configs, or other files conflict with the architecture, the architecture wins.
@@ -64,12 +49,10 @@ The walkthrough log artifacts in `docs/walkthroughs/phase-N/` are the existing t
 
 ## License
 
-The **upstream Specfuse Orchestrator scaffolding** is licensed under Apache 2.0. By contributing to *this* repository (the upstream), you agree your contributions are licensed under the same terms. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+The `specfuse-orchestrator` package is licensed under Apache 2.0. By contributing to this repository, you agree your contributions are licensed under the same terms. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
-Note that **downstream orchestration repos** template-cloned via [`scripts/setup.sh`](scripts/setup.sh) are configured with a proprietary placeholder LICENSE by default, with Apache 2.0 attribution preserved in a generated `NOTICES.md`. See [`README.md`](README.md) §"Licensing — upstream vs. downstream" and [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md) §"Licensing" for the full rationale and the OSS-downstream revert path.
-
-When contributing back to upstream from a downstream, the `scripts/contribute-upstream.sh` flow extracts only the scaffolding-path changes — your downstream's proprietary content cannot leak into upstream patches.
+An orchestration repo a user creates with `specfuse-orchestrator init` is their own new git repo, licensed however they choose — see [`README.md`](README.md) §"Licensing".
 
 ## Questions
 
-Open an issue on the upstream repo. The `docs/` directory is the authoritative reference for any "how does this work" question; if it doesn't answer your question, that itself is a documentation issue worth filing.
+Open an issue on the repo. The `docs/` directory is the authoritative reference for any "how does this work" question; if it doesn't answer your question, that itself is a documentation issue worth filing.

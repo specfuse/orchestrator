@@ -37,7 +37,7 @@ Produce `/project/bootstrap-checklist.md` with the structure below. The checklis
 The standard sequence:
 
 1. **Environment prereqs** (operator's local machine).
-2. **Orchestration repo creation** (template-clone the upstream Specfuse-orchestrator scaffolding).
+2. **Orchestration repo creation** (`pip install specfuse-orchestrator` then `specfuse-orchestrator init`, then create + push the GitHub repo).
 3. **Product reference repo creation** with the `/product/` + `/business/` split.
 4. **Component repo creation** — anticipated repos, in dependency order.
 5. **Per-component-repo conventions** — `.specfuse/templates.yaml`, root `CLAUDE.md`, `_generated/` boundary, branch protection.
@@ -81,7 +81,7 @@ Append an `onboarding_artifact_produced` event to `/events/PROJ-<slug>.jsonl` fo
 
 - [ ] Claude Code CLI installed and authenticated.
 - [ ] Specfuse validator CLI installed and on `$PATH` (`specfuse --version` works).
-- [ ] Python 3 + `pip install -r scripts/requirements.txt` succeeds in the orchestration repo.
+- [ ] Python 3 + `pip install specfuse-orchestrator` succeeds (`specfuse-orchestrator --version` works).
 - [ ] `gh` CLI authenticated against the org that will host the project's repos (`gh auth status`); confirm `repo` and `workflow` scopes.
 - [ ] `$TMPDIR` is writable.
 
@@ -89,10 +89,10 @@ Append an `onboarding_artifact_produced` event to `/events/PROJ-<slug>.jsonl` fo
 
 ## Phase 2 — Orchestration repo creation
 
-- [ ] Template-clone the upstream Specfuse-orchestrator scaffolding to `<your-org>/<your-product>-orchestration` (or chosen name).
-- [ ] Strip any upstream walkthrough artifacts (`docs/walkthroughs/`, prior `/features/`, `/events/`, `/inbox/` content) — keep `/agents/`, `/shared/`, `/scripts/`, `/docs/` (the operator runbook and pipeline reference).
-- [ ] Verify the four operational agents and the onboarding agent are at expected versions: `python3 -m specfuse.orchestrator._version specs|pm|component|qa|onboarding`.
-- [ ] First commit on your downstream repo's `main`: "chore: initial template clone from Specfuse-orchestrator vX.Y.Z".
+- [ ] `pip install specfuse-orchestrator` (or `pipx install specfuse[orchestrator]` for the whole suite).
+- [ ] `specfuse-orchestrator init <your-product>-orchestration` — git-inits a fresh state repo, scaffolds the state directories (`features/`, `events/`, `project/`, `inbox/`, `overrides/`, a starter `roadmap.md`), wires `.claude/`, and writes `project/NEXT_STEPS.md`.
+- [ ] Create and push the GitHub repo yourself (manual): `gh repo create <your-org>/<your-product>-orchestration --private --source=. --push`.
+- [ ] Verify the CLI and agents are at expected versions: `specfuse-orchestrator --version`.
 
 ## Phase 3 — Product reference repo creation
 
@@ -148,7 +148,7 @@ For each anticipated component repo, in dependency order (lower-level services b
 For a new project "Acme Widget Tracker" with anticipated repos `acme-api`, `acme-web`, and `acme-specs`:
 
 - Phase 1: operator confirms tooling.
-- Phase 2: clones to `acme/widget-tracker-orchestration`. Strips upstream walkthrough artifacts.
+- Phase 2: `pip install specfuse-orchestrator`, `specfuse-orchestrator init widget-tracker-orchestration`, then `gh repo create acme/widget-tracker-orchestration --private --source=. --push`.
 - Phase 3: creates `acme/acme-specs`, sets up `/product/` + `/business/` split. Updates manifest.
 - Phase 4: creates `acme/acme-api` first (lower-level), then `acme/acme-web` (consumer). Each gets `.specfuse/templates.yaml`, root `CLAUDE.md`, branch protection.
 - Phase 5: runs `repo-inventory` for each component repo as it's created.

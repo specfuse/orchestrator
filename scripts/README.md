@@ -1,238 +1,28 @@
 # scripts/
 
-Helper scripts for the Specfuse Orchestrator. All scripts are designed to be
-invoked from the **orchestration repo root** (the parent of this directory).
+This directory now holds only this `README.md` and `requirements.txt`.
 
----
-
-## Bootstrap (first use / cold-open)
-
-The Python scripts require `pyyaml` and `jsonschema`. Install them once into a
-virtual environment:
+The Python drivers that used to live here — event/frontmatter validators, the
+agent-version reader, and the rest — have moved **into the `specfuse-orchestrator`
+package** and are exposed through the CLI and the installed wheel. Install the
+package to get them:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/pip install -r scripts/requirements.txt
+pip install specfuse-orchestrator
 ```
 
-Then replace `python3 scripts/...` with `.venv/bin/python scripts/...` in the
-commands below, or activate the venv first:
+The fork-era shell scripts (the old interactive setup, upstream-sync, and
+contribute-back helpers) have been **deleted** along with the git-template
+distribution model. Scaffolding a project's orchestration repo is now
+`specfuse-orchestrator init <dir>`, and keeping it current is
+`pip install -U specfuse-orchestrator` followed by
+`specfuse-orchestrator upgrade <dir>`. See [`../GETTING_STARTED.md`](../GETTING_STARTED.md).
 
-```sh
-source .venv/bin/activate
-# now `python3` resolves to the venv interpreter
-```
+## requirements.txt
 
-If you are on a system without PEP 668 restrictions (e.g. a CI container), you
-can install globally:
+Declares the Python package dependencies used by the validators and other
+drivers now shipped inside `specfuse-orchestrator`:
 
-```sh
-pip install -r scripts/requirements.txt
-```
-
----
-
-## scripts/validate-event.py
-
-Validates one or more JSONL event log entries against
-`shared/schemas/event.schema.json` (top-level envelope) and the matching
-per-type payload schema under `shared/schemas/events/` (if one exists).
-
-**Two supported invocation patterns:**
-
-```sh
-# Stdin — pipe a single event or a full .jsonl file:
-echo '{"timestamp": "..."}' | python3 scripts/validate-event.py
-cat events/FEAT-2026-0004.jsonl | python3 scripts/validate-event.py
-python3 scripts/validate-event.py --stdin   # explicit alias
-
-# File — pass a path:
-python3 scripts/validate-event.py --file events/FEAT-2026-0004.jsonl
-```
-
-Exit codes: `0` = all events valid, `1` = validation failure, `2` = setup error.
-
-Every event appended to `events/*.jsonl` **must** pass this validator with exit
-`0` before the append, per `shared/rules/verify-before-report.md` §3.
-
----
-
-## scripts/validate-frontmatter.py
-
-Validates the YAML frontmatter of a feature registry file against
-`shared/schemas/feature-frontmatter.schema.json`.
-
-**Two supported invocation patterns:**
-
-```sh
-# Stdin — pipe the full content of a feature .md file:
-cat features/FEAT-2026-0004.md | python3 scripts/validate-frontmatter.py
-python3 scripts/validate-frontmatter.py --stdin   # explicit alias
-
-# File — pass a path:
-python3 scripts/validate-frontmatter.py --file features/FEAT-2026-0004.md
-```
-
-Exit codes: `0` = frontmatter valid, `1` = validation failure, `2` = setup error.
-
-Run this before committing any change to `features/*.md` that touches the YAML
-frontmatter block, per `shared/rules/verify-before-report.md` §3.
-
----
-
-## scripts/read-agent-version.sh
-
-Reads the current version string from `agents/<role>/version.md`. Used to
-populate the `source_version` field on agent-emitted events at emission time.
-
-```sh
-scripts/read-agent-version.sh pm          # → e.g. "1.6.0"
-scripts/read-agent-version.sh component   # → e.g. "1.2.0"
-```
-
-Exit codes: `0` = version on stdout, `1` = parse failure, `2` = setup error.
-
-Never eye-cache the version from an earlier read; invoke this script at the
-moment each event is constructed, per `shared/rules/verify-before-report.md` §3.
-
----
-
-## scripts/setup.sh
-
-Interactive one-shot setup for a downstream orchestration repo. Bundles
-strip + git re-init + private GitHub repo creation + upstream remote
-configuration into a single guided run, and writes a personalized
-`project/NEXT_STEPS.md` tailored to the project type.
-
-```sh
-# from inside a fresh clone of the upstream scaffolding:
-./scripts/setup.sh
-```
-
-Asks four questions: GitHub org, repo name, project name, project type
-(greenfield/brownfield). Pre-flight checks: clean working tree, `gh` CLI
-authenticated, fresh-clone markers present. Idempotent on the strip step
-(skipped if the clone is already stripped).
-
-This is the recommended entry point for a new downstream — see
-`GETTING_STARTED.md`. The individual scripts below are still available
-for advanced workflows or when something goes wrong mid-setup.
-
----
-
-## scripts/template-clone-strip.sh
-
-Strips walkthrough/feature/event content from a fresh template clone of the
-orchestrator scaffolding, preparing it for use as a downstream project's
-private orchestration repo. **Also captures the upstream anchor** (URL +
-commit SHA at clone time) into a top-level `UPSTREAM` file — the durable
-record of where the downstream diverged from upstream, used as the diff
-base for future syncs and read by `add-upstream-remote.sh` to configure
-the remote.
-
-```sh
-# from inside a fresh clone of the orchestrator scaffolding:
-./scripts/template-clone-strip.sh . --dry-run        # preview
-./scripts/template-clone-strip.sh .                  # strip + capture UPSTREAM
-./scripts/template-clone-strip.sh . --strip-impl-plan  # also remove the
-                                                       # orchestrator's own
-                                                       # implementation plan
-```
-
-The script:
-
-- Removes Phase 1–4 walkthrough features, events, inbox artifacts, and `docs/walkthroughs/`.
-- Seeds `.gitkeep` in directories that must remain part of the scaffolding.
-- **Replaces the upstream `LICENSE` (Apache 2.0) with a proprietary placeholder** and writes `NOTICES.md` preserving Apache 2.0 attribution in full (see `docs/upstream-downstream-sync.md` §"Licensing").
-- Captures the `UPSTREAM` anchor (URL + commit SHA) from `.git/`.
-
-It does **not** touch `.git` — the caller re-initializes git history after running. **Run it before `rm -rf .git`** so the upstream URL and HEAD can be captured.
-
-The `LICENSE` placeholder uses `<YEAR>`/`<COPYRIGHT_HOLDER>` tokens; if you call this script standalone, fill them in manually. `setup.sh` substitutes them with the current year and your GitHub org automatically.
-
-Verify with `--dry-run` before applying.
-
-See `docs/upstream-downstream-sync.md` for the full template-clone workflow,
-including how to pull upstream improvements over time and how to contribute
-fixes back upstream.
-
----
-
-## scripts/contribute-upstream.sh
-
-Interactive helper for the contribute-back path. Reviews downstream commits
-since the `UPSTREAM` anchor, categorizes each as `scaffolding-only`, `mixed`
-(touches both scaffolding and private paths), or `private-only`, and
-extracts path-scoped `git format-patch` files for the chosen ones into
-`./upstream-contributions/<timestamp>/`. Private file diffs are dropped at
-extraction; commit message sanitization is flagged but left to the operator.
-
-```sh
-# from the root of a downstream orchestration repo:
-./scripts/contribute-upstream.sh                  # interactive
-./scripts/contribute-upstream.sh --list           # read-only review
-./scripts/contribute-upstream.sh --since <sha>    # override the base
-./scripts/contribute-upstream.sh --output <dir>   # custom output location
-```
-
-The script prints next steps after extraction (fork upstream, `git am`,
-sanitize messages, push, open PR). See `docs/upstream-downstream-sync.md`
-for the full contribution workflow.
-
----
-
-## scripts/sync-upstream.sh
-
-Interactive helper for the periodic upstream sync. Lists upstream commits
-since the downstream's `UPSTREAM` anchor (path-scoped to scaffolding paths
-only, excluding `docs/walkthroughs/` and downstream-private dirs), then
-walks the operator through each one with a take / skip / diff / quit prompt
-and cherry-picks the chosen commits. Halts on conflict with clear resume
-instructions; offers to advance the `UPSTREAM` anchor at the end.
-
-```sh
-# from the root of a downstream orchestration repo:
-./scripts/sync-upstream.sh                  # interactive
-./scripts/sync-upstream.sh --list           # read-only review (no prompts)
-./scripts/sync-upstream.sh --target <ref>   # compare against a different ref
-```
-
-Pre-conditions: clean working tree, `upstream` remote configured, valid
-`UPSTREAM` file. The script enforces these and errors out clearly if any
-are missing.
-
-See `docs/upstream-downstream-sync.md` for the full sync workflow,
-including manual alternatives and follow-up steps (validator runs,
-per-agent version review).
-
----
-
-## scripts/add-upstream-remote.sh
-
-Configures the upstream Specfuse-orchestrator remote on a downstream
-orchestration repo as **read-only** (push URL set to `DISABLE` so accidental
-pushes to upstream cannot happen). Reads the upstream URL from the
-top-level `UPSTREAM` file (created by `template-clone-strip.sh`).
-
-```sh
-# run once after `gh repo create ... --source=. --push`:
-./scripts/add-upstream-remote.sh
-
-# if upstream is already configured, the script reports its current state
-# and exits without changes; pass --reset to reconfigure:
-./scripts/add-upstream-remote.sh --reset
-```
-
-Idempotent. Errors out if `UPSTREAM` is missing or contains placeholder
-values; fill in `UPSTREAM` first (the file's header documents its format).
-
----
-
-## scripts/requirements.txt
-
-Declares the Python package dependencies for the scripts in this directory:
-
-- `jsonschema>=4.18` — JSON Schema Draft 2020-12 validation (used by both
-  validate-event.py and validate-frontmatter.py).
-- `pyyaml>=6.0` — YAML parsing for feature frontmatter (used by
-  validate-frontmatter.py).
+- `jsonschema>=4.18` — JSON Schema Draft 2020-12 validation.
+- `pyyaml>=6.0` — YAML parsing for feature frontmatter.
+</content>

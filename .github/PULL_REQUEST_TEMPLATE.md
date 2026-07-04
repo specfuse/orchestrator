@@ -1,7 +1,6 @@
 <!--
 Thanks for contributing to the Specfuse Orchestrator. Please fill in the sections below.
-For the full contribution flow (including extracting clean patches from a downstream
-via scripts/contribute-upstream.sh), see CONTRIBUTING.md.
+For commit conventions and the contribution flow, see CONTRIBUTING.md.
 -->
 
 ## Summary
@@ -23,8 +22,8 @@ via scripts/contribute-upstream.sh), see CONTRIBUTING.md.
 
 ## Checklist
 
-- [ ] Change touches scaffolding paths only (`agents/`, `shared/`, `scripts/`, `docs/`, `project/README.md`, `README.md`, `LICENSE`, `NOTICE`, `.github/`).
-- [ ] No private references in the diff or commit messages (no project-specific feature names, repo URLs, ticket IDs, customer references). Path-scoped extraction via `scripts/contribute-upstream.sh` is the recommended way to enforce this.
+- [ ] Change touches package/scaffolding paths (`agents/`, `shared/`, `scripts/`, `docs/`, `project/README.md`, `README.md`, `LICENSE`, `NOTICE`, `.github/`).
+- [ ] No project-specific references in the diff or commit messages (no product feature names, private repo URLs, ticket IDs, customer references) — keep contributions project-agnostic.
 - [ ] Validators pass on any schema or event-format changes:
   - `specfuse-validate-event --file events/<file>.jsonl`
   - `specfuse-validate-frontmatter --file features/<file>.md`

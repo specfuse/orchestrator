@@ -1,6 +1,6 @@
 # Specfuse Orchestrator
 
-Specfuse Orchestrator is a filesystem-based coordination layer for multi-agent software development workflows. It uses a directory structure of features, events, and an agent inbox — along with agent configurations, shared skills, rules, schemas, and templates — to let specs, PM, component, and QA agents collaborate on feature delivery without a central runtime. This repository holds the orchestrator scaffolding; downstream projects consume it via a template clone.
+Specfuse Orchestrator is a filesystem-based coordination layer for multi-agent software development workflows. It uses a directory structure of features, events, and an agent inbox — along with agent configurations, shared skills, rules, schemas, and templates — to let specs, PM, component, and QA agents collaborate on feature delivery without a central runtime. This repository is the source for the `specfuse-orchestrator` pip package; you install it from PyPI and scaffold a project's orchestration repo with `specfuse-orchestrator init`.
 
 For background, goals, and design rationale, see [`docs/orchestrator-vision.md`](docs/orchestrator-vision.md). For the directory layout, protocols, and architectural decisions, see [`docs/orchestrator-architecture.md`](docs/orchestrator-architecture.md). A condensed overview is in [`docs/orchestrator-design-summary.md`](docs/orchestrator-design-summary.md). The phased build plan is in [`docs/orchestrator-implementation-plan.md`](docs/orchestrator-implementation-plan.md).
 
@@ -20,18 +20,18 @@ The idea → spec → plan → implement → QA → done pipeline is operational
 
 ## Getting started on a real project
 
-**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). One `git clone` + `./scripts/setup.sh` does the entire one-time setup (strip, git re-init, private GitHub repo creation, upstream remote configuration, personalized next-steps doc). Then `/onboard` in a Claude Code session walks you through the rest.
+**Five-minute path:** see [`GETTING_STARTED.md`](GETTING_STARTED.md). `pip install specfuse-orchestrator` then `specfuse-orchestrator init my-product-orchestration` scaffolds a fresh, git-initialized orchestration repo (state directories, a starter `roadmap.md`, `.claude` plugin wiring, and a personalized next-steps doc). You then create and push the GitHub repo yourself (a manual `gh repo create` step — `init` does not do it). Then `/onboard` in a Claude Code session walks you through the rest.
 
-The orchestration repo is the **process-state store for one product** (singleton per product). Template-cloned to your own org as `<your-org>/<your-product>-orchestration`. Full workflow — including how to **pull upstream improvements** into your downstream over time and how to **contribute fixes back upstream** — is documented in [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
+The orchestration repo is the **process-state store for one product** (singleton per product), created in your own org as `<your-org>/<your-product>-orchestration`. It's your own new git repo. To pull in future improvements, `pip install -U specfuse-orchestrator` then `specfuse-orchestrator upgrade <dir>` re-syncs the substrate from the newly-installed wheel and refreshes the `.claude` wiring.
 
 The orchestrator engages **downstream of product discussion**. Brainstorming, business decisions, and feature ideation belong in your project's **product reference repo** (the `/product/` subtree); the orchestrator picks up at feature-intake when an idea crystallizes into a feature.
 
-Two project shapes are supported, both via the same setup script:
+Two project shapes are supported, both via the same `init` flow:
 
 - **Greenfield:** new project, no repos yet. The onboarding agent's `bootstrap-greenfield` skill produces a setup checklist covering environment prereqs, repo-creation order, per-repo conventions, and first-feature scoping.
 - **Brownfield:** existing project with code, specs, and possibly in-flight features. The onboarding agent's `repo-inventory` skill walks each repo and produces readiness assessments; `integration-plan` then drafts a phased rollout (pilot → expand → import in-flight → steady state) that brings the project under orchestrator coordination without disrupting current delivery.
 
-The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The `setup.sh` script asks for your project type and chooses the right onboarding skill for you.
+The exact sequence — including the literal commands — is in [`GETTING_STARTED.md`](GETTING_STARTED.md). The onboarding agent detects your project state and chooses the right skill for you.
 
 ### Day-to-day operation
 
@@ -40,24 +40,16 @@ Once a project is wired:
 - [`docs/operator-runbook.md`](docs/operator-runbook.md) — quickstart for driving a feature from idea through `planning` with the specs agent. Includes environment prerequisites.
 - [`docs/operator-pipeline-reference.md`](docs/operator-pipeline-reference.md) — full-lifecycle operator reference covering PM, component, and QA sessions, inbox handling, spec-issue triage, and escalations.
 
-### Licensing — upstream vs. downstream
+### Licensing
 
-This **upstream** repository is licensed under [Apache 2.0](LICENSE). You can incorporate the scaffolding into your own work, including proprietary work, with attribution.
+This repository — the `specfuse-orchestrator` package source — is licensed under [Apache 2.0](LICENSE). You can incorporate the scaffolding into your own work, including proprietary work, with attribution.
 
-A **downstream** orchestration repo created via [`scripts/setup.sh`](scripts/setup.sh) holds your project's coordination state — `/features/`, `/events/`, `/inbox/`, `/project/` — alongside the upstream-derived scaffolding. Most teams want this content treated as **proprietary**, not Apache 2.0. The setup script handles this automatically:
-
-- The upstream's `LICENSE` (Apache 2.0) is replaced with a **proprietary placeholder** carrying your org name as the copyright holder and the current year.
-- A `NOTICES.md` is created at the downstream's root with full Apache 2.0 attribution and reproduces the upstream's `LICENSE` and `NOTICE` text in full — satisfying Apache 2.0 §4.b for the upstream-derived files (`agents/`, `shared/`, `scripts/`, `docs/`, the top-level Markdown docs, `.github/`, `.claude/`).
-- Modifications you make to upstream-derived files remain governed by Apache 2.0; original work added by you (`/features/`, `/events/`, `/inbox/`, project-specific `/agents/<role>/rules/`, `/project/` content beyond `README.md`) is governed by your downstream's `LICENSE`.
-
-If your downstream is itself open-source rather than proprietary, [`scripts/setup.sh`](scripts/setup.sh) documents the one-line revert to Apache 2.0 in the generated `project/NEXT_STEPS.md`. Either way, the licensing decision is **explicit and visible** in your downstream from day one — no inherited LICENSE files quietly imply terms that don't match your intent.
+The **orchestration repo you create with `specfuse-orchestrator init`** is your own new git repo. It holds your project's coordination state (`/features/`, `/events/`, `/inbox/`, `/project/`), and you license it however you want. `init` no longer swaps in a proprietary LICENSE or generates any attribution machinery — the frozen substrate lives inside the installed wheel, not copied into your repo, so there's nothing to relicense.
 
 ### Slash commands (in a Claude Code session)
 
-Project-scoped slash commands wrap the most common operations and become available via `/` autocomplete when you open a Claude Code session at the orchestration repo:
+Install the plugin with `/plugin install specfuse-orchestrator@specfuse` (already in the `specfuse/specfuse` marketplace). It provides the five agents plus one slash command:
 
 - `/onboard` — switch into the onboarding-agent role; runs `repo-inventory`, `integration-plan`, or `bootstrap-greenfield` depending on project state.
-- `/sync-upstream` — periodic upstream sync; reviews and cherry-picks upstream commits since the `UPSTREAM` anchor.
-- `/contribute-upstream` — extract scaffolding-only patches from downstream commits for an upstream PR.
 
-The commands wrap the equivalent shell scripts under [`scripts/`](scripts/) and are documented in [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`docs/upstream-downstream-sync.md`](docs/upstream-downstream-sync.md).
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for how to contribute to this package.
