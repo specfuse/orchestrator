@@ -1,0 +1,15 @@
+{
+  "VERSION": "d5d1d767be9218f02ebda081a83a2b2fede85055e910e5a94a09329966486fcc",
+  "docs/concepts/architecture-addendum-gates-and-iterative-planning.md": "15260aef4e4dd6b6ad1d7b076805efd126920d0695bdb7290c645f84a5ada555",
+  "docs/concepts/ralph-lineage.md": "6854eadd3cce1dc6109f472014884a80a5a9e1bee1b9534cdfef44848f9ffb1d",
+  "docs/getting-started.md": "5464a15c25e7d1b461d316bf3595a41ca5d3a7d9f89739eb1222908035edb470",
+  "docs/methodology.md": "ac9617dbcfa5befffb6b7120a0d8c523debdc725c99a389988adb0de5ecd01d6",
+  "docs/skills.md": "d8d212f83289026823d99c5eb204a5bcaf6ccfa95eea5eeb7c3142e5d8a00af7",
+  "rules/correlation-ids.md": "2869f9cc1e9cca99da9191da0f4f3fc7a1be890ea4bd23dbd07f6acda6ce522f",
+  "rules/never-touch.md": "1b08b4a451828c65a2e0294ada6bf18bb689e5d3cc93e9e980b5f64519dc64b1",
+  "rules/result-contract.md": "163ea2145fcd21d026a5a87381a4a14bd2c1f9e42ab6a23ffb220a1639f933b3",
+  "rules/security-boundaries.md": "84f3d4c551c06ac4f616654b068aa42c5e646c07f81c844bd5612277b8267661",
+  "templates/GATE.template.md": "a2f95e596abf3100a9790e57d6a2bf832803074ba33ccac638b221df983b38c1",
+  "templates/PLAN.template.md": "6df89c0b53ee275669b37f02b3651ceb74ddb6f4a17a97dbded995e14ef8ebab",
+  "templates/WU.template.md": "446c48da80ccba3e4467f721d0872bbcbbf4d0f1c23d836a84348a5067321f8b"
+}
