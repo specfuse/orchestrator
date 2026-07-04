@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/events/feature_state_changed.schema.json",
   "title": "feature_state_changed event payload",
-  "$comment": "Provenance (WU 2.14, F2.4): authored 2026-04-23 in WU 2.9; closes findings F1.1 + F2.9. Fields: from_state (required, enum), to_state (required, enum), trigger (required, freeform string). The event_type itself was also added to event.schema.json enum in WU 2.9.",
+  "$comment": "Provenance (WU 2.14, F2.4): authored 2026-04-23 in WU 2.9; closes findings F1.1 + F2.9. Fields: from_state (required, enum), to_state (required, enum), trigger (required, freeform string). The event_type itself was also added to event.schema.json enum in WU 2.9. Next-step addition (2026-06-08, PM v1.9.2): optional `next_step` snapshot — the next_step block the `/initiative-status` skill just wrote (or removed) on the registry, recorded here so the event log carries both *what* state was entered and *what action* was chosen at entry time. Omitted on transitions to terminal/pre-planning states (where the registry has no next_step) and on legacy events emitted before this addition. Schema mirrors `feature-frontmatter.schema.json` $defs would mirror, but kept inline (no $ref) to keep this event payload self-contained.",
   "description": "Payload shape for the `feature_state_changed` event emitted by the PM agent (and, for the `plan_review → generating` transition, indirectly on behalf of the human approval gate) on every feature-level state transition the PM agent owns. Feature state vocabulary mirrors `shared/schemas/feature-frontmatter.schema.json` §state enum — the canonical machine-readable source. Added in Phase 2 WU 2.9 to close the event-log gap surfaced in findings F1.1 and F2.9.",
   "type": "object",
   "additionalProperties": false,
@@ -46,6 +46,37 @@
       "type": "string",
       "description": "Names the action or event that caused this state transition. Freeform string at v1; examples: `plan_ready`, `plan_approved`, `first_round_issues_opened`, `all_tasks_done`, `human_escalation:spec_level_blocker`. Future versions may constrain this to a closed enum per-transition pair.",
       "minLength": 1
+    },
+    "next_step": {
+      "type": "object",
+      "description": "Snapshot of the next_step block written to the registry at this transition. Present only when to_state requires next_step per `feature-frontmatter.schema.json` root allOf (planning / plan_review / generating / in_progress / blocked). Absent on transitions to terminal (done/abandoned) or pre-planning (drafting/validating) states — in those cases the registry's next_step was removed and there is nothing to snapshot. Schema mirrors `feature-frontmatter.schema.json` $defs.next_step (inline rather than $ref to keep payload self-contained).",
+      "additionalProperties": false,
+      "required": ["summary", "owner", "updated"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "owner": {
+          "type": "string",
+          "enum": [
+            "human",
+            "specs-agent",
+            "pm-agent",
+            "component-loop",
+            "qa-agent",
+            "qa-dispatcher",
+            "runner",
+            "merge-watcher"
+          ]
+        },
+        "owner_repo": { "type": "string", "minLength": 1 },
+        "blocking_on": { "type": "string", "maxLength": 300 },
+        "updated": { "type": "string", "format": "date", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "owner": { "enum": ["component-loop", "qa-agent"] } } },
+          "then": { "required": ["owner_repo"] }
+        }
+      ]
     }
   }
 }

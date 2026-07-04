@@ -2,6 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/override.schema.json",
   "title": "Override record",
+  "$comment": "Reframe migration (docs/naming-convention.md, additive): task_correlation_id pattern widened from ^FEAT-\\d{4}-\\d{4}/T\\d{2}$ to ^((FEAT-\\d{4}-\\d{4})|(INIT-\\d{4}-\\d{4}/F\\d{2}))/T\\d{2}$ so a work unit under a dispatched feature (INIT-YYYY-NNNN/FNN/TNN) may own an override, alongside the legacy/component-local FEAT-YYYY-NNNN/TNN form. Existing FEAT- override records validate unchanged. Reconciliation-runtime additions (additive, optional): `repo` (owner/repo to scope reconciliation) and `patch` (unified diff for auto-reapply after a regen) — consumed by scripts/reconcile-overrides.py.",
   "description": "A single authorized override of generated code. See orchestrator-architecture.md §9.3 for the reconciliation protocol.",
   "type": "object",
   "additionalProperties": false,
@@ -26,8 +27,8 @@
     },
     "task_correlation_id": {
       "type": "string",
-      "description": "Task-level correlation ID (FEAT-YYYY-NNNN/TNN) of the task that required the override.",
-      "pattern": "^FEAT-\\d{4}-\\d{4}/T\\d{2}$"
+      "description": "Work-unit-level correlation ID of the unit that required the override: INIT-YYYY-NNNN/FNN/TNN (work unit under a dispatched feature) or the legacy/component-local FEAT-YYYY-NNNN/TNN. See docs/naming-convention.md.",
+      "pattern": "^((FEAT-\\d{4}-\\d{4})|(INIT-\\d{4}-\\d{4}/F\\d{2}))/T\\d{2}$"
     },
     "tracking_issue": {
       "type": "string",
@@ -48,6 +49,16 @@
     "status": {
       "type": "string",
       "enum": ["active", "expired"]
+    },
+    "repo": {
+      "type": "string",
+      "description": "Optional `owner/repo` of the component repo this override lives in. Lets the reconciliation runtime (scripts/reconcile-overrides.py) scope to the repo just regenerated and locate its checkout. If absent, the runtime processes the record against every involved repo.",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9._-]+$"
+    },
+    "patch": {
+      "type": "string",
+      "description": "Optional unified diff (git apply format) that re-applies the override to the regenerated file(s). When present, the reconciliation runtime auto-reapplies it after a regen (emitting override_applied); when absent, the runtime flags the override for manual reapply (blocked_spec) since the metadata alone cannot reconstruct the change. Future: once the generator reads the registry (architecture §9.3 future model), this becomes the source the generator respects.",
+      "minLength": 1
     }
   }
 }

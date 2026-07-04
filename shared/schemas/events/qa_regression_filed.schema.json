@@ -17,7 +17,7 @@
     "implementation_task_correlation_id": {
       "type": "string",
       "description": "Task-level correlation ID of the ORIGINAL implementation task the regression is attributed against — the task whose delivered code failed a qa-execution run. Resolved by the qa-regression skill from the feature task graph by intersecting the qa_execution task's `depends_on` with implementation-type tasks (Q4 algorithm in the skill). Together with `test_id`, forms the regression idempotence key.",
-      "pattern": "^FEAT-\\d{4}-\\d{4}/T\\d{2}$"
+      "pattern": "^((FEAT-\\d{4}-\\d{4})|(INIT-\\d{4}-\\d{4}/F\\d{2}))/T\\d{2}$"
     },
     "test_id": {
       "type": "string",
@@ -39,7 +39,7 @@
     "regression_inbox_file": {
       "type": "string",
       "description": "Path to the inbox artifact written under `/inbox/qa-regression/`, relative to the orchestration repo root (e.g. `inbox/qa-regression/FEAT-2026-0061-widgets-export-rate-limit-enforced-429.md`). The artifact's frontmatter+body is the substrate that spawns a new implementation task against the component repo under test; the spawn itself is performed by the PM inbox consumer or the human, not by this skill.",
-      "pattern": "^inbox/qa-regression/FEAT-\\d{4}-\\d{4}-[a-z0-9][a-z0-9-]*\\.md$",
+      "pattern": "^inbox/qa-regression/(FEAT|INIT)-\\d{4}-\\d{4}-[a-z0-9][a-z0-9-]*\\.md$",
       "minLength": 1
     }
   }
