@@ -51,8 +51,8 @@ def main() -> int:
         if e.get("upgrader") not in upgraders:
             errors.append(f"{eid}: bad upgrader {e.get('upgrader')!r}")
         cs = e.get("canonical_source", {})
-        if cs.get("repo") not in {"orchestrator", "loop"}:
-            errors.append(f"{eid}: canonical_source.repo must be orchestrator|loop, got {cs.get('repo')!r}")
+        if cs.get("repo") not in {"orchestrator", "loop", "specfuse"}:
+            errors.append(f"{eid}: canonical_source.repo must be orchestrator|loop|specfuse, got {cs.get('repo')!r}")
         # charter §4: orchestrator-init ships only stable
         if e.get("upgrader") == "orchestrator-init" and e.get("stability") != "stable":
             errors.append(f"{eid}: upgrader orchestrator-init requires stability=stable (charter §4)")

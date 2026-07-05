@@ -17,12 +17,15 @@ version: 1
 
 # ---- vocabulary (documented in README.md) ------------------------------------------------
 categories: [shared-core, loop-owned, orchestrator-owned]
-authorities: [orchestrator-frozen, loop-authored]   # who governs the content (charter §3)
+authorities: [orchestrator-frozen, loop-authored, core-canonical]   # who governs the content (charter §3); core-canonical = the extracted specfuse/methodology substrate
 stabilities:  [stable, moving]                       # ship-now vs defer (charter §4)
 upgraders:    [orchestrator-init, loop-init, methodology, manual]  # exactly one per install
 targets:      [component, specs]                     # orchestrator repo is a SOURCE, never a target
 
-# canonical_source.repo is one of: orchestrator | loop
+# canonical_source.repo is one of: orchestrator | loop | specfuse
+# `specfuse` is the core methodology repo; its substrate lives under the methodology/ subtree.
+# The `methodology` upgrader vendors specfuse/methodology/** into targets (and the orchestrator
+# and loop both vendor from it — the reserved extraction point, now live).
 # Paths are relative to that repo's root.
 
 # GitHub labels the orchestrator expects on target repos. orchestrator-init's label-sync step
@@ -69,30 +72,34 @@ entries:
   # stays orchestrator-frozen (charter §3: loop's copy aligns to the orchestrator master,
   # hand-synced per §4). authority and upgrader are independent axes.
 
+  # shared-core rules extracted to specfuse/methodology (the reserved `methodology` upgrader,
+  # now live). Content authority is core-canonical; the loop and orchestrator both vendor these
+  # byte-identical from core — the §3 hand-sync content-master model is retired for them.
+
   - id: rule-correlation-ids
     category: shared-core
-    canonical_source: { repo: loop, path: .specfuse/rules/correlation-ids.md }  # content master: orchestrator shared/rules/correlation-ids.md (§3 hand-sync)
-    authority: orchestrator-frozen
+    canonical_source: { repo: specfuse, path: methodology/rules/correlation-ids.md }
+    authority: core-canonical
     stability: stable
-    upgrader: loop-init   # loop ships it (needed for standalone loop); orchestrator-init no longer double-ships
+    upgrader: methodology
     install:
       - { target: component, path: .specfuse/rules/correlation-ids.md }
 
   - id: rule-never-touch
     category: shared-core
-    canonical_source: { repo: loop, path: .specfuse/rules/never-touch.md }  # content master: orchestrator shared/rules/never-touch.md (§3)
-    authority: orchestrator-frozen
+    canonical_source: { repo: specfuse, path: methodology/rules/never-touch.md }
+    authority: core-canonical
     stability: stable
-    upgrader: loop-init
+    upgrader: methodology
     install:
       - { target: component, path: .specfuse/rules/never-touch.md }
 
   - id: rule-security-boundaries
     category: shared-core
-    canonical_source: { repo: loop, path: .specfuse/rules/security-boundaries.md }  # content master: orchestrator shared/rules/security-boundaries.md (§3)
-    authority: orchestrator-frozen
+    canonical_source: { repo: specfuse, path: methodology/rules/security-boundaries.md }
+    authority: core-canonical
     stability: stable
-    upgrader: loop-init
+    upgrader: methodology
     install:
       - { target: component, path: .specfuse/rules/security-boundaries.md }
 
@@ -145,27 +152,54 @@ entries:
 
   - id: rule-role-switch-hygiene
     category: shared-core
-    canonical_source: { repo: orchestrator, path: shared/rules/role-switch-hygiene.md }
-    authority: orchestrator-frozen
+    canonical_source: { repo: specfuse, path: methodology/rules/role-switch-hygiene.md }
+    authority: core-canonical
     stability: stable
-    upgrader: orchestrator-init
+    upgrader: methodology
     note: >
-      MODEL-B REVIEW (Track B): multi-agent role-switch discipline; the component-loop uses
-      fresh-dispatch-per-WU and does not role-switch. Likely orchestrator-resident (install: []).
+      Core-canonical, but NOT scaffolded into component repos: the component-loop uses
+      fresh-dispatch-per-WU and does not role-switch (confirmed in Gate 2, loop opted out —
+      link-closed). Orchestrator agents read it from the orchestrator's shared/rules copy.
+    install: []
+
+  - id: rule-verification-discipline
+    category: shared-core
+    canonical_source: { repo: specfuse, path: methodology/rules/verification-discipline.md }
+    authority: core-canonical
+    stability: stable
+    upgrader: methodology
+    note: >
+      Surface-neutral core four-step cycle (state intent → act → verify → report). Installs to
+      component because result-contract.md (the loop's surface expression) links to it — the
+      vendored set must be link-closed.
     install:
-      - { target: component, path: .specfuse/rules/role-switch-hygiene.md }
+      - { target: component, path: .specfuse/rules/verification-discipline.md }
+
+  - id: schemas-methodology
+    category: shared-core
+    canonical_source: { repo: specfuse, path: methodology/schemas/ }   # event.schema.json + events/{initiative_created,spec_validated,spec_issue_resolved,spec_issue_routed}.schema.json
+    authority: core-canonical
+    stability: stable
+    upgrader: methodology
+    note: >
+      CORE-EXTRACTED (Gate 1). The event envelope and the definition-plane payload schemas are
+      core-canonical; the orchestrator and loop both vendor them byte-identical. The envelope's
+      `source` enum spans surfaces (includes `driver` for the loop). NOT scaffolded to targets
+      (install empty) — same orchestrator-resident validation pattern as schemas-core.
+    install: []
 
   - id: schemas-core
     category: shared-core
-    canonical_source: { repo: orchestrator, path: shared/schemas/ }   # *.schema.json + events/*.schema.json + labels.md
+    canonical_source: { repo: orchestrator, path: shared/schemas/ }   # feature-frontmatter, override, template-coverage, test-plan schemas + labels.md + execution-plane event payloads
     authority: orchestrator-frozen
     stability: stable
     upgrader: orchestrator-init
     note: >
-      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). The schemas live in
-      the orchestration repo; an agent emitting an event appends to the orchestration repo's
-      /events log and validates there (same pattern as the merge-watcher checkout). Listed for
-      completeness/authority. Additively widened for INIT-/FNN in the reframe migration.
+      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). The execution-plane
+      schemas (feature-frontmatter, override, template-coverage, test-plan, labels.md, and the
+      task_*/qa_*/feature_* event payloads) live in the orchestration repo; an agent emitting an
+      event appends to the orchestration repo's /events log and validates there. The shared event
+      envelope + definition-plane payloads moved to `schemas-methodology` above.
     install: []
 
   - id: event-validators
@@ -183,18 +217,18 @@ entries:
       orchestration repo checkout when emitting events, not from a component-local copy.
     install: []
 
-  # ---- shared-core, gate layer (loop authors; MOVING; defer per charter §4) ----------------
-  # These are the methodology's gate-cycle contracts loop is proving (FEAT-2026-0003 etc.).
-  # They are NOT shipped by orchestrator-init yet; loop-init owns them until the gate cycle
-  # is proven and `specfuse/methodology` is extracted (then upgrader -> methodology).
+  # ---- shared-core, gate layer -------------------------------------------------------------
+  # The gate-cycle methodology doc has been EXTRACTED to specfuse/methodology (Gate 1), so it
+  # is now core-canonical and vendored via the `methodology` upgrader — the reserved fold-in,
+  # now live. result-contract.md below stays loop-authored (the loop's surface RESULT shape).
 
   - id: methodology-gate-cycle
     category: shared-core
-    canonical_source: { repo: loop, path: docs/methodology.md }
-    authority: loop-authored
-    stability: moving
-    upgrader: loop-init
-    note: Gate-cycle definition; folds to specfuse/methodology once contracts stop moving.
+    canonical_source: { repo: specfuse, path: methodology/methodology.md }
+    authority: core-canonical
+    stability: stable
+    upgrader: methodology
+    note: Gate-cycle definition; extracted to specfuse/methodology (Gate 1). Loop leaves a pointer in docs/ and vendors from core.
     install:
       - { target: component, path: .specfuse/docs/methodology.md }
 
