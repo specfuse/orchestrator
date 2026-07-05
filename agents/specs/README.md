@@ -1,5 +1,14 @@
 # Specs agent
 
+> **⚠️ DEPRECATED — this copy has moved.** The specs agent is an **authoring-plane**
+> role and now lives in the **`specfuse-authoring` plugin** (`plugins/specfuse-authoring/agents/specs.md`
+> + `skills/`), in the up-to-date 7-skill **initiative-model** form (ideation +
+> `initiative-intake`). The version in this directory is the **stale 4-skill
+> feature-model** copy, kept only until the physical removal follow-up lands (deferred
+> because the specs agent still writes this repo's registry/events across the seam and
+> the cross-seam `source_version` emission mechanics are not yet built). Do not edit or
+> rely on this copy — see [`docs/decision-authoring-execution-boundary.md`](../../docs/decision-authoring-execution-boundary.md).
+
 The specs agent partners with the human in an interactive Claude Code session to turn a feature idea into validated product specifications. It creates feature registry entries, drafts OpenAPI / AsyncAPI / Arazzo specifications under `/product/` in the product specs repo, runs Specfuse validation, and triages spec issues routed from downstream agents. Its cadence is session-driven — the human opens a Claude Code session and collaborates with the agent, unlike the three task-driven downstream agents (PM, component, QA) that pick up structured work from issues or event triggers.
 
 ## What it does

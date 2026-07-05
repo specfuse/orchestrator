@@ -156,26 +156,43 @@ Depends on Gates 1–3: authoring vendors the core rules, so the specs agent's
    resolve to vendored core; orchestrator no longer ships specs; the initiative
    lifecycle still hands to pm at `planning`.
 
-## Gate 5 — Docs + cleanup
+**[Gate 4a DONE — PR specfuse/specfuse#25 merged]** specs agent + 7 skills landed
+in `plugins/specfuse-authoring/` (Option A — marketplace, where the authoring
+plugin lives). 89 cross-repo substrate links → prose; examples → `acme/*`; helper
+ref fixed. **Gate 4b (removal from orchestrator) DEFERRED → Option C** (see below):
+specs is a cross-seam substrate actor; full removal needs the emission mechanics
+built. Tracked by specfuse/orchestrator#62. Follow-ups: specfuse/specfuse#24
+(complete Model-B reframe in spec-drafting/validation), #23 (unify plugin sourcing).
 
-1. Fix `orchestrator-architecture.md`: specs is a **definition-plane (authoring)**
-   role; the registry is shared substrate the specs agent writes into at mint;
-   the state-vocab split is reflected in §6.
-2. Update the vision doc: **mint** = deploy-decision moment (authoring-side);
-   `planning` = plane handoff.
-3. Remove now-dead duplicated files across the three repos; confirm each shared
-   file has exactly one source (core) and N vendored copies.
-4. **Verify:** `diff` core vs each vendored copy = identical everywhere; no repo
-   references another repo's substrate by path.
+## Gate 5 — Docs + cleanup  **[DONE — the doc reframe; physical cleanup deferred]**
+
+1. **[done]** `orchestrator-architecture.md` §5.1/§5.2: specs reframed as the
+   **authoring-plane** role (configured in `specfuse-authoring`, not `/agents/`);
+   the plane boundary = `validating → planning`; mint = deploy-decision; the
+   registry is a cross-seam write. State ownership (§6.3) is unchanged (still
+   correct: specs owns `drafting → validating → planning`).
+2. **[done]** `orchestrator-vision.md`: `specfuse/authoring` = product-definition
+   plane; **mint** = deploy-decision moment; `planning` = plane handoff.
+3. **[done]** `agents/specs/README.md`: deprecation banner (stale 4-skill copy;
+   real one is in `specfuse-authoring`).
+4. **[deferred]** Physical removal of the deprecated `agents/specs/` +
+   dead-duplicate cleanup → specfuse/orchestrator#62 (needs cross-seam emission
+   mechanics first). Core-vs-vendored `diff` identity was verified per-gate as the
+   vendoring landed (Gates 2/3).
 
 ---
 
 ## One-look summary
 
-| Gate | Repo | Outcome |
-| --- | --- | --- |
-| 1 | `specfuse` | `methodology/` created; CORE rules+schemas+payloads land; correlation-ids = FEAT+INIT superset |
-| 2 | `loop` | vendors core; cross-repo `event.schema.json` path read deleted |
-| 3 | `orchestrator` | vendors core; state-vocab split (spine→core, task machine→local); keeps override/label/exec payloads |
-| 4 | `authoring` | specs agent + 7 skills land (from restomanager 7-skill version); removed from orchestrator |
-| 5 | all | docs corrected; dead duplicates removed; one source, N vendored copies |
+| Gate | Repo | Outcome | Status |
+| --- | --- | --- | --- |
+| 1 | `specfuse` | `methodology/` core stood up; correlation-ids = FEAT+INIT superset | ✅ merged (#22) |
+| 2 | `loop` | vendors core; cross-repo `event.schema.json` read deleted; `driver` gap closed | ✅ merged (#130) |
+| 3 | `orchestrator` | vendors core; manifest `methodology` upgrader triggered; state-vocab split | ✅ merged (#61) |
+| 4a | `authoring` | specs agent + 7 skills land (path-independent) | ✅ merged (#25) |
+| 4b | `orchestrator` | remove stale in-repo specs | ⏳ deferred (#62) |
+| 5 | docs | specs reframed authoring-plane; mint/handoff documented | ✅ this PR (deprecation banner + arch/vision) |
+
+Open follow-ups: specfuse/specfuse#23 (unify plugin sourcing), #24 (Model-B
+reframe), specfuse/orchestrator#62 (specs removal + cross-seam mechanics), and the
+`methodology` distributor (Track C2, declared but unbuilt).
