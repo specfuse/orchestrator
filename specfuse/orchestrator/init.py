@@ -43,7 +43,6 @@ except ImportError:
 
 from specfuse.orchestrator import paths
 
-SRC_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = paths.substrate("distribution", "ownership-manifest.yaml")
 # orchestrator-init ships the orchestrator's frozen substrate + manual stubs, AND the
 # core-methodology (`methodology` upgrader) entries — the shared substrate the orchestrator
@@ -325,10 +324,14 @@ def install_into(target: str, target_repo: Path, doc: dict, upgrade: bool, dry: 
     sync_labels(doc, target_repo, target, dry)
 
 
-def discover_repos() -> list[tuple[str, str]]:
-    """[(target, owner/repo)] from project/repos/*.md (components) + the product specs repo."""
+def discover_repos(state_root: Path) -> list[tuple[str, str]]:
+    """[(target, owner/repo)] from <state_root>/project/repos/*.md (components) + the product specs repo.
+
+    The repo list lives in the orchestration STATE repo (project/, features/), not in the
+    installed package — so it is resolved from `state_root`, not the package dir.
+    """
     out: list[tuple[str, str]] = []
-    repos_dir = SRC_ROOT / "project" / "repos"
+    repos_dir = state_root / "project" / "repos"
     for f in sorted(repos_dir.glob("*.md")):
         m = re.search(r"\*\*Repo:\*\*\s*`([^`]+)`", f.read_text())
         if m:
@@ -363,10 +366,10 @@ def main() -> int:
     ap.add_argument("target_repo", nargs="?", help="single-repo mode: path to the target repo")
     ap.add_argument("--all", action="store_true",
                     help="deploy to every known repo (components from project/repos/ + the specs repo); installs the loop kit into components too")
-    ap.add_argument("--repos-root", default=str(SRC_ROOT.parent),
-                    help="dir holding the repo checkouts (default: the orchestrator repo's parent)")
-    ap.add_argument("--loop-root", default=str(SRC_ROOT.parent.parent / "Specfuse" / "loop"),
-                    help="path to the specfuse/loop checkout (for --all loop-kit install)")
+    ap.add_argument("--repos-root", default=None,
+                    help="dir holding the sibling repo checkouts (default: the orchestration repo's parent)")
+    ap.add_argument("--loop-root", default=None,
+                    help="path to the specfuse/loop checkout (default: <orchestration-repo-parent>/loop)")
     ap.add_argument("--upgrade", action="store_true",
                     help="upgrade mode: overlay an existing install (default refuses if already present), and pass --upgrade to loop init.sh")
     ap.add_argument("--dry-run", action="store_true")
@@ -375,10 +378,18 @@ def main() -> int:
     doc = yaml.safe_load(MANIFEST.read_text())
 
     if args.all:
-        repos_root, loop_root = Path(args.repos_root), Path(args.loop_root)
+        # --all reads the repo list from the orchestration STATE repo and deploys to sibling
+        # checkouts; resolve those roots from state_root() unless explicitly overridden.
+        try:
+            sroot = paths.state_root()
+        except RuntimeError as e:
+            sys.stderr.write(f"error: --all must run from the orchestration repo: {e}\n")
+            return 2
+        repos_root = Path(args.repos_root) if args.repos_root else sroot.parent
+        loop_root = Path(args.loop_root) if args.loop_root else sroot.parent / "loop"
         log(f"orchestrator-init --all{' [dry-run]' if args.dry_run else ''}  "
             f"(repos-root={repos_root}, loop-root={loop_root})")
-        for target, slug in discover_repos():
+        for target, slug in discover_repos(sroot):
             checkout = repos_root / slug.split("/")[-1]
             log(f"\n=== {slug}  [{target}] -> {checkout} ===")
             if not checkout.is_dir():
