@@ -161,9 +161,12 @@ MARKER = "## Specfuse binding context"
 
 
 def wire_claude(target_repo: Path, rule_paths: list[str], target: str, dry: bool) -> None:
-    """Bridge the `.specfuse/` config tree into `.claude/` (loop wire_claude_code pattern):
-    @import the binding rules + the role's CLAUDE.md, and symlink the role's skills into
-    .claude/skills/. `.specfuse/` is the single config home; `.claude/` holds only bridges."""
+    """Bridge the `.specfuse/` config tree into `.claude/`: @import the binding rules.
+
+    Agent role prompts are NOT scaffolded — they ship in the `specfuse-orchestrator`
+    plugin (adoption §5: the plugin is the sole home of agent prompts). The role
+    CLAUDE.md @import and skill symlinks below stay only as a defensive, `.exists()`-
+    guarded fallback for a hand-placed `.specfuse/agents/<role>/`; nothing scaffolds one."""
     claude = target_repo / ".claude"
     md = claude / "CLAUDE.md"
     role = target  # component | specs

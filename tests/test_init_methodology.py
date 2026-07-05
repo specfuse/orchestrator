@@ -85,6 +85,19 @@ def test_discover_repos_reads_from_state_root(tmp_path):
     assert len([r for r in found if r[0] == "component"]) == 2
 
 
+def test_no_agent_config_is_scaffolded():
+    """Adoption §5: agent role prompts ship in the plugin, not scaffolded into any
+    consumer. No manifest install slot targets .specfuse/agents/<role>/."""
+    slots = [
+        i["path"]
+        for e in _manifest()["entries"]
+        for i in e.get("install", [])
+    ]
+    assert not [p for p in slots if p.startswith(".specfuse/agents/")], (
+        "an agent config is still scaffolded; the plugin should be the sole home"
+    )
+
+
 def test_install_entry_ships_methodology_doc(tmp_path):
     target = tmp_path / "component"
     entry = {
