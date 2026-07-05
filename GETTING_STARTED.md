@@ -4,51 +4,56 @@ Get from "I want to try the Specfuse orchestrator" to "ready to draft my first f
 
 ## Prerequisites
 
-- `git` and the [`gh` CLI](https://cli.github.com), authenticated against your private GitHub org (`gh auth status` should pass).
 - [Claude Code CLI](https://claude.com/claude-code) installed.
 - Python 3 with `pip`.
 - `pip install specfuse-orchestrator` (published on [PyPI](https://pypi.org/project/specfuse-orchestrator/)). To install the whole suite instead: `pipx install specfuse[orchestrator]`.
 - (Recommended) The [Specfuse validator CLI](https://specfuse.dev) on `$PATH`, so spec validation in the pipeline isn't simulated.
+- `git` and the [`gh` CLI](https://cli.github.com) are **optional** — needed only later, if and when you put the state under version control or wire the merge-watcher CI. You do not need them to start.
 
-## The 5-minute path — same for greenfield and brownfield
+## The principle: you hold *state*, the wheel holds *tooling*
 
-```bash
-pip install specfuse-orchestrator
-specfuse-orchestrator init my-product-orchestration
-```
+The tooling — drivers, CLI, agents, and the frozen substrate (schemas, rules, templates, agent versions) — ships **inside the installed wheel + the `specfuse-orchestrator@specfuse` plugin** and is resolved at runtime. Your **state** — `features/`, `events/`, `project/`, `inbox/`, `overrides/`, `roadmap.md` — is plain files you own, kept wherever you like. Upgrades touch only the tooling, never your state.
 
-`specfuse-orchestrator init <dir>` git-inits a fresh state repo at `<dir>` and, in one pass:
+## The 5-minute path
 
-- Scaffolds the user-owned state directories: `features/`, `events/`, `project/`, `inbox/`, `overrides/`, and a starter `roadmap.md`.
-- Wires `.claude/` — the `specfuse/specfuse` marketplace, the `specfuse-orchestrator@specfuse` plugin, and a deny-specs-edit hook.
-- Writes a personalized `project/NEXT_STEPS.md` with your exact next commands.
+1. **Install the tooling.**
+   ```bash
+   pip install specfuse-orchestrator
+   ```
+2. **Install the plugin** in Claude Code: `/plugin install specfuse-orchestrator@specfuse`.
+3. **Pick where your state lives, then `init` it** — location-agnostic, no git or GitHub required:
+   ```bash
+   specfuse-orchestrator init <path>
+   ```
 
-The frozen substrate (`shared/**` — schemas, rules, templates) ships **inside the installed wheel** and is resolved at runtime; it is not copied into your state repo, so upgrades are clean.
+   | Shape | `<path>` | Best for |
+   |---|---|---|
+   | **Dedicated repo** | a new folder | multi-repo products, teams wanting clean separation |
+   | **Subdirectory** | `orchestration/` inside an existing repo | monorepos, "keep it near the code" |
+   | **Local-first** | any plain folder | evaluation, offline, "just try it" — promote later |
 
-### Create and push the GitHub repo (manual operator step)
+   `init` scaffolds the state directories, wires `.claude/` (marketplace + plugin), and writes a personalized `project/NEXT_STEPS.md`. It does **not** run `git init` or create a GitHub repo; if `<path>` is already inside a git repo it leaves git alone.
+4. **`/onboard`** in a Claude Code session at `<path>` — the agent captures your repo topology (mono / multi / single) and product layout.
+5. ***Optional, when ready:*** put the state under version control, give it its own GitHub repo, or wire the `merge-watcher` CI. Each is a documented one-liner in `NEXT_STEPS.md`, not a precondition — for example a dedicated repo:
+   ```bash
+   cd <path> && git init && gh repo create <org>/<name> --private --source=. --push
+   ```
 
-`init` does **not** create the GitHub repo. Do it yourself after `init`:
-
-```bash
-cd my-product-orchestration
-gh repo create <your-org>/my-product-orchestration --private --source=. --push
-```
-
-After that, **everything you need to do next is in `project/NEXT_STEPS.md`** — read that, not generic docs.
+**Everything you need next is in `project/NEXT_STEPS.md`** — read that, not generic docs.
 
 ## What you'll have
 
-- A fresh, git-initialized orchestration repo for your project (its own new repo — you license it however you want).
-- The five agents (specs, PM, component, QA, onboarding) available through the `specfuse-orchestrator@specfuse` plugin.
-- The frozen substrate resolved from the installed `specfuse-orchestrator` wheel.
+- Your orchestration **state** at `<path>` — a plain directory (put it under git/GitHub whenever you choose, or not).
+- The execution-plane agents (**PM, component, QA, onboarding**) via the `specfuse-orchestrator@specfuse` plugin. (The **specs** agent is the product-definition plane — it ships in the separate `specfuse-authoring` plugin and hands a validated initiative to the orchestrator at `planning`.)
+- The frozen substrate + agent versions resolved from the installed `specfuse-orchestrator` wheel — nothing vendored into your state.
 - A personalized `project/NEXT_STEPS.md` with your exact next commands.
 
 ## What's next
 
-Open a Claude Code session at the orchestration repo, install the plugin, and invoke `/onboard`:
+Open a Claude Code session at your state directory (`<path>`) and invoke `/onboard`:
 
 ```bash
-cd my-product-orchestration
+cd <path>
 claude
 ```
 
@@ -59,7 +64,7 @@ Then in the Claude Code session:
 /onboard
 ```
 
-`/plugin install specfuse-orchestrator@specfuse` (already in the `specfuse/specfuse` marketplace) gives you the five agents plus the `/onboard` skill. The onboarding agent then picks the right skill based on your project type:
+`/plugin install specfuse-orchestrator@specfuse` (already in the `specfuse/specfuse` marketplace) gives you the four execution-plane agents (PM, component, QA, onboarding) plus the `/onboard` skill. The onboarding agent then picks the right skill based on your project type:
 
 - **Greenfield** → `bootstrap-greenfield` skill produces `project/bootstrap-checklist.md` with environment prereqs, repo-creation order, per-repo conventions, and first-feature scoping.
 - **Brownfield** → `repo-inventory` skill walks each of your existing repos and produces per-repo readiness assessments. After that, run `/onboard` again — the agent then routes you to `integration-plan` to draft a phased rollout.
@@ -72,14 +77,14 @@ When a new `specfuse-orchestrator` release ships, upgrade in place:
 
 ```bash
 pip install -U specfuse-orchestrator
-specfuse-orchestrator upgrade my-product-orchestration
+specfuse-orchestrator upgrade <path>
 ```
 
 `upgrade` re-syncs the substrate from the newly-installed wheel and refreshes the `.claude` wiring. Your state (`features/`, `events/`, `project/`, `inbox/`, `overrides/`) is untouched.
 
 ## Slash commands you'll use
 
-In a Claude Code session at the orchestration repo, the plugin provides one slash command:
+In a Claude Code session at your state directory, the plugin provides one slash command:
 
 | Command | What it does |
 |---|---|
