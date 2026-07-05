@@ -190,7 +190,7 @@ built. Tracked by specfuse/orchestrator#62. Follow-ups: specfuse/specfuse#24
 | 2 | `loop` | vendors core; cross-repo `event.schema.json` read deleted; `driver` gap closed | ✅ merged (#130) |
 | 3 | `orchestrator` | vendors core; manifest `methodology` upgrader triggered; state-vocab split | ✅ merged (#61) |
 | 4a | `authoring` | specs agent + 7 skills land (path-independent) | ✅ merged (#25) |
-| 4b | `orchestrator` | remove stale in-repo specs | ⏳ deferred (#62) |
+| 4b | `orchestrator` | remove stale in-repo specs | ✅ done (#62) — cleaner than feared: specs already emits `source_version: n/a`, so no cross-seam mechanics to build; deleted `agents/specs/` + plugin copy, retired the `specs-agent-config` manifest fragment, rewired `spec_issue_dispatcher` to the plugin skill. `source: specs`/transition-ownership kept. |
 | 5 | docs | specs reframed authoring-plane; mint/handoff documented | ✅ this PR (deprecation banner + arch/vision) |
 
 Open follow-ups: specfuse/specfuse#23 (unify plugin sourcing), #24 (Model-B

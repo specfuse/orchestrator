@@ -17,7 +17,8 @@ MANIFEST_PATH = PLUGIN_ROOT / ".claude-plugin" / "plugin.json"
 AGENTS_DIR = PLUGIN_ROOT / "agents"
 
 REQUIRED_KEYS = {"name", "version", "description", "author", "license"}
-EXPECTED_AGENT_NAMES = {"specs", "pm", "component", "qa", "onboarding"}
+# specs is authoring-plane — it ships in the specfuse-authoring plugin, not here.
+EXPECTED_AGENT_NAMES = {"pm", "component", "qa", "onboarding"}
 REQUIRED_AGENT_FRONTMATTER_KEYS = {"name", "description"}
 REQUIRED_SKILL_FRONTMATTER_KEYS = {"name", "description"}
 
@@ -43,7 +44,7 @@ def test_plugin_manifest_valid():
 def test_agents_present():
     assert AGENTS_DIR.is_dir()
     agent_files = sorted(AGENTS_DIR.glob("*.md"))
-    assert len(agent_files) == 5, f"expected exactly 5 agent files, found {len(agent_files)}"
+    assert len(agent_files) == len(EXPECTED_AGENT_NAMES), f"expected {len(EXPECTED_AGENT_NAMES)} agent files, found {len(agent_files)}"
     assert {f.stem for f in agent_files} == EXPECTED_AGENT_NAMES
 
     for path in agent_files:

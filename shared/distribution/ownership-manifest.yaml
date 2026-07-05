@@ -318,17 +318,13 @@ entries:
     install:
       - { target: component, path: .specfuse/agents/component/ }
 
-  - id: specs-agent-config
-    category: orchestrator-owned
-    canonical_source:
-      repo: orchestrator
-      path: agents/specs/
-      exclude: [version.md, README.md, rules]
-    authority: orchestrator-frozen
-    stability: stable
-    upgrader: orchestrator-init
-    install:
-      - { target: specs, path: .specfuse/agents/specs/ }
+  # specs-agent-config RETIRED: the specs agent is authoring-plane and is now
+  # distributed via the `specfuse-authoring` plugin (installed by the operator),
+  # not scaffolded into the specs repo by orchestrator-init. It remains a substrate
+  # actor (source: specs in the event schema; owns drafting → validating → planning
+  # in state-vocabulary) and writes this repo's registry/events across the seam,
+  # emitting source_version "n/a" like any session-driven external actor. See
+  # docs/decision-authoring-execution-boundary.md.
 
   - id: merge-watcher
     category: orchestrator-owned

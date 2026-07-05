@@ -35,7 +35,9 @@ from specfuse.orchestrator import paths
 DEFAULT_SLUG = "acme/specs-sample"
 SPEC_LABEL = "specfuse:spec-issue"
 BUSY_LABEL = "specfuse:in-triage"
-TRIAGE_SKILL = ".specfuse/agents/specs/skills/spec-issue-triage/SKILL.md"
+# The specs agent is authoring-plane: its spec-issue-triage skill ships in the
+# specfuse-authoring plugin (invoked by name), not scaffolded into the specs repo.
+TRIAGE_SKILL = "the `spec-issue-triage` skill (specfuse-authoring plugin)"
 
 
 def open_spec_issues(slug: str) -> list[dict]:
@@ -61,7 +63,7 @@ def dispatch_one(slug: str, specs_path: Path, issue: dict, model: str | None, dr
                    capture_output=True, text=True)
     prompt = (
         f"You are the specs agent for {slug}. Triage spec issue #{num} (label {SPEC_LABEL}). "
-        f"Read {TRIAGE_SKILL} and follow it exactly: read the issue body (Observation / Location / "
+        f"Use {TRIAGE_SKILL} and follow it exactly: read the issue body (Observation / Location / "
         f"Triggering task / Suggested resolution), decide spec-content-fix-in-/product vs "
         f"route-to-generator, execute, emit the spec_issue_resolved/routed event, and close issue "
         f"#{num} with a resolution comment. If anything is ambiguous or needs a human decision, "
@@ -98,11 +100,9 @@ def main() -> int:
         if not specs_path.is_dir():
             sys.stderr.write(f"error: specs checkout not found: {specs_path}\n")
             return 2
-        if not (specs_path / TRIAGE_SKILL).is_file():
-            sys.stderr.write(
-                f"error: {TRIAGE_SKILL} missing in {specs_path} — run "
-                f"orchestrator-init --target specs first\n")
-            return 2
+        # The triage skill now ships in the specfuse-authoring plugin (invoked by
+        # name in the spawned session), so there is no scaffolded skill file to
+        # preflight here — the session must have that plugin installed.
 
     def one() -> None:
         print(f"spec-issue-dispatcher @ {args.specs_repo}{' [dry-run]' if args.dry_run else ''}")
