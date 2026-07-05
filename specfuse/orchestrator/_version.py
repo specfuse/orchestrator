@@ -47,7 +47,7 @@ def main(argv=None) -> int:
         prog="python3 -m specfuse.orchestrator._version",
         description="Print the current version marker for an agent role.",
     )
-    ap.add_argument("role", help="agent role, e.g. pm / specs / component / qa")
+    ap.add_argument("role", help="agent role, e.g. pm / component / qa")
     ap.add_argument("--repo", default=None,
                     help="repo root holding agents/ (default: resolved state root)")
     args = ap.parse_args(argv)
