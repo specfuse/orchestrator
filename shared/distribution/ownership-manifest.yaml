@@ -300,23 +300,16 @@ entries:
   # repo and is NOT distributed (no install target).
   # ========================================================================================
 
-  - id: component-agent-config
-    category: orchestrator-owned
-    canonical_source:
-      repo: orchestrator
-      path: agents/component/                # CLAUDE.md + skills/
-      exclude: [version.md, README.md, rules]  # version churn / cold-open / empty overrides dir
-    authority: orchestrator-frozen
-    stability: stable
-    upgrader: orchestrator-init
-    note: >
-      Reframed for Model B (component v1.6.0): the component-LOOP performs the grind; the
-      verification/pr-submission/escalation skills here are the CONTRACT the loop honors (+ the
-      fallback when no loop is installed). The role's distinct live job narrows to codegen
-      override reconciliation (architecture §9.3; loop is codegen-free). Kept (not retired) —
-      full retirement of the grind config awaits Track B's gate-cycle proof.
-    install:
-      - { target: component, path: .specfuse/agents/component/ }
+  # component-agent-config RETIRED (adoption §5): the component agent role prompt is now
+  # sourced solely from the `specfuse-orchestrator` plugin (self-contained
+  # plugins/specfuse-orchestrator/agents/component.md) — the same way pm/qa/onboarding
+  # already run. The component-loop launches a `claude -p` session with that plugin
+  # installed, so the plugin IS both the contract the loop honors and the no-loop fallback;
+  # a scaffolded .specfuse/agents/component/ is redundant. The prior note deferred full
+  # retirement to "Track B's gate-cycle proof" — that has landed (the loop is released,
+  # drift-guarded, in production). Component repos still vendor .specfuse/rules/ for the
+  # loop grind; no agent config is scaffolded into any consumer, so the plugin is the sole
+  # home of every agent prompt.
 
   # specs-agent-config RETIRED: the specs agent is authoring-plane and is now
   # distributed via the `specfuse-authoring` plugin (installed by the operator),
