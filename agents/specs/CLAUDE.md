@@ -13,6 +13,7 @@ Before acting on any task — including when switching into this role from anoth
 - [`never-touch.md`](../../shared/rules/never-touch.md)
 - [`override-registry.md`](../../shared/rules/override-registry.md)
 - [`escalation-protocol.md`](../../shared/rules/escalation-protocol.md)
+- [`verification-discipline.md`](../../shared/rules/verification-discipline.md) — surface-neutral core four-step cycle (state intent → act → verify → report); `verify-before-report.md` is the orchestrator's expression of it.
 - [`verify-before-report.md`](../../shared/rules/verify-before-report.md)
 - [`role-switch-hygiene.md`](../../shared/rules/role-switch-hygiene.md) — re-read `/shared/rules/*` unconditionally at the start of every task, including at role-switches within a single session. Absorbs Phase 1 retrospective Finding 6.
 - [`security-boundaries.md`](../../shared/rules/security-boundaries.md)

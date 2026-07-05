@@ -17,6 +17,7 @@ Before acting on any task, read the full shared rule set under [`/shared/rules/`
 - [`never-touch.md`](../../shared/rules/never-touch.md)
 - [`override-registry.md`](../../shared/rules/override-registry.md)
 - [`escalation-protocol.md`](../../shared/rules/escalation-protocol.md)
+- [`verification-discipline.md`](../../shared/rules/verification-discipline.md) — surface-neutral core four-step cycle (state intent → act → verify → report); `verify-before-report.md` is the orchestrator's expression of it.
 - [`verify-before-report.md`](../../shared/rules/verify-before-report.md)
 - [`role-switch-hygiene.md`](../../shared/rules/role-switch-hygiene.md)
 - [`security-boundaries.md`](../../shared/rules/security-boundaries.md)

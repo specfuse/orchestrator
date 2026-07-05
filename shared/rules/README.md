@@ -4,16 +4,34 @@ Prose-form rules that every operational agent in the orchestrator reads before a
 
 Prose lives here; the machine contracts it references live in [`/shared/schemas/`](../schemas/README.md), and the document shapes live in [`/shared/templates/`](../templates/README.md). When a rule and a schema or template disagree, the schema or template wins — those artifacts are machine-enforced.
 
+## Provenance — core-vendored vs orchestrator-local
+
+Some of these files are **vendored from the core Specfuse methodology substrate**
+(`specfuse/methodology/`, the single cross-surface source of truth shared with the
+loop and authoring). **Do not edit the vendored files here — edit them in core and
+re-vendor**, or the copies drift. The rest are authored locally because they are
+orchestrator (execution-plane) specifics.
+
+- **Core-vendored** (edit in core): `correlation-ids.md`, `never-touch.md`,
+  `security-boundaries.md`, `verification-discipline.md`, `role-switch-hygiene.md`.
+- **Orchestrator-local** (edit here): `state-vocabulary.md` (task machine +
+  per-role transition ownership; the shared lifecycle spine is in core's
+  `glossary.md`), `verify-before-report.md` (the orchestrator's event-log
+  expression of the core `verification-discipline.md`), `escalation-protocol.md`
+  (the orchestrator inbox model), `override-registry.md` (a codegen/component
+  concept with no core analogue).
+
 ## Contents
 
-- [`correlation-ids.md`](correlation-ids.md) — the `FEAT-YYYY-NNNN` and `FEAT-YYYY-NNNN/TNN` scheme: format, where it must appear, how to mint the next one, and the failure modes for malformed IDs.
-- [`state-vocabulary.md`](state-vocabulary.md) — the feature and task state machines, the meaning of each state, and which role owns the entry transition into each one. Mirrors architecture §6.3.
-- [`never-touch.md`](never-touch.md) — the five prohibition categories: generated code directories, branch protection configuration, secrets and credentials, `/business/` in the product specs repo, and `.git/` contents.
-- [`override-registry.md`](override-registry.md) — how overrides to generated code are authorized, recorded, reconciled, and retired, per architecture §9.3. Reconciliation is the owning component agent's responsibility in the initial model.
-- [`escalation-protocol.md`](escalation-protocol.md) — how agents raise inbox files for human attention: the closed enum of reasons, the state-machine effects, and the expected human response loop.
-- [`verify-before-report.md`](verify-before-report.md) — the four-step discipline every agent follows: state intent, act, verify, report structured output. Reporting completion without verification is forbidden.
-- [`role-switch-hygiene.md`](role-switch-hygiene.md) — re-read `/shared/rules/*` unconditionally at the start of every task, including at role-switches within a single session. Prerequisite to the four-step cycle in `verify-before-report.md`.
-- [`security-boundaries.md`](security-boundaries.md) — read and write surfaces, secrets handling, and the response when a task appears to require privileged access.
+- [`correlation-ids.md`](correlation-ids.md) — **[core]** the `FEAT-YYYY-NNNN` (component-local) and `INIT-YYYY-NNNN[/FNN][/TNN]` (orchestrated) scheme: format, where it must appear, how to mint the next one, and the failure modes for malformed IDs.
+- [`state-vocabulary.md`](state-vocabulary.md) — **[local]** the feature and task state machines, the meaning of each state, and which role owns the entry transition into each one. Mirrors architecture §6.3; the shared lifecycle spine is defined in core `methodology/glossary.md`.
+- [`never-touch.md`](never-touch.md) — **[core]** the prohibition categories: generated code directories, secrets and credentials, and `.git/` contents (surface-aware).
+- [`override-registry.md`](override-registry.md) — **[local]** how overrides to generated code are authorized, recorded, reconciled, and retired, per architecture §9.3. Reconciliation is the owning component agent's responsibility in the initial model.
+- [`escalation-protocol.md`](escalation-protocol.md) — **[local]** how agents raise inbox files for human attention: the closed enum of reasons, the state-machine effects, and the expected human response loop.
+- [`verification-discipline.md`](verification-discipline.md) — **[core]** the surface-neutral four-step cycle (state intent → act → verify → report), verification as exit oracle, blocked-is-respectable. `verify-before-report.md` extends it for the orchestrator surface.
+- [`verify-before-report.md`](verify-before-report.md) — **[local]** the orchestrator's event-log expression of the core discipline: event validation, `source_version`, the JSONL append discipline. Reporting completion without verification is forbidden.
+- [`role-switch-hygiene.md`](role-switch-hygiene.md) — **[core]** re-read the shared rule set unconditionally at the start of every task, including at role-switches within a single session. Prerequisite to the four-step cycle.
+- [`security-boundaries.md`](security-boundaries.md) — **[core]** read and write surfaces, secrets handling, and the response when a task appears to require privileged access.
 
 ## How these files are used
 

@@ -2,6 +2,8 @@
 
 Two state machines govern work in the orchestrator: one for features, one for tasks. Every agent pattern-matches on the state names and transition owners listed here, so exact wording is load-bearing.
 
+**This is the orchestrator (execution) surface's state doc.** The shared lifecycle *spine* — the `drafting → validating → planning → … → done` state names common across surfaces — is defined canonically in the core methodology substrate (`methodology/glossary.md` §"Lifecycle states" and `methodology/methodology.md`). This file layers the orchestrator's **task state machine** and the **per-role transition ownership** (specs, pm, component, qa, merge-watcher) on top of that spine — both of which are execution-plane specifics that stay local and do not belong in core.
+
 **Architecture §6 is normative.** This file mirrors the state machines and transition ownership in architecture §6.1–§6.3 for agents that pull `/shared/rules/` into context. If this file and the architecture document disagree, the architecture wins and this file is wrong.
 
 ## Feature states
