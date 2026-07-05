@@ -41,9 +41,42 @@ except ImportError:
     sys.stderr.write("error: pyyaml required (pip install specfuse-orchestrator)\n")
     sys.exit(2)
 
+from specfuse.orchestrator import paths
+
 SRC_ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = SRC_ROOT / "shared" / "distribution" / "ownership-manifest.yaml"
-SHIP_UPGRADERS = {"orchestrator-init", "manual"}
+MANIFEST = paths.substrate("distribution", "ownership-manifest.yaml")
+# orchestrator-init ships the orchestrator's frozen substrate + manual stubs, AND the
+# core-methodology (`methodology` upgrader) entries — the shared substrate the orchestrator
+# vendors from specfuse/methodology and re-ships to component/specs repos (Track C2).
+SHIP_UPGRADERS = {"orchestrator-init", "manual", "methodology"}
+
+
+def _resolve_source(cs: dict) -> Path:
+    """Filesystem path to an entry's source inside the packaged substrate.
+
+    The wheel ships the substrate under `specfuse/orchestrator/_substrate/` (a build-time
+    mirror of `shared/`), resolved via `paths.substrate()`. Entry `canonical_source.path`
+    values are repo-relative, so strip the leading `shared/` prefix.
+
+    Core-methodology entries declare `repo: specfuse, path: methodology/...` — their
+    canonical home is the specfuse/methodology core, but the orchestrator vendors that
+    substrate into its own `shared/` tree (rules → shared/rules, schemas → shared/schemas,
+    the gate-cycle doc → shared/docs). Remap those onto the local vendored copy so init can
+    ship them without a checkout of the core repo.
+    """
+    path = cs["path"]
+    if cs.get("repo") == "specfuse":
+        if path.startswith("methodology/rules/"):
+            rel = "rules/" + path[len("methodology/rules/"):]
+        elif path.startswith("methodology/schemas/"):
+            rel = "schemas/" + path[len("methodology/schemas/"):]
+        elif path in ("methodology/methodology.md", "methodology/glossary.md"):
+            rel = "docs/" + path[len("methodology/"):]
+        else:
+            rel = path[len("methodology/"):]
+    else:
+        rel = path[len("shared/"):] if path.startswith("shared/") else path
+    return paths.substrate(*rel.split("/"))
 
 # Stub content seeded for `manual` entries, keyed by entry id.
 MANUAL_STUBS = {
@@ -89,7 +122,7 @@ def copy_tree(src: Path, dst: Path, dry: bool, exclude: set[str]) -> None:
 
 def install_entry(entry: dict, install: dict, dry: bool) -> None:
     cs = entry["canonical_source"]
-    src = SRC_ROOT / cs["path"]
+    src = _resolve_source(cs)
     dst = Path(install["_target_repo"]) / install["path"]
 
     if entry["upgrader"] == "manual":
