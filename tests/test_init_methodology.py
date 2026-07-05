@@ -67,6 +67,24 @@ def test_install_entry_copies_a_methodology_rule(tmp_path):
     assert dst.read_text() == paths.substrate("rules", "correlation-ids.md").read_text()
 
 
+def test_discover_repos_reads_from_state_root(tmp_path):
+    """--all discovery reads project/repos/*.md from the orchestration STATE repo,
+    not from the installed package (the old SRC_ROOT bug)."""
+    repos = tmp_path / "project" / "repos"
+    repos.mkdir(parents=True)
+    (repos / "api.md").write_text("# api\n\n**Repo:** `acme/api`\n")
+    (repos / "web.md").write_text("# web\n\n**Repo:** `acme/web`\n")
+    (repos / "notes.md").write_text("no repo marker here\n")  # ignored
+
+    found = init.discover_repos(tmp_path)
+
+    assert ("component", "acme/api") in found
+    assert ("component", "acme/web") in found
+    assert any(t == "specs" for t, _ in found)  # the product specs repo is appended
+    # the marker-less file contributed nothing
+    assert len([r for r in found if r[0] == "component"]) == 2
+
+
 def test_install_entry_ships_methodology_doc(tmp_path):
     target = tmp_path / "component"
     entry = {
