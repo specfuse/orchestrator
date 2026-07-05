@@ -12,8 +12,8 @@ It is deliberately small. It is not a platform. It is a set of conventions, prom
 
 The orchestrator takes a feature from its specification all the way to merged code across the repositories that implement it. Along the way:
 
-- A **specs agent** helps draft and validate the feature's specifications.
-- A **planning agent** breaks the feature into tasks, arranges their dependencies, and produces a plan the human can edit before anything is built.
+- A **specs agent** helps draft and validate the initiative's specifications. It is the **product-definition (authoring) plane** and lives in the companion `specfuse-authoring` project — the orchestrator's work begins when a validated initiative is handed over at `planning`.
+- A **planning agent** breaks the initiative into tasks, arranges their dependencies, and produces a plan the human can edit before anything is built.
 - **Component agents** pick up tasks in the individual repositories they own and produce pull requests.
 - A **QA agent** authors test plans, executes them, and curates regression suites.
 
@@ -27,10 +27,11 @@ Humans keep the judgment calls. Agents handle the mechanical work between them.
 
 Specfuse is an organization and a methodology. Under its umbrella live several companion projects, each independently adoptable:
 
+- **specfuse/authoring** is the **product-definition plane**: it turns a product idea into a validated initiative (ideation, spec drafting, Specfuse validation). Its specs agent owns everything up to the `planning` handoff — the point at which a *minted* initiative is transferred to the execution plane. Minting an initiative is the human's deploy-decision moment.
 - **specfuse/codegen** produces deterministic source code from OpenAPI, AsyncAPI, and Arazzo specifications. It handles the boilerplate no one should be writing by hand and no agent should be hallucinating.
-- **specfuse/orchestrator** — this project — coordinates the agents and humans who handle the work that *isn't* boilerplate: the business logic, the tests, the reviews, the decisions.
+- **specfuse/orchestrator** — this project — is the **execution plane**: it coordinates the agents and humans who handle the work that *isn't* boilerplate: the business logic, the tests, the reviews, the decisions. It picks up a validated initiative at `planning` and drives it to merged code.
 
-The two fit together. Codegen gives agents a stable, regenerable foundation so they can focus on what only humans-and-agents can do. The orchestrator gives that work structure so it doesn't collapse into chaos when the number of agents and repositories grows.
+These fit together. Codegen gives agents a stable, regenerable foundation so they can focus on what only humans-and-agents can do. The orchestrator gives that work structure so it doesn't collapse into chaos when the number of agents and repositories grows.
 
 You can use either project without the other. They share vocabulary where it helps, and stay out of each other's way otherwise.
 

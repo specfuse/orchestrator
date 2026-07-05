@@ -125,15 +125,24 @@ Test plans live in the product specs repo under `/product/test-plans/`. The QA a
 
 ### 5.1 Roles
 
-Four operational agent roles perform the work; a fifth meta-role handles configuration hygiene.
+Work spans **two planes** (see [`decision-authoring-execution-boundary.md`](decision-authoring-execution-boundary.md)):
 
-- **Specs agent** — helps the human draft specifications and runs Specfuse validation. Reads and writes `/product/`.
+- The **product-definition (authoring) plane** turns a product idea into a validated initiative. Its single role is the **specs agent**, which now lives in the **`specfuse-authoring` plugin**, not in this repo's `/agents/`. It is session-driven and human-led.
+- The **execution plane** — this orchestrator — turns a validated initiative into merged code. Its roles (PM, component, QA, config-steward) run here.
+
+The boundary between the planes is the **`validating → planning` handoff** (specs → PM). Minting an initiative (`INIT-YYYY-NNNN`) is the human's deploy-decision moment, on the definition side; the specs agent writes the minted initiative into *this* repo's registry as a cross-seam write, then hands off.
+
+Four execution-plane agent roles perform the downstream work; a fifth meta-role handles configuration hygiene. The specs agent is listed here for completeness as the upstream producer, but it is authoring-plane and configured in the `specfuse-authoring` plugin.
+
+- **Specs agent** *(authoring plane — configured in the `specfuse-authoring` plugin)* — partners with the human to turn an initiative idea into a validated specification: ideation, initiative intake/mint, spec drafting, Specfuse validation, and spec-issue triage. Reads and writes `/product/`; writes the initiative registry/events in this orchestration repo across the seam. Owns `drafting → validating → planning`, then hands to the PM. Its config and skills are **not** under this repo's `/agents/specs/` (that stale copy is deprecated and slated for removal once the cross-seam emission mechanics are built — see the removal follow-up issue).
 - **PM agent** — converts validated specs into a task graph, collaborates with the human on work unit prompts, creates GitHub issues, and recomputes task dependencies on every completion.
 - **Component agent** — one instance per component repository; picks up ready issues, writes code, opens PRs. Reads `/product/`; writes to hand-written code paths in its component repo.
 - **QA agent** — authors test plans, executes them, curates regression suites. Writes `/product/test-plans/`, logs execution results to the event log, and opens regression issues in component repos.
 - **Config-steward agent** — a meta-agent that watches commits to `/agents/` and `/shared/`, proposes version bumps and changelog lines, and commits them alongside the original change. See §5.4.
 
 ### 5.2 Configuration layout
+
+This applies to the **execution-plane** roles (PM, component, QA, config-steward). The authoring-plane specs agent is configured in the `specfuse-authoring` plugin, not here; the deprecated `/agents/specs/` copy remains only until its removal follow-up lands.
 
 Each operational role has a directory under `/agents/`:
 
