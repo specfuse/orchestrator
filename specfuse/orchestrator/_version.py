@@ -1,16 +1,41 @@
-"""Agent version marker reader.
+"""Agent version resolution for the `source_version` event field.
 
-Reads the "Current version: **X.Y.Z**" marker line from
-<repo>/agents/<role>/version.md, used to fill the `source_version` field on
-events at emission time.
+The version of the agent role that emitted an event is resolved from the
+**installed package** — the versions baked into `_substrate/agent-versions.json`
+at build time (adoption §5: a consumer holds only state, the tooling/versions
+ship in the wheel). `read_agent_version()` remains for the state-repo case
+(`--repo`), reading the "Current version: **X.Y.Z**" marker from
+<repo>/agents/<role>/version.md.
 """
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
 _VERSION_LINE_RE = re.compile(r"^Current version: \*\*([^*]+)\*\*$", re.MULTILINE)
+
+
+def resolve_agent_version(role: str) -> str:
+    """Return `role`'s version from the packaged agent-versions map.
+
+    Reads `_substrate/agent-versions.json` (baked from agents/<role>/version.md at
+    build time). Raises KeyError for an unknown role, FileNotFoundError if the map
+    is absent (an unbuilt source tree — run the build or sync _substrate).
+    """
+    from specfuse.orchestrator import paths
+
+    map_path = paths.substrate("agent-versions.json")
+    if not map_path.is_file():
+        raise FileNotFoundError(
+            f"packaged agent-versions map not found at {map_path} "
+            "(unbuilt source tree? the hatch build hook generates it)"
+        )
+    versions = json.loads(map_path.read_text(encoding="utf-8"))
+    if role not in versions:
+        raise KeyError(f"unknown agent role {role!r}; known: {sorted(versions)}")
+    return versions[role]
 
 
 def read_agent_version(repo: Path | str, role: str) -> str:
@@ -49,14 +74,18 @@ def main(argv=None) -> int:
     )
     ap.add_argument("role", help="agent role, e.g. pm / component / qa")
     ap.add_argument("--repo", default=None,
-                    help="repo root holding agents/ (default: resolved state root)")
+                    help="resolve from <repo>/agents/<role>/version.md instead of the "
+                         "installed package (state-repo / dev override)")
     args = ap.parse_args(argv)
-    if args.repo is not None:
-        repo = args.repo
-    else:
-        from specfuse.orchestrator import paths
-        repo = paths.state_root()
-    print(read_agent_version(repo, args.role))
+    import sys
+    try:
+        if args.repo is not None:
+            print(read_agent_version(args.repo, args.role))
+        else:
+            print(resolve_agent_version(args.role))
+    except (KeyError, FileNotFoundError, ValueError) as e:
+        sys.stderr.write(f"error: {e}\n")
+        return 2
     return 0
 
 
