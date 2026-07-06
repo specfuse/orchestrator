@@ -41,6 +41,7 @@ jobs:
           /tmp/relenv/bin/python -m pip install "${WHEEL}[dev]"
           /tmp/relenv/bin/python -c "from specfuse.orchestrator import cli, paths; print('import OK')"
           /tmp/relenv/bin/specfuse-orchestrator --help >/dev/null
+          /tmp/relenv/bin/specfuse-orchestrator --version >/dev/null
           /tmp/relenv/bin/specfuse-poller --help >/dev/null
           /tmp/relenv/bin/specfuse-runner --help >/dev/null
           /tmp/relenv/bin/specfuse-validate-event --help >/dev/null

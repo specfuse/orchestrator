@@ -25,6 +25,14 @@ def test_cli_no_command_errors():
     assert exc.value.code == 2
 
 
+def test_cli_version(capsys):
+    from specfuse.orchestrator import __version__
+    with pytest.raises(SystemExit) as exc:
+        cli.main(["--version"])
+    assert exc.value.code == 0
+    assert capsys.readouterr().out.strip() == f"specfuse-orchestrator {__version__}"
+
+
 def test_cli_init_dispatches_to_init_module(capsys):
     # Forward --help through to specfuse.orchestrator.init's own parser rather
     # than running a real scaffold.
