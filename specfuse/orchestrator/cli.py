@@ -387,9 +387,14 @@ def _run_upgrade(argv: list[str]) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    from specfuse.orchestrator import __version__
+
     parser = argparse.ArgumentParser(
         prog="specfuse-orchestrator",
         description="Specfuse orchestrator: initiative-coordination drivers.",
+    )
+    parser.add_argument(
+        "--version", action="version", version=f"specfuse-orchestrator {__version__}",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
