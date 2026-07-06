@@ -6,7 +6,7 @@ Get from "I want to try the Specfuse orchestrator" to "ready to draft my first f
 
 - [Claude Code CLI](https://claude.com/claude-code) installed.
 - Python 3 with `pip`.
-- `pip install specfuse-orchestrator` (published on [PyPI](https://pypi.org/project/specfuse-orchestrator/)). To install the whole suite instead: `pipx install specfuse[orchestrator]`.
+- `pip install specfuse-orchestrator` (published on [PyPI](https://pypi.org/project/specfuse-orchestrator/)). To install the whole suite instead: `pipx install --include-deps 'specfuse[orchestrator]'` (quote the brackets for zsh; `--include-deps` surfaces the `specfuse-orchestrator` CLIs — pipx doesn't expose an extra's console scripts without it).
 - (Recommended) The [Specfuse validator CLI](https://specfuse.dev) on `$PATH`, so spec validation in the pipeline isn't simulated.
 - `git` and the [`gh` CLI](https://cli.github.com) are **optional** — needed only later, if and when you put the state under version control or wire the merge-watcher CI. You do not need them to start.
 
