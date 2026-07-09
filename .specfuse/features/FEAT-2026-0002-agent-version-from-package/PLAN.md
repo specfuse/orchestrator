@@ -5,7 +5,7 @@ slug: agent-version-from-package
 branch: feat/agent-version-from-package
 roadmap_goal: Drivers resolve agent version markers from the installed package (`resolve_agent_version`) instead of the consumer's vendored `agents/` tree, so a consumer holds only state (adoption decision #3).
 autonomy_default: review
-status: active
+status: done
 planned_cost_usd: 2.20
 ---
 
