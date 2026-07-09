@@ -1,13 +1,20 @@
 ---
 id: FEAT-2026-0002/G1-CLOSE
 type: close
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.40
 generated_surfaces: []
 model: opus
 effort: high
 gate_set: plannext
+driver_version: 0.3.11
+started_at: 2026-07-09T19:11:46.723183+00:00
+verdict: met
+duration_seconds: 189.843
+cost_usd: 1.370425
+input_tokens: 7479
+output_tokens: 11541
 ---
 
 # Gate 1 close (terminal) — retrospective + lessons + docs + verdict
