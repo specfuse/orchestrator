@@ -1,4 +1,6 @@
-# QA agent — qa-execution skill (v1.0)
+# QA agent — qa-execution skill (v1.1)
+
+> v1.1 (FEAT-2026-0003/T03): idempotence rule keys on `(task_correlation_id, manifest_hash)` for manifest-carrying (cross-component E2E) runs, falling back to `(task_correlation_id, commit_sha)` for single-repo runs — no schema change, consumption-layer only.
 
 ## Purpose
 
@@ -12,7 +14,7 @@ In scope:
 
 - Picking up a `ready` `qa_execution` task.
 - Resolving the plan file via the task's feature correlation ID.
-- Enforcing idempotence on `(task_correlation_id, commit_sha)` before emitting any event.
+- Enforcing idempotence on `(task_correlation_id, manifest_hash)` — falling back to `(task_correlation_id, commit_sha)` when the run carries no `stack_manifest` — before emitting any event.
 - Running each test's `commands` sequentially, capturing stdout, stderr, and exit codes.
 - Evaluating each test's `expected` predicate against the captured output (at v1, via agent judgment against a prose predicate — see §"Deferred integration" for the Phase 4 machine-evaluable predicate language).
 - Emitting the aggregated event (`qa_execution_completed` or `qa_execution_failed`) through `specfuse-validate-event`.
@@ -32,7 +34,7 @@ The skill reads, in order:
 
 1. The `qa_execution` task issue assigned to it. The issue title's task-level correlation ID (`FEAT-YYYY-NNNN/TNN`) carries the feature correlation ID.
 2. The feature registry at `/features/<feature_correlation_id>.md` — its frontmatter (task graph, `involved_repos`, `assigned_repo` of the qa_execution task).
-3. The feature's event log at `/events/<feature_correlation_id>.jsonl` — scanned end-to-end for prior `qa_execution_completed` or `qa_execution_failed` entries matching `(task_correlation_id, commit_sha)` (step 3 below).
+3. The feature's event log at `/events/<feature_correlation_id>.jsonl` — scanned end-to-end for prior `qa_execution_completed` or `qa_execution_failed` entries matching `(task_correlation_id, manifest_hash)` (falling back to `(task_correlation_id, commit_sha)` when this run has no `stack_manifest`) (step 3 below).
 4. The test plan at `/product/test-plans/<feature_correlation_id>.md` in the product specs repo — its YAML frontmatter validated against [`test-plan.schema.json`](../../../../shared/schemas/test-plan.schema.json) before the per-test loop begins.
 5. The assigned component repo — its `main` HEAD commit SHA (for the idempotence key and the emitted event), and its current working state (for running the plan's `commands`).
 6. This skill's own file and [`../../CLAUDE.md`](../../CLAUDE.md) — reloaded per [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md).
@@ -65,13 +67,18 @@ Read the plan file. Parse the YAML frontmatter and round-trip it against [`test-
 
 ### Step 3 — Idempotence check
 
-Read `/events/<feature_correlation_id>.jsonl` end-to-end. Search for any entry where:
+Read `/events/<feature_correlation_id>.jsonl` end-to-end. Determine which key this run uses:
+
+- **Manifest key** — when this run carries a `stack_manifest` (a cross-component E2E run, `stack_manifest`/`manifest_hash` per [`events/qa_execution_completed.schema.json`](../../../../shared/schemas/events/qa_execution_completed.schema.json)), the key is `(task_correlation_id, manifest_hash)`.
+- **Commit key** — when this run has no `stack_manifest` (single-repo), the key is `(task_correlation_id, commit_sha)`, unchanged from v1.0.
+
+Search for any entry where:
 
 - `event_type` is `qa_execution_completed` or `qa_execution_failed`, **and**
 - `payload.task_correlation_id` equals this task's correlation ID, **and**
-- `payload.commit_sha` equals the resolved `commit_sha`.
+- if this run carries a `stack_manifest`: `payload.manifest_hash` equals this run's **emitted** `manifest_hash` (compared for equality — the skill does not recompute the hash from `stack_manifest`); **otherwise**: `payload.commit_sha` equals the resolved `commit_sha`.
 
-If a match is found, the qa-execution for this `(task_correlation_id, commit_sha)` pair has already been recorded. **Do not emit a second event.** Report "idempotent skip: existing event at line `<N>` of events log for `(task_correlation_id, commit_sha)` pair" and proceed directly to step 7's task-completion path. The prior event remains the authoritative signal; re-emitting would corrupt the audit trail and risk cascading duplicate regression artifacts downstream.
+If a match is found, the qa-execution for this key has already been recorded. **Do not emit a second event.** Report "idempotent skip: existing event at line `<N>` of events log for `(task_correlation_id, manifest_hash)` pair" (or "... for `(task_correlation_id, commit_sha)` pair" on the commit-key path) and proceed directly to step 7's task-completion path. The prior event remains the authoritative signal; re-emitting would corrupt the audit trail and risk cascading duplicate regression artifacts downstream.
 
 If no match is found, proceed to step 4. The event-log read must be **fresh** — do not cache a prior snapshot across pickups; concurrent emissions elsewhere on the feature may have appended after a cached read, and an idempotence decision based on stale data can miss a collision.
 
@@ -136,7 +143,7 @@ On the idempotent-skip path from step 3, close the task the same way (without re
 Before emitting any `qa_execution_*` event, the skill confirms:
 
 - The plan file validated cleanly against [`test-plan.schema.json`](../../../../shared/schemas/test-plan.schema.json) in step 2.
-- The idempotence check in step 3 produced a fresh read of the event log (not a cached snapshot) and returned no match for the `(task_correlation_id, commit_sha)` pair.
+- The idempotence check in step 3 produced a fresh read of the event log (not a cached snapshot) and returned no match for the `(task_correlation_id, manifest_hash)` pair (manifest-carrying runs) or the `(task_correlation_id, commit_sha)` pair (single-repo runs).
 - Every declared command in every test was invoked — no test was skipped for convenience.
 - Each test in `per_test_results` has a definite `status` of `pass` or `fail` — no `unknown` or `indeterminate` entries. A command whose output the skill cannot interpret against the `expected` predicate is a failure, not a skipped test; when in doubt, the skill escalates `spec_level_blocker` with reason "predicate ambiguity on test_id `<id>`" rather than silently passing.
 - The aggregated event round-trips through `specfuse-validate-event` with exit `0` (envelope + per-type payload).
@@ -236,6 +243,22 @@ A poller picks up the task again before the first run's close has propagated. Sa
 
 No duplicate event is written. The audit trail remains `task_started`, `qa_execution_failed`, `task_completed` for this `(task, commit)` pair — the idempotence guarantee the schema key encodes.
 
+### Run 4 — cross-component E2E replay (manifest-hash key)
+
+Fictional feature `FEAT-2026-0061` again, but this time the `qa_execution` task is a cross-component E2E run spanning two component repos (`acme/api-sample` and `acme/web-sample`) with no single primary `commit_sha` — the run carries `stack_manifest` instead. Fixture: [`/shared/schemas/examples/qa_execution_completed_manifest.json`](../../../../shared/schemas/examples/qa_execution_completed_manifest.json).
+
+1. Task flipped `ready → in-progress`. `task_started` emitted.
+2. Plan resolved. Step 2's `commit_sha` resolution is not applicable — this run's provenance is a `stack_manifest`, `{"api": "abc1234567890abcdef1234567890abcdef12345", "web": "2.1.0"}`, with a derived `manifest_hash` of `1111111111111111111111111111111111111111111111111111111111111111`.
+3. Idempotence check: this run carries a `stack_manifest`, so the key is `(task_correlation_id, manifest_hash)` = `(FEAT-2026-0061/T04, 1111111111111111111111111111111111111111111111111111111111111111)`. No prior event in `/events/FEAT-2026-0061.jsonl` matches. Proceed.
+4. Per-test loop: all three tests pass against the manifest-pinned stack.
+5. Aggregate: all pass. Construct `qa_execution_completed` with `stack_manifest` and `manifest_hash` in place of `commit_sha` (matching the gate-1 fixture referenced above).
+6. Validate via `specfuse-validate-event` (exit `0`), append.
+7. Task flipped `in-progress → in-review`. `task_completed` emitted. Stop.
+
+**Replay.** A poller re-picks the task before the close propagates. Same `task_correlation_id`, same `stack_manifest`, same `manifest_hash`. Idempotence check finds the Run 4 event at line `N` matching `(task_correlation_id, manifest_hash)` — **idempotent-skipped**, no second event emitted.
+
+**Why the commit-key alone would miss this.** This event carries no `commit_sha` at all — `stack_manifest` replaces it per the schema's `anyOf[commit_sha | stack_manifest]` relaxation. A `(task_correlation_id, commit_sha)`-only idempotence rule has no `commit_sha` field to match on and cannot detect the replay; the same task/manifest pair would emit a duplicate `qa_execution_completed` on every re-pickup, corrupting the audit trail exactly as Run 3's commit-keyed guard prevents for single-repo runs. The `manifest_hash` key is load-bearing precisely because cross-component E2E runs have no primary commit SHA to fall back on.
+
 ## Deferred integration — Phase 4 + Phase 5 brief
 
 The v1 skill is a **stub** on two dimensions: predicate evaluation is prose-driven (agent judgment), and `commands` are free-form shell strings. Phase 4 and Phase 5 replace each dimension additively.
@@ -262,7 +285,7 @@ When the Specfuse generator emits test-plan skeletons (Phase 5, see [`../qa-auth
 
 ### What persists across Phase 4 and Phase 5
 
-- **Idempotence key `(task_correlation_id, commit_sha)`** — load-bearing across every future phase. Any Phase 4+ evolution of this skill **must** preserve the pair as the emission guard.
+- **Idempotence key `(task_correlation_id, manifest_hash)`, falling back to `(task_correlation_id, commit_sha)` when no `stack_manifest` is present** — load-bearing across every future phase. Any Phase 4+ evolution of this skill **must** preserve the manifest-aware pair as the emission guard, not just the commit-SHA pair.
 - **`(qa_execution_completed, qa_execution_failed)` event pair** — the envelope is the contract qa-regression (WU 3.4) consumes. Payload fields are additive; removal or rename would be a breaking migration.
 - **`failed_tests[]` shape** — `test_id` + `first_signal` remain the minimum. Phase 4 adds optional fields (cascade marker, predicate evaluator trace); the minimum set does not shrink.
 - **Verifying-QA-work vs. verifying-system-under-test distinction** — `qa_execution_failed` is always a valid QA-task completion signal. Phase 4 and Phase 5 inherit this posture unchanged.

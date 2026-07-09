@@ -1,4 +1,6 @@
-# QA agent — qa-authoring skill (v1.1)
+# QA agent — qa-authoring skill (v1.2)
+
+<!-- Changelog: v1.2 (FEAT-2026-0003/T04) — added §"Plan ↔ harness linkage" documenting the test_id ↔ executable-spec tag binding convention. -->
 
 ## Purpose
 
@@ -398,6 +400,15 @@ Phase 5 may introduce a `source: generator | qa | hybrid` field on each test ent
 - [`test_plan_authored.schema.json`](../../../../shared/schemas/events/test_plan_authored.schema.json) payload shape is preserved. Downstream consumers (`qa-execution` in WU 3.3) see no difference across phases.
 - The `test_id` stability contract survives every phase. Renames remain curation's concern.
 - The Phase 3 walkthrough (WU 3.6) is the input for Phase 4's cardinality and over-specification calls — which fields proved useful in practice, which are unused ornamentation.
+
+## Plan ↔ harness linkage
+
+A plan's `test_id` does not stay confined to this skill's artifact — a downstream executable-spec harness (a Playwright suite, an Arazzo runner, or equivalent) runs the plan and reports per-test results back through `qa-execution`'s `qa_execution_failed.failed_tests[].test_id` (see [`../../CLAUDE.md`](../../CLAUDE.md) §"Output artifacts and where they go"). For a cross-component E2E harness — the first consumer is RestoManager's `restomanager-e2e` repo — that report only means something if the reported `test_id` resolves back to a `test_id` this skill minted. This section fixes the convention that keeps that resolution sound; it does not change this skill's authoring procedure or the schema.
+
+- **Source of truth.** The plan's `test_id` (§Step 5, "Drafting each test") is authoritative. The downstream harness's executable spec carries the **same** `test_id`, verbatim, as a tag or annotation on its corresponding scenario. Binding is exact string equality — no fuzzy or prefix matching.
+- **Tag mechanism is the harness's choice.** How the downstream harness attaches the `test_id` — a Playwright test tag, an Arazzo `x-test-id` extension, a `@<test_id>` annotation, or another mechanism — is a **cross-repo convention**, not a field on `test-plan.schema.json` or any other schema this skill validates against. This skill does not mint, require, or hard-code a tag syntax; the authoritative source for a given harness's actual mechanism is that harness's repo (verified at gate-arm time — see the feature's gate review "Cross-repo contracts" table for the current verification status against `restomanager-e2e`).
+- **Why it's load-bearing.** `qa-regression` keys regression artifacts on `(implementation_task_correlation_id, test_id)` (§Step 5 and the `test_id` stability contract in §"Deferred integration" above). A cross-component `qa_execution_failed` whose `failed_tests[].test_id` cannot resolve to a plan `test_id` breaks that key, and the regression can't be routed. This linkage is what lets the key survive the plan/harness boundary, not just the plan/execution boundary within a single repo.
+- **Renames stay a curation-PR concern.** The `test_id` stability contract already forbids in-place renames during re-authoring (§Step 5, §"Deferred integration"). That contract is unchanged by this linkage — a rename that isn't mirrored on the harness side would silently break the tag binding on top of orphaning open regressions, so the existing curation-PR discipline (WU 3.5) is the single place both concerns are handled together.
 
 ## What this skill does not do
 

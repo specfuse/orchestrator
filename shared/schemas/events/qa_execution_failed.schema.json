@@ -2,27 +2,41 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://specfuse.dev/orchestrator/schemas/events/qa_execution_failed.schema.json",
   "title": "qa_execution_failed event payload",
-  "$comment": "Provenance: authored 2026-04-23 in WU 3.3 as the QA execution failure signal. Pairs with qa_execution_completed.schema.json. Idempotence key is (task_correlation_id, commit_sha): the qa-execution skill refuses to emit a second event with the same pair. Downstream consumer WU 3.4 (qa-regression) keys its first-failure vs. repeat-failure decision on this event plus the existence of prior regression artifacts for the same (implementation_task_correlation_id, test_id) pair; the implementation_task_correlation_id is resolved by WU 3.4 from the feature task graph (SOT = feature registry), NOT carried in this payload, per WU 3.3 §'Decisions' D3.",
+  "$comment": "Provenance: authored 2026-04-23 in WU 3.3 as the QA execution failure signal. Pairs with qa_execution_completed.schema.json. Idempotence key is (task_correlation_id, commit_sha) — or (task_correlation_id, manifest_hash) when a manifest is present (rule authored in FEAT-2026-0003 gate 2): the qa-execution skill refuses to emit a second event with the same pair. Downstream consumer WU 3.4 (qa-regression) keys its first-failure vs. repeat-failure decision on this event plus the existence of prior regression artifacts for the same (implementation_task_correlation_id, test_id) pair; the implementation_task_correlation_id is resolved by WU 3.4 from the feature task graph (SOT = feature registry), NOT carried in this payload, per WU 3.3 §'Decisions' D3.",
   "description": "Payload shape for the `qa_execution_failed` event emitted by the QA agent on any qa-execution run where one or more tests failed. The event is the machine-readable signal downstream regression handling keys off; the original implementation task's state is untouched (cross-task regression invariant — see agents/qa/CLAUDE.md §'Cross-task regression semantics').",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "task_correlation_id",
-    "commit_sha",
     "plan_path",
     "test_count",
     "failed_tests"
   ],
+  "anyOf": [
+    { "required": ["commit_sha"] },
+    { "required": ["stack_manifest"] }
+  ],
   "properties": {
     "task_correlation_id": {
       "type": "string",
-      "description": "Task-level correlation ID of the qa_execution task that produced this event. Together with `commit_sha`, forms the idempotence key.",
+      "description": "Task-level correlation ID of the qa_execution task that produced this event. Together with `commit_sha` (or `manifest_hash`), forms the idempotence key.",
       "pattern": "^((FEAT-\\d{4}-\\d{4})|(INIT-\\d{4}-\\d{4}/F\\d{2}))/T\\d{2}$"
     },
     "commit_sha": {
       "type": "string",
       "description": "Git commit SHA of the assigned repo's `main` HEAD at execution time. 40-char full SHA; short SHAs are rejected.",
       "pattern": "^[0-9a-f]{40}$"
+    },
+    "stack_manifest": {
+      "type": "object",
+      "description": "Optional per-component version manifest for a cross-component run that has no single primary commit_sha — one entry per component naming the SHA or version it was run against.",
+      "minProperties": 1,
+      "additionalProperties": { "type": "string", "minLength": 1 }
+    },
+    "manifest_hash": {
+      "type": "string",
+      "description": "Optional stable hash of `stack_manifest`, used with `task_correlation_id` as the idempotence key when a manifest is present in place of `commit_sha`.",
+      "pattern": "^[0-9a-f]{64}$"
     },
     "plan_path": {
       "type": "string",
