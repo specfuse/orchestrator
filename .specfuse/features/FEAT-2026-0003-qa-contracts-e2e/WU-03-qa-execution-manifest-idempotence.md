@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0003/T03
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 1.00
 model: sonnet
 effort: medium
@@ -11,6 +11,12 @@ oracle_env: macos_local
 produces:
   - agents/qa/skills/qa-execution/SKILL.md
 gate_set: code
+driver_version: 0.3.11
+started_at: 2026-07-09T20:22:13.788352+00:00
+duration_seconds: 101.583
+cost_usd: 0.803966
+input_tokens: 17044
+output_tokens: 6344
 ---
 
 # Key qa-execution idempotence on `(task_correlation_id, manifest_hash)` with `commit_sha` fallback
