@@ -21,17 +21,17 @@ def resolve_agent_version(role: str) -> str:
     """Return `role`'s version from the packaged agent-versions map.
 
     Reads `_substrate/agent-versions.json` (baked from agents/<role>/version.md at
-    build time). Raises KeyError for an unknown role, FileNotFoundError if the map
-    is absent (an unbuilt source tree — run the build or sync _substrate).
+    build time). Raises KeyError for an unknown role. If the map is absent (an
+    unbuilt source tree / editable install), falls back to reading
+    agents/<role>/version.md directly from the package's own repo root; raises
+    FileNotFoundError if neither is available.
     """
     from specfuse.orchestrator import paths
 
     map_path = paths.substrate("agent-versions.json")
     if not map_path.is_file():
-        raise FileNotFoundError(
-            f"packaged agent-versions map not found at {map_path} "
-            "(unbuilt source tree? the hatch build hook generates it)"
-        )
+        repo_root = Path(__file__).resolve().parents[2]
+        return read_agent_version(repo_root, role)
     versions = json.loads(map_path.read_text(encoding="utf-8"))
     if role not in versions:
         raise KeyError(f"unknown agent role {role!r}; known: {sorted(versions)}")

@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0002/T01
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.90
 model: sonnet
 effort: medium
@@ -12,6 +12,12 @@ produces:
   - specfuse/orchestrator/_version.py
   - tests/test_version.py
 gate_set: code
+driver_version: 0.3.11
+started_at: 2026-07-09T19:07:45.269727+00:00
+duration_seconds: 129.392
+cost_usd: 0.599662
+input_tokens: 7718
+output_tokens: 5986
 ---
 
 # Give `resolve_agent_version` a source-tree fallback
