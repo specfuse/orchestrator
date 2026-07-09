@@ -1,13 +1,16 @@
 ---
 id: FEAT-2026-0003/G2-CLOSE
 type: close
-status: pending
+status: done
 attempts: 0
 planned_cost_usd: 0.40
 generated_surfaces: []
 model: opus
 effort: high
 gate_set: plannext
+verdict: met
+auto_close: true
+auto_close_reasons: []
 ---
 
 # Gate 2 close (terminal) — retrospective + lessons + docs + verdict
