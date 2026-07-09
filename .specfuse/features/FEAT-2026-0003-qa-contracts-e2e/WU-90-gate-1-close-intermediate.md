@@ -1,13 +1,15 @@
 ---
 id: FEAT-2026-0003/G1-CLOSE-INTERMEDIATE
 type: close-intermediate
-status: pending
+status: done
 attempts: 0
 planned_cost_usd: 0.50
 generated_surfaces: []
 model: opus
 effort: high
 gate_set: doc
+auto_close: true
+auto_close_reasons: []
 ---
 
 # Gate 1 close-intermediate — retrospective + lessons + docs
