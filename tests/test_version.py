@@ -79,6 +79,29 @@ def test_main_unknown_role_exits_2(packaged_map, capsys):
     assert "error:" in capsys.readouterr().err
 
 
+def test_resolve_source_tree_fallback(tmp_path, monkeypatch):
+    missing_map = tmp_path / "no-such-map" / "agent-versions.json"
+    monkeypatch.setattr("specfuse.orchestrator.paths.substrate",
+                        lambda *parts: missing_map if parts == ("agent-versions.json",) else tmp_path)
+    (tmp_path / "agents" / "demo").mkdir(parents=True)
+    (tmp_path / "agents" / "demo" / "version.md").write_text(
+        "# Demo agent version\n\nCurrent version: **7.7.7**\n", encoding="utf-8",
+    )
+    import specfuse.orchestrator._version as version_mod
+    monkeypatch.setattr(version_mod, "__file__", str(tmp_path / "specfuse" / "orchestrator" / "_version.py"))
+    assert resolve_agent_version("demo") == "7.7.7"
+
+
+def test_resolve_no_map_no_source_raises(tmp_path, monkeypatch):
+    missing_map = tmp_path / "no-such-map" / "agent-versions.json"
+    monkeypatch.setattr("specfuse.orchestrator.paths.substrate",
+                        lambda *parts: missing_map if parts == ("agent-versions.json",) else tmp_path)
+    import specfuse.orchestrator._version as version_mod
+    monkeypatch.setattr(version_mod, "__file__", str(tmp_path / "specfuse" / "orchestrator" / "_version.py"))
+    with pytest.raises(FileNotFoundError):
+        resolve_agent_version("demo")
+
+
 def test_main_repo_override_reads_state_repo(tmp_path, capsys):
     (tmp_path / "agents" / "demo").mkdir(parents=True)
     (tmp_path / "agents" / "demo" / "version.md").write_text(

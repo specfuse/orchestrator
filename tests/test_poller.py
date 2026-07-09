@@ -9,7 +9,9 @@ are out of scope — they need a live gh/loop and belong in integration tests.
 
 from __future__ import annotations
 
+import ast
 import textwrap
+from pathlib import Path
 
 import pytest
 
@@ -103,3 +105,38 @@ def test_default_next_step_known_and_unknown():
     assert "updated" in ns
     with pytest.raises(RuntimeError):
         poller._default_next_step("not-a-state")
+
+
+def test_pm_version_uses_package_resolver(monkeypatch):
+    monkeypatch.setattr(poller, "resolve_agent_version", lambda role: "9.9.9")
+    assert poller.pm_version() == "9.9.9"
+
+
+@pytest.mark.parametrize("exc", [KeyError("pm"), FileNotFoundError("gone")])
+def test_pm_version_na_on_missing(monkeypatch, exc):
+    def raiser(role):
+        raise exc
+    monkeypatch.setattr(poller, "resolve_agent_version", raiser)
+    assert poller.pm_version() == "n/a"
+
+
+def test_no_driver_runtime_reads_vendored_agents():
+    orch_dir = Path(poller.__file__).parent
+    for path in sorted(orch_dir.glob("*.py")):
+        source = path.read_text()
+        if path.name == "_version.py":
+            # the resolver's `--repo` dev-override fallback legitimately walks
+            # agents/<role>/version.md via read_agent_version itself.
+            continue
+        assert "read_agent_version(REPO_ROOT" not in source, (
+            f"{path}: runtime read of vendored agents/ tree via REPO_ROOT"
+        )
+        for node in ast.walk(ast.parse(source, filename=str(path))):
+            if not isinstance(node, ast.BinOp) or not isinstance(node.op, ast.Div):
+                continue
+            const_strs = [
+                n.value for n in ast.walk(node)
+                if isinstance(n, ast.Constant) and isinstance(n.value, str)
+            ]
+            if "agents" in const_strs and "version.md" in const_strs:
+                pytest.fail(f"{path}: constructs an agents/<role>/version.md path at runtime")

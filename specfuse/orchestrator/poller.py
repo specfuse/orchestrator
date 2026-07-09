@@ -63,7 +63,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from specfuse.orchestrator import paths
-from specfuse.orchestrator._version import read_agent_version
+from specfuse.orchestrator._version import resolve_agent_version
 from specfuse.orchestrator.cli import self_provision_if_stale
 from specfuse.orchestrator.validate_event import validate as validate_event
 from specfuse.orchestrator.validate_frontmatter import validate as validate_frontmatter_content
@@ -75,8 +75,6 @@ except ImportError:
         "error: pyyaml required. install: pip install specfuse-orchestrator\n"
     )
     sys.exit(2)
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 # States that schema-require a `next_step` block per feature-frontmatter.schema.json root allOf.
 STATES_REQUIRING_NEXT_STEP = {"planning", "plan_review", "generating", "in_progress", "blocked"}
@@ -475,8 +473,8 @@ def event_skeleton(correlation_id: str, event_type: str, source: str,
 
 def pm_version() -> str:
     try:
-        return read_agent_version(REPO_ROOT, "pm")
-    except (FileNotFoundError, ValueError):
+        return resolve_agent_version("pm")
+    except (KeyError, FileNotFoundError, ValueError):
         return "n/a"
 
 

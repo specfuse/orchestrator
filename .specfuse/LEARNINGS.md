@@ -76,6 +76,18 @@ project's own `lessons` work units append project-specific rules beneath them.
   coverage gates are red-lines, so it does not treat the functional change as
   "done" before the floors are green.
 
+- [FEAT-2026-0002/G1] A WU whose `code` gate builds a wheel (`python3 -m build
+  --wheel`) and/or shells console-script `--help` subprocesses (the `test_wheel_smoke`
+  family) must run with the loop **sandbox disabled**. Under the sandbox those steps
+  error with a stable, code-independent signature (`93 passed, N errors` /
+  `ERROR test_wheel_smoke.py::test_console_script_help[...]`), which looks like a test
+  failure and trips `spinning_signature_repeat` — burning the full escalation budget on
+  a WU whose code is fine (T01: 5 attempts / 2 escalations / +345% cost, then passed
+  first try once re-armed sandbox-off with the same approach). Rule: (a) WUs on the
+  wheel-building `code` gate should declare the sandbox-off requirement and budget for
+  it up front; (b) a repeated identical `test_wheel_smoke.py` ERROR block is a strong
+  env-misconfiguration tell — suspect environment, not code, before escalating.
+
 - [meta/loop-driver-bugs] Driver bookkeeping (frontmatter status flips,
   events.jsonl appends, per-attempt notes) must be committed if it should
   survive across WUs — uncommitted writes are wiped by the inter-attempt
