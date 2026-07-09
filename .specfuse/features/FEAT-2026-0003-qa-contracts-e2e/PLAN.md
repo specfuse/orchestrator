@@ -5,7 +5,7 @@ slug: qa-contracts-e2e
 branch: feat/qa-contracts-e2e
 roadmap_goal: Additively extend the QA contracts — plan schema gains optional `tier`/`components`, execution events gain optional `stack_manifest`/`manifest_hash` with manifest-keyed idempotence — so cross-component E2E/UAT results are expressible without breaking single-repo consumers.
 autonomy_default: review
-status: active
+status: done
 planned_cost_usd: 5.50
 ---
 
