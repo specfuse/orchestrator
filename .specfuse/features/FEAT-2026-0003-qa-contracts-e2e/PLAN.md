@@ -6,7 +6,7 @@ branch: feat/qa-contracts-e2e
 roadmap_goal: Additively extend the QA contracts — plan schema gains optional `tier`/`components`, execution events gain optional `stack_manifest`/`manifest_hash` with manifest-keyed idempotence — so cross-component E2E/UAT results are expressible without breaking single-repo consumers.
 autonomy_default: review
 status: active
-planned_cost_usd: 3.30
+planned_cost_usd: 5.50
 ---
 
 # Plan: E2E-capable QA contracts — test tiers, components, stack manifest
@@ -61,12 +61,22 @@ gates:
   - gate: 2
     file: GATE-02.md
     work_units:
-      # Scaffolded now so lint reads gate 1 as non-terminal. G1-PLAN drafts gate 2's
-      # substantive WUs (idempotence rule / linkage doc / agent-config delta) and inserts
-      # them before this terminal close, setting its real depends_on.
+      # Substantive WUs drafted by gate 1's plan-next (FEAT-2026-0003/G1-PLAN) — the
+      # consumption layer: manifest-keyed idempotence rule / plan↔harness linkage doc /
+      # QA-agent-config delta carrying the Phase-3-freeze justification. Armed at the
+      # GATE-02-REVIEW.md checkpoint (status: draft -> pending).
+      - id: FEAT-2026-0003/T03
+        file: WU-03-qa-execution-manifest-idempotence.md
+        depends_on: []
+      - id: FEAT-2026-0003/T04
+        file: WU-04-plan-harness-linkage-convention.md
+        depends_on: []
+      - id: FEAT-2026-0003/T05
+        file: WU-05-qa-agent-config-delta.md
+        depends_on: [FEAT-2026-0003/T03, FEAT-2026-0003/T04]
       - id: FEAT-2026-0003/G2-CLOSE
         file: WU-90-gate-2-close.md
-        depends_on: []
+        depends_on: [FEAT-2026-0003/T03, FEAT-2026-0003/T04, FEAT-2026-0003/T05]
 ```
 
 ## Notes

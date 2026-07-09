@@ -1,13 +1,19 @@
 ---
 id: FEAT-2026-0003/G1-PLAN
 type: plan-next
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.50
 generated_surfaces: []
 model: opus
 effort: high
 gate_set: plannext
+driver_version: 0.3.11
+started_at: 2026-07-09T20:11:01.173317+00:00
+duration_seconds: 571.715
+cost_usd: 3.331242
+input_tokens: 17242
+output_tokens: 37526
 ---
 
 # Gate 1 plan-next — draft gate 2's work units
