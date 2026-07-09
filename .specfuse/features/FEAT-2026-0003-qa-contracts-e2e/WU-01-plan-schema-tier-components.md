@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0003/T01
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.80
 model: sonnet
 effort: medium
@@ -12,6 +12,12 @@ produces:
   - shared/schemas/test-plan.schema.json
   - tests/test_qa_contracts.py
 gate_set: code
+driver_version: 0.3.11
+started_at: 2026-07-09T20:07:15.952087+00:00
+duration_seconds: 99.845
+cost_usd: 0.507841
+input_tokens: 9256
+output_tokens: 4795
 ---
 
 # Add optional `tier` + `components` to the test-plan schema
