@@ -1,7 +1,7 @@
 ---
 id: FEAT-2026-0003/G2-CLOSE
 type: close
-status: draft
+status: pending
 attempts: 0
 planned_cost_usd: 0.40
 generated_surfaces: []

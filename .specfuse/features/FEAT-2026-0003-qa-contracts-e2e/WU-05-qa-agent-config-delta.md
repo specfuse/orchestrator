@@ -1,7 +1,7 @@
 ---
 id: FEAT-2026-0003/T05
 type: implementation
-status: draft
+status: pending
 attempts: 0
 planned_cost_usd: 0.60
 model: sonnet
