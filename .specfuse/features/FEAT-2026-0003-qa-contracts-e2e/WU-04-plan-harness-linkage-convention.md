@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0003/T04
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.60
 model: sonnet
 effort: medium
@@ -11,6 +11,12 @@ oracle_env: macos_local
 produces:
   - agents/qa/skills/qa-authoring/SKILL.md
 gate_set: code
+driver_version: 0.3.11
+started_at: 2026-07-09T20:23:55.442951+00:00
+duration_seconds: 49.36
+cost_usd: 0.455837
+input_tokens: 16772
+output_tokens: 2250
 ---
 
 # Document the plan ↔ harness linkage convention (`test_id` ↔ executable-spec tag)
