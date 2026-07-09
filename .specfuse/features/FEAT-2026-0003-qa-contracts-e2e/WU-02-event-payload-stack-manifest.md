@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0003/T02
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 1.10
 model: sonnet
 effort: medium
@@ -14,6 +14,12 @@ produces:
   - shared/schemas/examples/qa_execution_completed_manifest.json
   - tests/test_qa_contracts.py
 gate_set: code
+driver_version: 0.3.11
+started_at: 2026-07-09T20:08:55.861252+00:00
+duration_seconds: 125.189
+cost_usd: 0.676241
+input_tokens: 7843
+output_tokens: 10562
 ---
 
 # Add `stack_manifest` + `manifest_hash` to the execution-event payloads
