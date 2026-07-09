@@ -1,8 +1,8 @@
 ---
 id: FEAT-2026-0002/T02
 type: implementation
-status: pending
-attempts: 0
+status: done
+attempts: 1
 planned_cost_usd: 0.90
 model: sonnet
 effort: medium
@@ -12,6 +12,12 @@ produces:
   - specfuse/orchestrator/poller.py
   - tests/test_poller.py
 gate_set: code
+driver_version: 0.3.11
+started_at: 2026-07-09T19:09:54.745656+00:00
+duration_seconds: 111.901
+cost_usd: 0.64455
+input_tokens: 7722
+output_tokens: 4951
 ---
 
 # Switch `poller.pm_version()` to the package resolver
