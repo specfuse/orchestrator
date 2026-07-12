@@ -40,8 +40,15 @@ class SubstrateBuildHook(BuildHookInterface):
         shutil.copytree(src, dest)
 
         # Bake the agent version markers into the packaged substrate.
+        versions = _agent_versions(root)
+        if not versions:
+            raise RuntimeError(
+                "agent-versions bake found no agents/<role>/version.md markers — "
+                "building from a tree without agents/ (sdist missing it?) would "
+                "ship an empty map and break source_version resolution."
+            )
         (dest / "agent-versions.json").write_text(
-            json.dumps(_agent_versions(root), indent=2, sort_keys=True) + "\n",
+            json.dumps(versions, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
 
