@@ -36,3 +36,10 @@
 # Python bytecode
 __pycache__/
 *.pyc
+
+# Codex interop surface. The orchestrator's agent contract lives in agents/**
+# and .claude/**; AGENTS.md and .agents/ are generated for Codex, which this
+# repo does not support today. Ignored rather than deleted so a local Codex run
+# stays possible without dirtying the tree — drop these lines if support lands.
+/AGENTS.md
+/.agents/
