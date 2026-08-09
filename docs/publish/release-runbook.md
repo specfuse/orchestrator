@@ -56,15 +56,24 @@ After the workflow's `publish` job succeeds:
    ```
    pip install specfuse-orchestrator
    ```
-3. Verify the umbrella-extra install path works once the umbrella package
-   (`specfuse`, in `specfuse/specfuse`) carries the `orchestrator` extra — see
-   [`umbrella-orchestrator-extra.md`](umbrella-orchestrator-extra.md):
+3. Verify the suite install path works. The umbrella (`specfuse`, in
+   `specfuse/specfuse`) hard-depends on this package, so a fresh install or an
+   upgrade re-resolves and picks the new version up on its own — no umbrella
+   floor bump is needed unless the umbrella's own code requires it (see
+   [`umbrella-orchestrator-extra.md`](umbrella-orchestrator-extra.md)):
    ```
-   pipx install specfuse[orchestrator]
+   uv tool install specfuse       # or: pipx install specfuse
+   uv tool upgrade specfuse       # or: pipx upgrade specfuse / specfuse upgrade
    ```
-4. Confirm the installed console scripts run: `specfuse-orchestrator --help`,
+4. Confirm the subcommands run: `specfuse pm --help`, `specfuse poller --help`,
+   `specfuse runner --help`, `specfuse validate-event --help`,
+   `specfuse validate-frontmatter --help`. `specfuse --version` should report
+   the new orchestrator version alongside the other components.
+5. Confirm the deprecated flat console scripts still work from a standalone
+   `pip install specfuse-orchestrator` — they remain aliases until the 1.0.0
+   release train drops them: `specfuse-orchestrator --help`,
    `specfuse-poller --help`, `specfuse-runner --help`,
    `specfuse-validate-event --help`, `specfuse-validate-frontmatter --help`.
-5. If any check fails, treat it as a release defect: do not re-tag the same
+6. If any check fails, treat it as a release defect: do not re-tag the same
    version (PyPI rejects re-uploads of an existing version) — fix the issue,
    bump to the next version, and repeat from step 2 of section 2.

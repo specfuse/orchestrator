@@ -13,7 +13,7 @@ One JSON Schema file per `event_type` enum value in [`../event.schema.json`](../
 
 ## Additive extension — Phase 1 freeze contract preserved
 
-`specfuse-validate-event` applies a per-type schema **only when the corresponding file exists in this directory**. An event type without a schema file here is validated against the top-level envelope alone; its historical emissions remain valid. The validator's behavior for unschematized event types is unchanged from the Phase 1 contract — see [`../../rules/verify-before-report.md`](../../rules/verify-before-report.md) §3.
+`specfuse validate-event` applies a per-type schema **only when the corresponding file exists in this directory**. An event type without a schema file here is validated against the top-level envelope alone; its historical emissions remain valid. The validator's behavior for unschematized event types is unchanged from the Phase 1 contract — see [`../../rules/verify-before-report.md`](../../rules/verify-before-report.md) §3.
 
 This is deliberate. Phase 1 froze the component agent's emission patterns (`task_started`, `task_completed`, `task_blocked`, `spec_issue_raised`, `human_escalation`) at version 1.2.0 and above. Adding a per-type schema here after the fact must not retroactively invalidate existing event log entries. Each per-type schema added in this directory is authored by re-reading representative historical payloads and drafting the schema to accept them; breaking changes require a separate migration commit that rewrites historical `/events/*.jsonl` entries.
 

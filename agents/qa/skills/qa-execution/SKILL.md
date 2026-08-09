@@ -17,7 +17,7 @@ In scope:
 - Enforcing idempotence on `(task_correlation_id, manifest_hash)` — falling back to `(task_correlation_id, commit_sha)` when the run carries no `stack_manifest` — before emitting any event.
 - Running each test's `commands` sequentially, capturing stdout, stderr, and exit codes.
 - Evaluating each test's `expected` predicate against the captured output (at v1, via agent judgment against a prose predicate — see §"Deferred integration" for the Phase 4 machine-evaluable predicate language).
-- Emitting the aggregated event (`qa_execution_completed` or `qa_execution_failed`) through `specfuse-validate-event`.
+- Emitting the aggregated event (`qa_execution_completed` or `qa_execution_failed`) through `specfuse validate-event`.
 - Transitioning the `qa_execution` task through `ready → in_progress → in_review`.
 
 Out of scope (each belongs to a sibling skill, a later phase, or another role):
@@ -125,7 +125,7 @@ The `implementation_task_correlation_id` being regressed against is **not** carr
 
 ### Step 6 — Validate the event and append
 
-Pipe the constructed event through `specfuse-validate-event`. The script applies the top-level envelope schema and — because `qa_execution_completed.schema.json` and `qa_execution_failed.schema.json` exist under [`/shared/schemas/events/`](../../../../shared/schemas/events/) — the per-type payload schema as well. Require exit `0` before appending.
+Pipe the constructed event through `specfuse validate-event`. The script applies the top-level envelope schema and — because `qa_execution_completed.schema.json` and `qa_execution_failed.schema.json` exist under [`/shared/schemas/events/`](../../../../shared/schemas/events/) — the per-type payload schema as well. Require exit `0` before appending.
 
 Append the event to `/events/<feature_correlation_id>.jsonl` in the orchestration repo. Re-read the appended line and confirm it matches what was constructed, per [`verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3.
 
@@ -146,7 +146,7 @@ Before emitting any `qa_execution_*` event, the skill confirms:
 - The idempotence check in step 3 produced a fresh read of the event log (not a cached snapshot) and returned no match for the `(task_correlation_id, manifest_hash)` pair (manifest-carrying runs) or the `(task_correlation_id, commit_sha)` pair (single-repo runs).
 - Every declared command in every test was invoked — no test was skipped for convenience.
 - Each test in `per_test_results` has a definite `status` of `pass` or `fail` — no `unknown` or `indeterminate` entries. A command whose output the skill cannot interpret against the `expected` predicate is a failure, not a skipped test; when in doubt, the skill escalates `spec_level_blocker` with reason "predicate ambiguity on test_id `<id>`" rather than silently passing.
-- The aggregated event round-trips through `specfuse-validate-event` with exit `0` (envelope + per-type payload).
+- The aggregated event round-trips through `specfuse validate-event` with exit `0` (envelope + per-type payload).
 
 The universal checks from [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) apply in addition:
 
@@ -194,7 +194,7 @@ Fictional feature `FEAT-2026-0061 — Widgets export rate-limit`, used for illus
      }
    }
    ```
-6. Validate via `specfuse-validate-event` (exit `0`), append to `/events/FEAT-2026-0061.jsonl`.
+6. Validate via `specfuse validate-event` (exit `0`), append to `/events/FEAT-2026-0061.jsonl`.
 7. Task flipped `in-progress → in-review`. `task_completed` emitted. Stop.
 
 Fixture: [`/shared/schemas/examples/qa_execution_completed.json`](../../../../shared/schemas/examples/qa_execution_completed.json).
@@ -252,7 +252,7 @@ Fictional feature `FEAT-2026-0061` again, but this time the `qa_execution` task 
 3. Idempotence check: this run carries a `stack_manifest`, so the key is `(task_correlation_id, manifest_hash)` = `(FEAT-2026-0061/T04, 1111111111111111111111111111111111111111111111111111111111111111)`. No prior event in `/events/FEAT-2026-0061.jsonl` matches. Proceed.
 4. Per-test loop: all three tests pass against the manifest-pinned stack.
 5. Aggregate: all pass. Construct `qa_execution_completed` with `stack_manifest` and `manifest_hash` in place of `commit_sha` (matching the gate-1 fixture referenced above).
-6. Validate via `specfuse-validate-event` (exit `0`), append.
+6. Validate via `specfuse validate-event` (exit `0`), append.
 7. Task flipped `in-progress → in-review`. `task_completed` emitted. Stop.
 
 **Replay.** A poller re-picks the task before the close propagates. Same `task_correlation_id`, same `stack_manifest`, same `manifest_hash`. Idempotence check finds the Run 4 event at line `N` matching `(task_correlation_id, manifest_hash)` — **idempotent-skipped**, no second event emitted.
@@ -334,7 +334,7 @@ The Finding 8 risk is therefore **localized** to the component agent's coverage 
 - [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md) — re-read unconditionally per invocation.
 - [`/shared/rules/security-boundaries.md`](../../../../shared/rules/security-boundaries.md) §"Log hygiene" — redaction discipline for `first_signal` and `stderr_excerpt`.
 - [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md) — escalation surface (`spec_level_blocker`, `spinning_detected` on the qa_execution task).
-- `specfuse-validate-event` — applies the per-type payload schemas.
+- `specfuse validate-event` — applies the per-type payload schemas.
 - `python3 -m specfuse.orchestrator._version` — produces `source_version` at emission time.
 - [`../../CLAUDE.md`](../../CLAUDE.md) — the QA role config; §"Role-specific verification" enshrines the verifying-QA-work vs. verifying-SUT distinction this skill honors, and §"Cross-task regression semantics" fixes the cross-task invariant.
 - [`../qa-authoring/SKILL.md`](../qa-authoring/SKILL.md) — upstream skill (WU 3.2) that writes the plan this one consumes.

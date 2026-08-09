@@ -15,6 +15,10 @@ import pytest
 
 FIXTURES = Path(__file__).parent / "fixtures"
 
+# The DEPRECATED flat console scripts. Users drive the suite through
+# `specfuse <subcommand>`, but a standalone `pip install specfuse-orchestrator`
+# still ships these and this venv has no umbrella on PATH, so they are what the
+# wheel must expose. They come out in the coordinated 1.0.0 release train.
 CONSOLE_SCRIPTS = [
     "specfuse-poller",
     "specfuse-runner",

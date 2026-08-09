@@ -15,7 +15,7 @@ the onboarding flow follow from those decisions rather than from inherited habit
 ## Principle: the consumer holds *state*, the suite provides *tooling*
 
 - **Tooling** (drivers, CLI, agents, frozen substrate) → the wheel + the
-  `specfuse-orchestrator@specfuse` plugin. Versioned, upgraded via `pip install -U`.
+  `specfuse-orchestrator@specfuse` plugin. Versioned, upgraded via `specfuse upgrade`.
 - **State** (initiatives/features, events, project config, inbox, overrides) → the
   consumer's own files, wherever they choose to keep them.
 
@@ -79,7 +79,7 @@ package**, the **marketplace plugin**, and (today) **vendored `agents/`**.
 **Recommendation:**
 - Package + plugin release **together on one suite version line**; the plugin's
   `plugin.json` version tracks the package. Document "package X ⇒ plugin X".
-- `specfuse-orchestrator upgrade <dir>` is the single upgrade action: re-provisions
+- `specfuse pm upgrade <dir>` is the single upgrade action: re-provisions
   substrate from the newly-installed wheel and re-asserts the plugin config. State
   is never touched.
 - Publish a short **compat contract**: what a state repo scaffolded at version X
@@ -107,10 +107,10 @@ is the clean end-state the pip model was for; the current vendoring is a bridge.
 
 Rewrite `GETTING_STARTED` around the decision, not the command sequence:
 
-1. `pip install specfuse-orchestrator` (or `pipx install specfuse[orchestrator]`).
+1. `uv tool install specfuse` (or `pipx install specfuse`) — one install, whole suite.
 2. `/plugin install specfuse-orchestrator@specfuse` in Claude Code.
 3. **Pick where state lives** — dedicated repo / a subdir of your repo / just a
-   local folder — and `specfuse-orchestrator init <that path>`. No git or GitHub
+   local folder — and `specfuse pm init <that path>`. No git or GitHub
    required yet.
 4. `/onboard` — the agent captures your repo topology (mono/multi/single) and
    product layout.

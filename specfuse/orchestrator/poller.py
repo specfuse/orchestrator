@@ -41,10 +41,10 @@ State writers respected: this poller is the single writer of the feature-level
 perform any transition it does not own.
 
 Invocation:
-    specfuse-poller                      # newest INIT-*.md registry, one pass
-    specfuse-poller --feature features/INIT-2026-0001.md
-    specfuse-poller --dry-run            # no label writes, no events, no dispatch
-    specfuse-poller --interval 60        # loop every 60s (Ctrl-C to stop)
+    specfuse poller                      # newest INIT-*.md registry, one pass
+    specfuse poller --feature features/INIT-2026-0001.md
+    specfuse poller --dry-run            # no label writes, no events, no dispatch
+    specfuse poller --interval 60        # loop every 60s (Ctrl-C to stop)
 
 Requires: pyyaml (bundled with the specfuse-orchestrator package) and the `gh` CLI authenticated.
 """
@@ -97,7 +97,7 @@ NEXT_STEP_DEFAULTS = {
         "owner": "pm-agent",
     },
     "in_progress": {
-        "summary": "Re-run `specfuse-runner`; dispatch any ready `qa_*` features via `python3 -m specfuse.orchestrator.qa_dispatcher`.",
+        "summary": "Re-run `specfuse runner`; dispatch any ready `qa_*` features via `python3 -m specfuse.orchestrator.qa_dispatcher`.",
         "owner": "runner",
     },
     "blocked": {

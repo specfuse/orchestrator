@@ -145,7 +145,7 @@ After all checks pass:
    - `source`: `qa`.
    - `source_version`: produced by `python3 -m specfuse.orchestrator._version` at emission time — never eye-cached from [`version.md`](../../version.md).
    - `payload`: `{"plan_path": "/product/test-plans/<feature_correlation_id>.md", "test_count": <length of tests array>}`.
-4. Pipe the event through `specfuse-validate-event`. Require exit `0` before appending.
+4. Pipe the event through `specfuse validate-event`. Require exit `0` before appending.
 5. Append the event to `/events/<feature_correlation_id>.jsonl` in the orchestration repo.
 6. Re-read the appended line and confirm it matches what was constructed.
 7. Emit `task_completed` on the `qa_authoring` task and flip the task's label to `state:in-review` per [`../../CLAUDE.md`](../../CLAUDE.md) §"Entry transitions owned". The PR containing the plan file (in the product specs repo) is the deliverable under review — see §"Delivery convention" below for the full branch / commit / PR mechanics.
@@ -213,7 +213,7 @@ Before emitting `test_plan_authored`, every check from step 6 must have passed w
 Beyond the skill's local checks, the universal checks from [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) apply:
 
 - Re-read the produced artifact (the plan file) after writing (step 7 above).
-- Round-trip the `test_plan_authored` event through `specfuse-validate-event` with exit `0`.
+- Round-trip the `test_plan_authored` event through `specfuse validate-event` with exit `0`.
 - Confirm `source_version` is produced by `python3 -m specfuse.orchestrator._version qa` at emission time.
 - Confirm the written path (`/product/test-plans/<feature_correlation_id>.md`) is not in [`never-touch.md`](../../../../shared/rules/never-touch.md). It is not; `/product/test-plans/` is explicitly QA-owned per [`../../CLAUDE.md`](../../CLAUDE.md).
 - Confirm every state transition performed is one this role owns on this task type.
@@ -349,7 +349,7 @@ before evaluating test 1's `expected` predicate.
 }
 ```
 
-The event passes `specfuse-validate-event` (exit `0`) against both the top-level envelope and the per-type payload schema, and is appended to `/events/FEAT-2026-0060.jsonl`. See [`/shared/schemas/examples/test_plan_authored.json`](../../../../shared/schemas/examples/test_plan_authored.json) for the fixture.
+The event passes `specfuse validate-event` (exit `0`) against both the top-level envelope and the per-type payload schema, and is appended to `/events/FEAT-2026-0060.jsonl`. See [`/shared/schemas/examples/test_plan_authored.json`](../../../../shared/schemas/examples/test_plan_authored.json) for the fixture.
 
 ## Deferred integration — Phase 4 + Phase 5 brief
 
@@ -434,7 +434,7 @@ A plan's `test_id` does not stay confined to this skill's artifact — a downstr
 - [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3 — universal discipline; per-type payload validation applies to `test_plan_authored` automatically.
 - [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md) — re-read unconditionally per invocation.
 - [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md) — the escalation surface spec ambiguities route through.
-- `specfuse-validate-event` — applies the per-type payload schema additively.
+- `specfuse validate-event` — applies the per-type payload schema additively.
 - `python3 -m specfuse.orchestrator._version` — produces `source_version` at emission time.
 - [`../../CLAUDE.md`](../../CLAUDE.md) — the QA role config that orchestrates this skill alongside its siblings.
 - [`../qa-execution/SKILL.md`](../qa-execution/SKILL.md) — downstream skill (WU 3.3) that consumes the plan this one produces.

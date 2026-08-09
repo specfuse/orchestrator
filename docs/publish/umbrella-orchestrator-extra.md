@@ -1,52 +1,68 @@
-# Umbrella `specfuse` package: `orchestrator` extra
+# Umbrella `specfuse` package: the orchestrator dependency
 
-Target repo: **`specfuse/specfuse`** (the `specfuse` umbrella package). This
-edit is out of scope for this repo — the loop driver does not clone, edit, or
-PR `specfuse/specfuse`. This file stages the exact edit for the operator to
-apply there by hand, the same cross-repo pattern as
-[`marketplace-publish-runbook.md`](marketplace-publish-runbook.md).
+Target repo: **`specfuse/specfuse`** (the `specfuse` umbrella package). Edits
+there are out of scope for this repo — the loop driver does not clone, edit, or
+PR `specfuse/specfuse`. This file records what the umbrella already carries for
+this component, and the (rare) cases where a release here needs an edit there.
 
-## Prerequisite
+## Current shape (specfuse 0.11.0+)
 
-`specfuse-orchestrator` must already be published on PyPI (see
-[`release-runbook.md`](release-runbook.md)) before this extra is added — the
-extra installs it by name from PyPI, not from a path or git ref.
-
-## The edit
-
-In `specfuse/specfuse`'s `pyproject.toml`, add an `orchestrator` entry to
-`[project.optional-dependencies]`:
+The umbrella **hard-depends** on every component. `specfuse-orchestrator` sits
+in `[project.dependencies]`, not in an extra:
 
 ```toml
-[project.optional-dependencies]
-orchestrator = ["specfuse-orchestrator"]
+dependencies = [
+  "specfuse-loop>=<floor>",
+  "specfuse-authoring>=<floor>",
+  "specfuse-orchestrator>=<floor>",
+]
 ```
 
-If `[project.optional-dependencies]` already exists with other extras (e.g. a
-`codegen` or `loop` extra for the suite's other components), add `orchestrator`
-as an additional key in that same table rather than a second
-`[project.optional-dependencies]` block — TOML does not merge duplicate table
-headers.
+The `[orchestrator]`, `[authoring]` and `[all]` extras are **deleted**. Extras
+broke against the pipx/uv tool model three ways:
+
+- tool installers link only the main package's entry points, so an extra's
+  commands needed `--include-deps` / `--with-executables-from` and the obvious
+  install was silently incomplete;
+- extras resolve once at install time and are never re-resolved, so
+  `pipx upgrade specfuse` could not pull a newer component;
+- an extra's console scripts share names with the standalone package's, so two
+  installs fought over one name in `~/.local/bin`.
+
+## What this means for releasing this package
+
+**Version floors in the umbrella are minimums, not upgrade levers.** A new
+`specfuse-orchestrator` release reaches users through
+`uv tool upgrade specfuse` / `pipx upgrade specfuse` / `specfuse upgrade`,
+which re-resolve the dependency. Do **not** ask for a floor bump as part of a
+routine release.
+
+Ask the umbrella maintainer for a floor bump only when the umbrella's own code
+requires the new version.
+
+## When a release here *does* need an umbrella edit
+
+The umbrella dispatches subcommands into this package by dotted path — e.g.
+`specfuse.orchestrator.cli:main`, `specfuse.orchestrator.poller:main`. Treat
+those targets as public API:
+
+- **Renaming a module or a `main()`** turns a subcommand into a run-time
+  `ImportError`. Tell the umbrella in the same PR. Its CI resolves every target
+  on each run, so it will catch a rename — but only after the release is on
+  PyPI.
+- **Adding a new command** requires an entry in `DELEGATED_COMMANDS` in the
+  umbrella's `specfuse/cli.py`. Adding a console script here alone does not put
+  it on `specfuse`.
 
 ## Result
 
-Once merged and released from `specfuse/specfuse`, operators can install the
-orchestrator component through the umbrella package:
+Operators install and upgrade the whole suite with one command, no extras and
+no bracket quoting:
 
 ```
-pipx install specfuse[orchestrator]
+uv tool install specfuse      # or: pipx install specfuse
+specfuse upgrade
 ```
 
-which resolves to installing `specfuse-orchestrator` from PyPI as a
-dependency.
-
-## Confirmation flag
-
-This file documents the *intended* edit based on the standard PEP 621
-`[project.optional-dependencies]` shape. The exact current structure of
-`specfuse/specfuse`'s `pyproject.toml` (e.g. whether it already has other
-extras, or uses a different dependency-manager convention) has not been
-confirmed against that repo. Before applying, the operator should open
-`specfuse/specfuse`'s `pyproject.toml` and verify this shape still applies;
-adjust the added key only (do not restructure existing extras) if the table
-already exists in a different form.
+`specfuse --version` prints the resolved version of every component, which is
+the fastest post-release check that a new orchestrator build landed.

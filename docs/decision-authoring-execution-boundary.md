@@ -47,9 +47,11 @@ repo** — the specs agent writes that entry across the seam as the handoff arti
 
 ## How we operate
 
-1. **Ideas live in the product-specs repo**, `product/specs/idea/`. All authoring
-   happens here. Unit of work is the **idea**; managed as a backlog (capture,
-   shape, groom). No initiative number yet.
+1. **Ideas live in the product-specs repo**, as a thin index at
+   `docs/product/INITIATIVE_BACKLOG.md` plus one dossier per idea under
+   `docs/product/backlog/IDEA-NNN-<slug>.md`. All authoring happens here. Unit of
+   work is the **idea**; managed as a backlog (capture, shape, groom). `IDEA-NNN`
+   ids are transient, not correlation IDs — no initiative number yet.
 2. **When an idea is picked for deployment, the specs agent mints an initiative
    number (`INIT-YYYY-NNNN`).** The mint (`initiative-intake` skill) runs *from
    the specs repo* and writes the registry entry *into the orchestration repo*.
@@ -95,7 +97,7 @@ boundary.
 | Responsibility | Plane | Home |
 | --- | --- | --- |
 | Vision, product direction | Definition | specs repo |
-| Ideation capture / shape / groom (idea backlog) | Definition | specs repo, `product/specs/idea/` |
+| Ideation capture / shape / groom (idea backlog) | Definition | specs repo, `docs/product/INITIATIVE_BACKLOG.md` + `docs/product/backlog/` |
 | Spec-craft mechanics (design endpoints/events/flows, validate, bundle, preview) | shared toolkit | `specfuse-authoring` plugin — used inside the definition plane's authoring |
 | **Mint `INIT-YYYY-NNNN`** (initiative-intake) | Definition | specs agent; **writes the registry entry into the orchestration repo** |
 | Detailed analysis, spec drafting, validation | Definition | specs agent; documents in specs-repo `/product/` |

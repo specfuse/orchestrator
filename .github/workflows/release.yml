@@ -33,6 +33,11 @@ jobs:
           python -m pip install --upgrade pip build
           python -m build
 
+      # These are the DEPRECATED flat console scripts. The suite is driven
+      # through `specfuse pm` / `specfuse poller` / ... but this venv installs
+      # only this wheel (no umbrella), so the flat names are what is on PATH
+      # here. They stay until the coordinated 1.0.0 release train drops them
+      # across all three components.
       - name: Verify the built wheel imports and exposes the console scripts
         run: |
           python -m venv /tmp/relenv

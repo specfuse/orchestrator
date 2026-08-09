@@ -1,10 +1,12 @@
 # PM agent version
 
-Current version: **1.6.4**
+Current version: **1.6.5**
 
 **Frozen as the Phase 2 baseline on 2026-04-23 (WU 2.15).** Changes during Phase 3+ require architectural justification. Source of record: [`docs/walkthroughs/phase-2/retrospective.md`](../../docs/walkthroughs/phase-2/retrospective.md) §"Phase 2 freeze declaration".
 
 ## Changelog
+
+- `1.6.5` — Suite command migration (specfuse 0.11.0). The suite is now driven through the single `specfuse` command; the flat `specfuse-*` console scripts are deprecated aliases until the coordinated 1.0.0 release train removes them. Every `specfuse-validate-event` / `specfuse-validate-frontmatter` reference in `CLAUDE.md` and the five skills rewritten to `specfuse validate-event` / `specfuse validate-frontmatter`. Doc-only change: no procedural step body, event contract, or schema is modified. Phase 2 freeze contract preserved. Patch-level bump.
 
 - `1.6.4` — OSS publication scrub. Replaced `clabonte/api-sample`, `clabonte/persistence-sample`, `clabonte/specs-sample`, and `Bontyyy/orchestrator-{api,persistence,specs}-sample` references in worked examples across `skills/issue-drafting/SKILL.md`, `skills/plan-review/SKILL.md`, `skills/task-decomposition/SKILL.md`, `skills/template-coverage-check/SKILL.md`, and `skills/dependency-recomputation/SKILL.md` with generic `acme/{api-sample,persistence-sample,specs-sample}` placeholders so the upstream's normative documentation does not advertise the orchestrator's development fixture repos as canonical patterns. Doc-only change: no procedural step body, contract, or schema is modified. Phase 2 freeze contract preserved. Patch-level bump.
 

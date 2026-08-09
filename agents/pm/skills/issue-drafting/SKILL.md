@@ -46,7 +46,7 @@ The skill reads, in order, per task it drafts:
 Per task drafted:
 
 - A GitHub issue in `<assigned_repo>`, title `[FEAT-YYYY-NNNN/TNN] <summary>`, body conforming to [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) v1, labels `state:pending` (or `state:ready` for no-dep tasks) + the applicable `type:*` + `autonomy:*` entry.
-- One `task_created` event appended to `/events/<feature_correlation_id>.jsonl`, validated by `specfuse-validate-event` with exit `0`.
+- One `task_created` event appended to `/events/<feature_correlation_id>.jsonl`, validated by `specfuse validate-event` with exit `0`.
 - For no-dep tasks only: one `task_ready` event appended to the same log, emitted after the label flip and after re-reading the labels back.
 
 No writes to component-repo code paths. No writes to `/product/`, `/overrides/`, or `/business/`. **The only feature-state transition the skill owns is `generating → in_progress`**, emitted via §Step 12 on the first invocation to successfully append a `task_created` event for the feature. No other feature-level transitions are performed by this skill — all others belong to different roles (human for `plan_review → generating` and `in_progress → blocked_*`; merge watcher for `in_review → done`; PM's own `in_progress → done` via its feature-closure flow, not this skill).
@@ -195,7 +195,7 @@ If any mismatch: do **not** emit `task_created`. Fix the mismatch (close and re-
 
 ### Step 10 — Emit `task_created`
 
-Construct the event per §"Event payloads" below. Pipe through `specfuse-validate-event`; require exit `0`. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line to confirm JSON integrity.
+Construct the event per §"Event payloads" below. Pipe through `specfuse validate-event`; require exit `0`. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line to confirm JSON integrity.
 
 `source_version` is produced by `python3 -m specfuse.orchestrator._version` at emission time per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3. Never eye-cache from [`../../version.md`](../../version.md).
 
@@ -205,7 +205,7 @@ If `depends_on: []`:
 
 1. Confirm the label on the just-created issue is already `state:ready` (it was set at step 8). Re-read via `gh issue view` if not already confirmed in step 9.
 2. Construct the `task_ready` event per §"Event payloads" below, with `trigger: "no_dep_creation"` to distinguish this flip's provenance from the flips WU 2.5 will emit (which use a different trigger tag).
-3. Pipe through `specfuse-validate-event`; require exit `0`. Append to the event log. Re-read.
+3. Pipe through `specfuse validate-event`; require exit `0`. Append to the event log. Re-read.
 
 `task_created` and `task_ready` are emitted in that order; the dependency-recomputation skill's consumers rely on `task_created` as the issue-exists signal and `task_ready` as the agent-may-pick-up signal. Emitting them out of order, or emitting `task_ready` without a preceding `task_created` on the same task, is a correctness bug.
 
@@ -226,7 +226,7 @@ After §Step 10 (and §Step 11 for no-dep tasks), re-read the feature's event lo
 - `source_version`: produced by `python3 -m specfuse.orchestrator._version` at emission time.
 - `payload`: `{"from_state": "generating", "to_state": "in_progress", "trigger": "first_round_issues_opened"}` per [`/shared/schemas/events/feature_state_changed.schema.json`](../../../../shared/schemas/events/feature_state_changed.schema.json).
 
-Pipe through `specfuse-validate-event` (require exit `0`); append to the feature's event log; re-read the appended line and confirm it matches what was constructed. The transition is additive to the event log — no other artifact (feature frontmatter `state` field included) is modified by this step; per `agents/pm/CLAUDE.md` §"Output artifacts" and the F2.9 resolution, the event log is the single authoritative carrier of feature progress signals, not the frontmatter `state` field.
+Pipe through `specfuse validate-event` (require exit `0`); append to the feature's event log; re-read the appended line and confirm it matches what was constructed. The transition is additive to the event log — no other artifact (feature frontmatter `state` field included) is modified by this step; per `agents/pm/CLAUDE.md` §"Output artifacts" and the F2.9 resolution, the event log is the single authoritative carrier of feature progress signals, not the frontmatter `state` field.
 
 **Operational semantics at v1.** "First round of task issues opened" is operationalized as "first invocation to successfully append a `task_created` event for the feature, conditional on no prior `generating → in_progress` transition on the log." In per-task invocation, only the first invocation passes Guard B; subsequent invocations append their own `task_created` but skip §Step 12 because the prior transition is already on the log. In a batched invocation pattern (one session opening N tasks), the transition is emitted after the first task's §Step 10; the remaining N-1 tasks' §Step 12 invocations all no-op. Either way, at most one `feature_state_changed(generating → in_progress)` per feature.
 
@@ -389,7 +389,7 @@ The skill performs the universal checks from [`/shared/rules/verify-before-repor
 - The issue's title exactly matches `[FEAT-YYYY-NNNN/TNN] <summary>`.
 - The issue's body round-trips against [`/shared/templates/work-unit-issue.md`](../../../../shared/templates/work-unit-issue.md) v1.1 — all five mandatory `##` sections present, optional `## Deliverables` section present only when `deliverable_repo` is set, YAML frontmatter complete (`deliverable_repo` included when applicable, omitted otherwise).
 - The issue carries exactly one `state:*`, one `type:*`, and one `autonomy:*` label.
-- `task_created` passed `specfuse-validate-event` (exit 0) and is the last — or second-to-last, if `task_ready` follows — line of the feature's event log.
+- `task_created` passed `specfuse validate-event` (exit 0) and is the last — or second-to-last, if `task_ready` follows — line of the feature's event log.
 - `source_version` on every emitted event was produced by `python3 -m specfuse.orchestrator._version pm` at emission time.
 - For no-dep tasks: the issue's `state:*` label is `state:ready`; `task_ready` passed validation and is the last line of the event log; `trigger` in its payload is `"no_dep_creation"`.
 - No path written is in [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md). The skill writes only to `/events/` (event log append) and indirectly to GitHub (issue creation) — neither is never-touched — but the check runs anyway per the universal discipline.
@@ -607,7 +607,7 @@ gh issue view 5 --repo acme/api-sample --json number,title,body,labels,state
 }
 ```
 
-Passes `specfuse-validate-event` (exit 0). Appended to `/events/FEAT-2026-0002.jsonl`. Re-read confirms the JSON line parses.
+Passes `specfuse validate-event` (exit 0). Appended to `/events/FEAT-2026-0002.jsonl`. Re-read confirms the JSON line parses.
 
 ### Step 11 — Emit `task_ready` (no-dep case)
 
@@ -856,7 +856,7 @@ gh issue view 10 --repo acme/api-sample --json number,title,body,labels,state
 }
 ```
 
-Passes `specfuse-validate-event` (exit 0). Appended. Re-read confirms JSON integrity.
+Passes `specfuse validate-event` (exit 0). Appended. Re-read confirms JSON integrity.
 
 ### Step 11 — Emit `task_ready` (no-dep case)
 

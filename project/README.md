@@ -2,7 +2,7 @@
 
 This directory holds the orchestration repo's **project-level coordination artifacts** — the things that describe the project as a whole rather than any individual feature. Produced and maintained by the [onboarding agent](../agents/onboarding/) (a meta-role); read by humans and other agents.
 
-In a freshly `specfuse-orchestrator init`-scaffolded orchestration repo, this directory contains only this README. The onboarding agent populates it during integration.
+In a freshly `specfuse pm init`-scaffolded orchestration repo, this directory contains only this README. The onboarding agent populates it during integration.
 
 ## What lives here
 

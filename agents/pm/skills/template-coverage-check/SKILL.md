@@ -40,7 +40,7 @@ Per invocation:
 
 Per invocation, exactly one of:
 
-- **Success** — one `template_coverage_checked` event appended to `/events/<feature_correlation_id>.jsonl`, validated through `specfuse-validate-event` (top-level + per-type payload schema) with exit `0`.
+- **Success** — one `template_coverage_checked` event appended to `/events/<feature_correlation_id>.jsonl`, validated through `specfuse validate-event` (top-level + per-type payload schema) with exit `0`.
 - **Escalation** — one file under `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` per [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md), one `human_escalation` event appended to the event log with feature-level correlation ID, reason `spec_level_blocker`, and a payload listing every gap detected.
 
 No writes to feature frontmatter (the skill reads, never edits). No writes to component repos. No state transition on the feature.
@@ -204,7 +204,7 @@ The walk is exhaustive — every task in the demand is checked against every `re
    }
    ```
 
-2. Pipe through `specfuse-validate-event`; require exit `0` (top-level + per-type payload schema both validated).
+2. Pipe through `specfuse validate-event`; require exit `0` (top-level + per-type payload schema both validated).
 3. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line.
 4. Return success to the invoker.
 
@@ -232,7 +232,7 @@ The walk is exhaustive — every task in the demand is checked against every `re
    }
    ```
 
-3. Pipe through `specfuse-validate-event`; require exit `0`.
+3. Pipe through `specfuse validate-event`; require exit `0`.
 4. Append to `/events/<feature_correlation_id>.jsonl`. Re-read.
 5. Do **not** emit `template_coverage_checked`. The absence of that event on a feature that reached the coverage step is the gap signal — consumers of the event log reading "feature moved to plan_review" without a preceding `template_coverage_checked` know the check escalated.
 6. Return escalation to the invoker. The invoker does not proceed with plan-review Phase A.
@@ -270,7 +270,7 @@ On escalation, the skill does not proceed to emit `template_coverage_checked`. T
 
 ## Event payload — `template_coverage_checked`
 
-Per-type schema at [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json), validated by `specfuse-validate-event` after the top-level envelope check (per the discipline established in WU 2.5):
+Per-type schema at [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json), validated by `specfuse validate-event` after the top-level envelope check (per the discipline established in WU 2.5):
 
 ```json
 {
@@ -293,7 +293,7 @@ Universal checks from [`/shared/rules/verify-before-report.md`](../../../../shar
 - Every task in the task graph was walked (whether it contributed to the demand or not).
 - Every `assigned_repo` in the demand had its declaration fetched, parsed, and schema-validated in this invocation (no cross-invocation caching).
 - Zero gaps detected.
-- `template_coverage_checked` event passed `specfuse-validate-event` (top-level + per-type payload schemas) with exit `0`, appended to the event log, re-read.
+- `template_coverage_checked` event passed `specfuse validate-event` (top-level + per-type payload schemas) with exit `0`, appended to the event log, re-read.
 - `source_version` on the event was produced by `python3 -m specfuse.orchestrator._version pm` at emission time.
 - Feature state is unchanged (still `planning`, or whatever it was at invocation).
 - No write to any component repo, `/product/`, `/overrides/`, or component-repo code paths.
@@ -429,7 +429,7 @@ Step 6 — success:
 }
 ```
 
-Validates through `specfuse-validate-event` (top-level + per-type) with exit `0`. Appended to `/events/FEAT-2026-0053.jsonl`. Re-read confirms.
+Validates through `specfuse validate-event` (top-level + per-type) with exit `0`. Appended to `/events/FEAT-2026-0053.jsonl`. Re-read confirms.
 
 The invoker now proceeds to plan-review Phase A; feature flips `planning → plan_review`.
 
@@ -534,7 +534,7 @@ Event:
 }
 ```
 
-Validates through `specfuse-validate-event`. Appended. Re-read.
+Validates through `specfuse validate-event`. Appended. Re-read.
 
 No `template_coverage_checked` event is emitted. The feature stays in `planning`. The invoker does not call plan-review Phase A. The human will read the inbox file, decide, and the operator re-invokes the skill once the gap is addressed.
 
@@ -604,7 +604,7 @@ No blank-sheet re-design is expected. The Phase 5 WU's budget is changing the **
 - [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md) — re-read unconditionally per invocation.
 - [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md) — the escalation surface gaps route through.
 - [`/shared/templates/human-escalation.md`](../../../../shared/templates/human-escalation.md) — the escalation file template.
-- `specfuse-validate-event` — applies per-type payload schemas additively per WU 2.5.
+- `specfuse validate-event` — applies per-type payload schemas additively per WU 2.5.
 - `python3 -m specfuse.orchestrator._version` — produces `source_version` at emission time.
 - [`../task-decomposition/SKILL.md`](../task-decomposition/SKILL.md) — upstream skill that writes the task graph this skill consumes.
 - [`../plan-review/SKILL.md`](../plan-review/SKILL.md) — downstream skill invoked by the same orchestrator flow, gated on this skill's success.

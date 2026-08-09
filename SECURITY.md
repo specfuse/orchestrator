@@ -21,7 +21,7 @@ We aim to acknowledge reports within 7 days and provide a remediation timeline w
 
 In scope:
 
-- Vulnerabilities in the orchestrator's scaffolding: the `specfuse-orchestrator` CLI (`init` / `upgrade`), schemas, agent configurations that could lead to prompt injection, escalation bypass, or unauthorized writes outside documented surfaces.
+- Vulnerabilities in the orchestrator's scaffolding: the `specfuse pm` CLI (`init` / `upgrade`), schemas, agent configurations that could lead to prompt injection, escalation bypass, or unauthorized writes outside documented surfaces.
 - Documentation that could mislead an operator into an insecure setup (missing `never-touch.md` boundary, unsafe `gh` permission scopes, etc.).
 
 Out of scope:

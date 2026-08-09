@@ -25,8 +25,8 @@ For commit conventions and the contribution flow, see CONTRIBUTING.md.
 - [ ] Change touches package/scaffolding paths (`agents/`, `shared/`, `scripts/`, `docs/`, `project/README.md`, `README.md`, `LICENSE`, `NOTICE`, `.github/`).
 - [ ] No project-specific references in the diff or commit messages (no product feature names, private repo URLs, ticket IDs, customer references) — keep contributions project-agnostic.
 - [ ] Validators pass on any schema or event-format changes:
-  - `specfuse-validate-event --file events/<file>.jsonl`
-  - `specfuse-validate-frontmatter --file features/<file>.md`
+  - `specfuse validate-event --file events/<file>.jsonl`
+  - `specfuse validate-frontmatter --file features/<file>.md`
 - [ ] Per-agent `version.md` bumped + changelog entry added if the change modifies a role's `CLAUDE.md`, skills, or rules. See [`CONTRIBUTING.md`](../CONTRIBUTING.md) for commit conventions.
 - [ ] Architecture-conflicting changes are escalated to the architecture document, not silently reconciled. (Per each agent's CLAUDE.md: "When this file and `orchestrator-architecture.md` disagree, **the architecture wins and this file is wrong**.")
 

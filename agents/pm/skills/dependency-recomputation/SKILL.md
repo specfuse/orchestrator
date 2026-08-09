@@ -32,7 +32,7 @@ Per invocation:
 3. `/events/<feature_correlation_id>.jsonl` — the feature's event log, read once to confirm the triggering event is the most recent `task_completed` for the given task-level correlation ID (see §"Idempotence discipline" below).
 4. The GitHub issues on every `assigned_repo` in the feature's `involved_repos` — label and state reads only. No body reads, no issue creation, no comments.
 5. [`/shared/schemas/event.schema.json`](../../../../shared/schemas/event.schema.json) — the event contract.
-6. [`/shared/schemas/events/task_started.schema.json`](../../../../shared/schemas/events/task_started.schema.json) — present in the directory as a reference precedent for per-type payload schemas; this skill does not consume it directly, but `specfuse-validate-event` applies every per-type schema transparently.
+6. [`/shared/schemas/events/task_started.schema.json`](../../../../shared/schemas/events/task_started.schema.json) — present in the directory as a reference precedent for per-type payload schemas; this skill does not consume it directly, but `specfuse validate-event` applies every per-type schema transparently.
 7. [`../../CLAUDE.md`](../../CLAUDE.md) and this skill — re-read per invocation per [`/shared/rules/role-switch-hygiene.md`](../../../../shared/rules/role-switch-hygiene.md).
 
 ## Outputs
@@ -40,7 +40,7 @@ Per invocation:
 Per invocation:
 
 - Zero or more GitHub label rotations on issues in the feature's component repos: `state:pending` removed, `state:ready` added. One rotation per newly-eligible task.
-- Zero or more `task_ready` events appended to `/events/<feature_correlation_id>.jsonl`, one per flip, each validated through `specfuse-validate-event` with exit `0`.
+- Zero or more `task_ready` events appended to `/events/<feature_correlation_id>.jsonl`, one per flip, each validated through `specfuse validate-event` with exit `0`.
 - On malformed dependency state: one escalation file under `/inbox/human-escalation/` per [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md), plus one `human_escalation` event on the event log. No further flips are performed in the same invocation after the escalation is raised.
 
 No writes to feature frontmatter (the task graph is authoritative; this skill does not reshape it). No writes to component-repo code paths. No writes to `/product/` or `/overrides/`.
@@ -158,7 +158,7 @@ Construct:
 }
 ```
 
-Pipe through `specfuse-validate-event` via the canonical `--file /tmp/event.json` invocation; require exit `0`. Append to `/events/<feature_correlation_id>.jsonl` via the canonical `printf '%s\n' "$(cat /tmp/event.json)" >> …` pattern per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3. Re-read the appended line to confirm JSON integrity.
+Pipe through `specfuse validate-event` via the canonical `--file /tmp/event.json` invocation; require exit `0`. Append to `/events/<feature_correlation_id>.jsonl` via the canonical `printf '%s\n' "$(cat /tmp/event.json)" >> …` pattern per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3. Re-read the appended line to confirm JSON integrity.
 
 Continue to the next candidate.
 
@@ -242,7 +242,7 @@ Universal checks from [`/shared/rules/verify-before-report.md`](../../../../shar
 - The feature registry's task graph passed cycle and orphan checks in step 4.
 - Every flip performed was preceded by a fresh live-read confirming the candidate was `state:pending`.
 - Every flip was followed by a fresh live-read confirming `state:ready` present and `state:pending` absent.
-- Every `task_ready` event passed `specfuse-validate-event` with exit `0` and was appended to the feature's event log.
+- Every `task_ready` event passed `specfuse validate-event` with exit `0` and was appended to the feature's event log.
 - `source_version` on every event was produced by `python3 -m specfuse.orchestrator._version pm` at emission time.
 - No state transition was performed on any task not in the candidate set of step 5.
 - No write to feature frontmatter, component-repo code paths, `/product/`, or `/overrides/`.
@@ -388,7 +388,7 @@ Re-read: `state:ready` present ✓, `state:pending` absent ✓, exactly one `sta
 }
 ```
 
-Validates through `specfuse-validate-event --file /tmp/event.json` (exit 0). Appended to `/events/FEAT-2026-0050.jsonl` via the canonical `printf '%s\n'` pattern. Re-read confirms.
+Validates through `specfuse validate-event --file /tmp/event.json` (exit 0). Appended to `/events/FEAT-2026-0050.jsonl` via the canonical `printf '%s\n'` pattern. Re-read confirms.
 
 **Candidate T04 (`acme/api-sample#49`)**
 
@@ -501,7 +501,7 @@ The live-read of T02's label in 6a is the single guard that made this safe. No e
 - [`/shared/schemas/event.schema.json`](../../../../shared/schemas/event.schema.json) — envelope contract; `task_completed` and `task_ready` already in the enum.
 - [`/shared/schemas/events/README.md`](../../../../shared/schemas/events/README.md) — per-type payload schema directory created in WU 2.5 (Finding 5 absorption).
 - [`/shared/schemas/events/task_started.schema.json`](../../../../shared/schemas/events/task_started.schema.json) — the first per-type schema precedent, referenced but not consumed by this skill.
-- `specfuse-validate-event` — extended in WU 2.5 to apply per-type schemas when present.
+- `specfuse validate-event` — extended in WU 2.5 to apply per-type schemas when present.
 - `python3 -m specfuse.orchestrator._version` — produces `source_version` at emission time.
 - [`/shared/templates/human-escalation.md`](../../../../shared/templates/human-escalation.md) — template for escalation files written on malformed-state branches.
 - [`../task-decomposition/SKILL.md`](../task-decomposition/SKILL.md) — upstream skill that drafts the task graph this skill walks; the worked example's FEAT-2026-0050 originates there.

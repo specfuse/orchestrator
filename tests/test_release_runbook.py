@@ -26,4 +26,7 @@ def test_release_runbook_sections():
 
     # Post-publish verification.
     assert "pip install specfuse-orchestrator" in text
-    assert "pipx install specfuse[orchestrator]" in text
+    assert "pipx install specfuse" in text
+    # The suite is driven through the single `specfuse` command; the runbook
+    # must verify the subcommands, not only the deprecated flat scripts.
+    assert "specfuse pm --help" in text

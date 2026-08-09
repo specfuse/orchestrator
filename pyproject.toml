@@ -29,6 +29,16 @@ dev = [
   "build>=1.0",
 ]
 
+# DEPRECATED flat console scripts. The suite is driven through the single
+# `specfuse` command (`specfuse pm`, `specfuse poller`, `specfuse runner`,
+# `specfuse validate-event`, `specfuse validate-frontmatter`); these names
+# remain as aliases for standalone `pip install specfuse-orchestrator` users
+# and are removed in the coordinated 1.0.0 release train, once every component
+# has migrated its own references. Do not drop them unilaterally.
+#
+# The umbrella dispatches by dotted path, so the targets below are public API:
+# renaming a module or its `main()` turns a `specfuse` subcommand into a
+# run-time ImportError. Tell specfuse/specfuse in the same PR if one moves.
 [project.scripts]
 specfuse-orchestrator = "specfuse.orchestrator.cli:main"
 specfuse-poller = "specfuse.orchestrator.poller:main"
