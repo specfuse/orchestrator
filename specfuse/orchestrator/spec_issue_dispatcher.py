@@ -96,13 +96,12 @@ def main() -> int:
     args = ap.parse_args()
 
     specs_path = Path(args.specs_path) if args.specs_path else paths.state_root().parent / "specs-sample"
-    if not args.dry_run:
-        if not specs_path.is_dir():
-            sys.stderr.write(f"error: specs checkout not found: {specs_path}\n")
-            return 2
-        # The triage skill now ships in the specfuse-authoring plugin (invoked by
-        # name in the spawned session), so there is no scaffolded skill file to
-        # preflight here — the session must have that plugin installed.
+    # The triage skill now ships in the specfuse-authoring plugin (invoked by
+    # name in the spawned session), so there is no scaffolded skill file to
+    # preflight here — the session must have that plugin installed.
+    if not args.dry_run and not specs_path.is_dir():
+        sys.stderr.write(f"error: specs checkout not found: {specs_path}\n")
+        return 2
 
     def one() -> None:
         print(f"spec-issue-dispatcher @ {args.specs_repo}{' [dry-run]' if args.dry_run else ''}")

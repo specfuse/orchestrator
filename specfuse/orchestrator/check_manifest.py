@@ -9,6 +9,7 @@ Checks the vocabulary, required fields, and the load-bearing invariants:
 Exit 0 = valid; 1 = violations; 2 = setup error.
 """
 from __future__ import annotations
+
 import sys
 
 from specfuse.orchestrator import paths

@@ -45,11 +45,22 @@ Source = "https://github.com/Specfuse/orchestrator"
 
 [tool.ruff]
 target-version = "py310"
+# Matches the width the package is actually written at; ruff's 88 default would
+# make the import sorter (I001) wrap single-line imports that read fine as-is.
+line-length = 110
 # This pyproject.toml stands up the specfuse-orchestrator package only; the
 # pre-existing scripts/** and agents/** trees are not part of this package
 # (scripts/** driver migration is gate 2 — see distribution-phase1-workunits.md)
 # and are not yet linted as part of any packaging deliverable.
 extend-exclude = ["scripts", "agents", "dist", "build"]
+
+# The `lint` gate in .specfuse/verification.yml runs a bare `ruff check .`, so
+# the rule set has to be pinned here rather than inherited from whatever ruff
+# happens to be installed: ruff widens its implicit defaults between releases,
+# and an unpinned selection means the same tree lints green on one machine and
+# red on the next. Widen this list deliberately, never by upgrading ruff.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I", "UP", "B", "SIM"]
 
 [tool.hatch.version]
 path = "specfuse/orchestrator/__init__.py"
