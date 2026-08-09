@@ -29,6 +29,7 @@ from pathlib import Path
 
 from specfuse.orchestrator import paths
 from specfuse.orchestrator.validate_event import validate as validate_event
+
 DEFAULT_SPECS_REPO = "acme/specs-sample"
 
 REQUIRED_SECTIONS = ["## Observation", "## Location", "## Triggering task", "## Suggested resolution"]

@@ -288,6 +288,9 @@ def gitignore_guard(target_repo: Path) -> None:
             log("  WARNING: .specfuse/ is gitignored in the target — orchestrator config and "
                 "event/state writes will be invisible to git. Un-ignore .specfuse/.")
     except Exception:
+        # Best-effort probe only: a missing git binary or a non-repo target must
+        # never abort the install, and the guard has nothing useful to report if
+        # it cannot ask git in the first place.
         pass
 
 
