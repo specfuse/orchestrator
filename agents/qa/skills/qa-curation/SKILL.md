@@ -65,7 +65,7 @@ Per invocation, depending on mode:
 - One `regression_suite_curated` event appended to `/events/<feature_of_qa_curation_task>.jsonl`, with envelope `correlation_id` task-level on the qa_curation task and payload per [`events/regression_suite_curated.schema.json`](../../../../shared/schemas/events/regression_suite_curated.schema.json).
 - No label writes. No transitions. The merge watcher owns `in_review → done` on the qa_curation task issue.
 
-No writes to any other task, no writes to feature frontmatter, no writes to component-repo code paths, no writes to `/overrides/`, no writes to `/product/` outside `/product/test-plans/`. Every event round-trips through `specfuse-validate-event` before append; every file written on the curation branch is re-read after write per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3.
+No writes to any other task, no writes to feature frontmatter, no writes to component-repo code paths, no writes to `/overrides/`, no writes to `/product/` outside `/product/test-plans/`. Every event round-trips through `specfuse validate-event` before append; every file written on the curation branch is re-read after write per [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3.
 
 ## Trigger — external invocation
 
@@ -265,7 +265,7 @@ Construct:
 }
 ```
 
-Pipe through `specfuse-validate-event`. Require exit `0` on both the envelope and the per-type payload schema [`events/regression_suite_curated.schema.json`](../../../../shared/schemas/events/regression_suite_curated.schema.json). Append to the feature event log. Re-read the appended line to confirm JSON integrity.
+Pipe through `specfuse validate-event`. Require exit `0` on both the envelope and the per-type payload schema [`events/regression_suite_curated.schema.json`](../../../../shared/schemas/events/regression_suite_curated.schema.json). Append to the feature event log. Re-read the appended line to confirm JSON integrity.
 
 ### Step PM.5 — Return
 
@@ -347,7 +347,7 @@ Before returning from any invocation, the skill confirms the following. **The fi
 - Every refused candidate is recorded in `refused_candidates[]` on the emitted payload with a concrete `reason` that quotes the source evidence (filed event timestamp, impl task correlation ID for open-regression refusals; schema validation error for the schema-validation-failed branch). A refusal without a concrete reason fails this check.
 - The `regression_suite_curated` event's envelope `correlation_id` is task-level on the qa_curation task (`FEAT-YYYY-NNNN/TNN` pattern per [`/shared/rules/correlation-ids.md`](../../../../shared/rules/correlation-ids.md)). A feature-level correlation_id fails this check.
 - The event's `payload.affected_feature_correlation_ids[]` contains every feature whose plan file was modified by the merged PR, with no duplicates. Cross-validated against the PR's `gh pr view --json files` output: every changed `/product/test-plans/FEAT-YYYY-NNNN.md` path's FEAT identifier appears in the array.
-- On every emission path: every event round-trips through `specfuse-validate-event` with exit `0` (envelope + per-type payload for `regression_suite_curated`), was appended to the feature event log, and was re-read as a valid JSONL line.
+- On every emission path: every event round-trips through `specfuse validate-event` with exit `0` (envelope + per-type payload for `regression_suite_curated`), was appended to the feature event log, and was re-read as a valid JSONL line.
 - `source_version` on the emitted event was produced by `python3 -m specfuse.orchestrator._version` at emission time, not eye-cached from `version.md`.
 - Every file modified on the curation branch is re-read after write; its post-write content matches the intended frontmatter and the test-plan schema validates it.
 - No path written is in [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md). Specifically: `/product/test-plans/*.md` is QA-owned per [`../../CLAUDE.md`](../../CLAUDE.md) §"Output artifacts", and `/events/<feature>.jsonl` is the feature event log.
@@ -519,7 +519,7 @@ Time passes: the human reviews the PR, approves, and merges. The external trigge
 
 `refused_candidates` omitted — no refusals in this pass.
 
-Validates through `specfuse-validate-event` (envelope + per-type payload). Appended to `/events/FEAT-2026-0070.jsonl`. Re-read confirms.
+Validates through `specfuse validate-event` (envelope + per-type payload). Appended to `/events/FEAT-2026-0070.jsonl`. Re-read confirms.
 
 **Step PM.5** — Return. Merge watcher (separately) transitions `acme/api-sample#87` from `state:in-review → state:done` on detecting the specs repo merge linked to the task issue via the `Closes` line in the PR body.
 
@@ -676,7 +676,7 @@ Human reviews, approves, merges. External trigger invokes post-merge mode.
 
 See [`/shared/schemas/examples/regression_suite_curated.json`](../../../../shared/schemas/examples/regression_suite_curated.json) for the fixture.
 
-Validates through `specfuse-validate-event` (envelope + per-type payload, which enforces the refused_candidates object shape). Appended to `/events/FEAT-2026-0070.jsonl`. Re-read confirms.
+Validates through `specfuse validate-event` (envelope + per-type payload, which enforces the refused_candidates object shape). Appended to `/events/FEAT-2026-0070.jsonl`. Re-read confirms.
 
 **Step PM.5** — Return.
 
@@ -760,5 +760,5 @@ The v1 scan-and-propose structure is preserved; Phase 5 changes the inputs' rich
 - [`/shared/rules/correlation-ids.md`](../../../../shared/rules/correlation-ids.md) — the task-level pattern (`FEAT-YYYY-NNNN/TNN`) the envelope correlation_id uses.
 - [`/shared/rules/escalation-protocol.md`](../../../../shared/rules/escalation-protocol.md) — the escalation surface for the locally-correctable-failure and spec-level-blocker branches in §"Verification".
 - [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md) — re-confirmed: no written path in this skill is in the never-touch list.
-- `specfuse-validate-event` — applies the per-type payload schema additively.
+- `specfuse validate-event` — applies the per-type payload schema additively.
 - `python3 -m specfuse.orchestrator._version` — produces `source_version` at emission time.

@@ -5,8 +5,8 @@ Get from "I want to try the Specfuse orchestrator" to "ready to draft my first f
 ## Prerequisites
 
 - [Claude Code CLI](https://claude.com/claude-code) installed.
-- Python 3 with `pip`.
-- `pip install specfuse-orchestrator` (published on [PyPI](https://pypi.org/project/specfuse-orchestrator/)). To install the whole suite instead: `pipx install --include-deps 'specfuse[orchestrator]'` (quote the brackets for zsh; `--include-deps` surfaces the `specfuse-orchestrator` CLIs — pipx doesn't expose an extra's console scripts without it).
+- Python 3.
+- `uv tool install specfuse` (or `pipx install specfuse`) — the umbrella hard-depends on every component, so one install puts the whole suite on `$PATH` behind the single `specfuse` command. No extras, no flags, no bracket quoting. (`pip install specfuse-orchestrator` still works if you want this package as a library, but it is no longer the documented path for suite users.)
 - (Recommended) The [Specfuse validator CLI](https://specfuse.dev) on `$PATH`, so spec validation in the pipeline isn't simulated.
 - `git` and the [`gh` CLI](https://cli.github.com) are **optional** — needed only later, if and when you put the state under version control or wire the merge-watcher CI. You do not need them to start.
 
@@ -18,12 +18,12 @@ The tooling — drivers, CLI, agents, and the frozen substrate (schemas, rules, 
 
 1. **Install the tooling.**
    ```bash
-   pip install specfuse-orchestrator
+   uv tool install specfuse    # or: pipx install specfuse
    ```
 2. **Install the plugin** in Claude Code: `/plugin install specfuse-orchestrator@specfuse`.
 3. **Pick where your state lives, then `init` it** — location-agnostic, no git or GitHub required:
    ```bash
-   specfuse-orchestrator init <path>
+   specfuse pm init <path>
    ```
 
    | Shape | `<path>` | Best for |
@@ -76,9 +76,11 @@ From there, work through the artifact `/onboard` produced. When you're ready for
 When a new `specfuse-orchestrator` release ships, upgrade in place:
 
 ```bash
-pip install -U specfuse-orchestrator
-specfuse-orchestrator upgrade <path>
+specfuse upgrade                # re-resolves and pulls every component
+specfuse pm upgrade <path>
 ```
+
+(`specfuse upgrade` is `uv tool upgrade specfuse` / `pipx upgrade specfuse` under the hood — because the umbrella hard-depends on each component, a new orchestrator release lands without waiting on an umbrella version bump.)
 
 `upgrade` re-syncs the substrate from the newly-installed wheel and refreshes the `.claude` wiring. Your state (`features/`, `events/`, `project/`, `inbox/`, `overrides/`) is untouched.
 
@@ -92,7 +94,7 @@ In a Claude Code session at your state directory, the plugin provides one slash 
 
 ## If something goes wrong
 
-- Re-run `specfuse-orchestrator init <dir>` on a fresh directory if the scaffold looks incomplete, or `specfuse-orchestrator upgrade <dir>` to refresh an existing repo's substrate and `.claude` wiring.
+- Re-run `specfuse pm init <dir>` on a fresh directory if the scaffold looks incomplete, or `specfuse pm upgrade <dir>` to refresh an existing repo's substrate and `.claude` wiring.
 - Make sure `gh auth status` passes before the `gh repo create` step.
 - [`README.md`](README.md) — full project overview.
 - Open an issue on the [`specfuse-orchestrator`](https://github.com/specfuse/orchestrator) repo if the failure looks like a tooling bug.

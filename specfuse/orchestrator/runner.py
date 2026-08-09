@@ -29,10 +29,10 @@ Exit codes:
   3  poller / adopt error or missing prerequisite.
 
 Usage:
-    specfuse-runner                              # newest INIT-*.md
-    specfuse-runner --feature features/INIT-2026-0001.md
-    specfuse-runner --dry-run                    # no writes, no dispatch
-    specfuse-runner --approve                    # approve gate then continue
+    specfuse runner                              # newest INIT-*.md
+    specfuse runner --feature features/INIT-2026-0001.md
+    specfuse runner --dry-run                    # no writes, no dispatch
+    specfuse runner --approve                    # approve gate then continue
 """
 
 from __future__ import annotations
@@ -345,26 +345,26 @@ def _recommended_actions(impl_entries: list[dict], feature_status: dict[str, str
     for fid in sorted(by_status.get("blocked", [])):
         actions.append(
             f"UNBLOCK {fid}: read the feature's events.jsonl + work/ for failure detail; "
-            f"resolve the blocker, then re-run `specfuse-runner`."
+            f"resolve the blocker, then re-run `specfuse runner`."
         )
     # Awaiting human gate review.
     review_fids = sorted(by_status.get("awaiting_review_now", []) + by_status.get("awaiting_review", []))
     for fid in review_fids:
         actions.append(
             f"REVIEW {fid}: read the feature's GATE-NN-REVIEW.md (or the most-recent WU-93 "
-            f"plan-next body), then re-run `specfuse-runner --approve` to pass the gate."
+            f"plan-next body), then re-run `specfuse runner --approve` to pass the gate."
         )
     # Unarmed draft WUs.
     unarmed_fids = sorted(by_status.get("unarmed_now", []) + by_status.get("unarmed", []))
     for fid in unarmed_fids:
         actions.append(
-            f"ARM {fid}: re-run `specfuse-runner --approve` to arm the draft WUs."
+            f"ARM {fid}: re-run `specfuse runner --approve` to arm the draft WUs."
         )
     # Adopted-in-main features (loop's first pass needs to run to create the branch).
     main_fids = sorted(by_status.get("main", []))
     for fid in main_fids:
         actions.append(
-            f"BOOTSTRAP {fid}: re-run `specfuse-runner` — the loop's first pass will "
+            f"BOOTSTRAP {fid}: re-run `specfuse runner` — the loop's first pass will "
             f"create the feature branch in the component repo's main checkout and commit the "
             f"adoption."
         )
@@ -373,7 +373,7 @@ def _recommended_actions(impl_entries: list[dict], feature_status: dict[str, str
     for fid in not_adopted:
         actions.append(
             f"ADOPT {fid}: the poller should have adopted this feature; "
-            f"re-run `specfuse-runner` to retry, or invoke "
+            f"re-run `specfuse runner` to retry, or invoke "
             f"`.specfuse/scripts/adopt_feature.py <slug> <issue#>` manually in the component repo."
         )
     # Loop missing in a repo.
@@ -389,7 +389,7 @@ def _recommended_actions(impl_entries: list[dict], feature_status: dict[str, str
     if pending and not (review_fids or unarmed_fids):
         actions.append(
             f"GRIND {len(pending)} feature(s) — {', '.join(pending)}: re-run "
-            f"`specfuse-runner` to advance their gates."
+            f"`specfuse runner` to advance their gates."
         )
     # QA dispatcher needed. A QA feature is "unblocked now" iff every dep FID is in
     # `done` or `complete_now` (impl feature) — QA deps reference sibling FIDs in
@@ -411,7 +411,7 @@ def _recommended_actions(impl_entries: list[dict], feature_status: dict[str, str
         )
     if all_impl_done and not qa_ready:
         actions.append(
-            "INITIATIVE COMPLETE — `specfuse-poller` will emit the "
+            "INITIATIVE COMPLETE — `specfuse poller` will emit the "
             "`in_progress → done` transition (or run `/initiative-status` manually)."
         )
     return actions

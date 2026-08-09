@@ -1,6 +1,6 @@
 # Contributing to the Specfuse Orchestrator
 
-The Specfuse orchestrator is a filesystem-based coordination layer for multi-agent software development. This repository is the source for the `specfuse-orchestrator` pip package — agent configurations, shared rules, schemas, templates, and the CLI (`init` / `upgrade`) that projects install from PyPI and use to scaffold their own orchestration repos.
+The Specfuse orchestrator is a filesystem-based coordination layer for multi-agent software development. This repository is the source for the `specfuse-orchestrator` pip package — agent configurations, shared rules, schemas, templates, and the CLI (`specfuse pm init` / `specfuse pm upgrade`) that projects install from PyPI and use to scaffold their own orchestration repos.
 
 Contributions are normal pull requests against this repository. If you've improved something — a clearer skill, a sharper rule, a fix to a shared schema, a CLI fix — branch, commit, and open a PR here.
 
@@ -41,8 +41,8 @@ Scope is typically the agent role (`specs`, `pm`, `component`, `qa`, `onboarding
 Any change touching schemas, events, or frontmatter formats must round-trip through the validators:
 
 ```bash
-specfuse-validate-event --file events/<file>.jsonl
-specfuse-validate-frontmatter --file features/<file>.md
+specfuse validate-event --file events/<file>.jsonl
+specfuse validate-frontmatter --file features/<file>.md
 ```
 
 The walkthrough log artifacts in `docs/walkthroughs/phase-N/` are the existing test corpus — schema changes that break them require an architectural justification in the same commit.
@@ -51,7 +51,7 @@ The walkthrough log artifacts in `docs/walkthroughs/phase-N/` are the existing t
 
 The `specfuse-orchestrator` package is licensed under Apache 2.0. By contributing to this repository, you agree your contributions are licensed under the same terms. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
 
-An orchestration repo a user creates with `specfuse-orchestrator init` is their own new git repo, licensed however they choose — see [`README.md`](README.md) §"Licensing".
+An orchestration repo a user creates with `specfuse pm init` is their own new git repo, licensed however they choose — see [`README.md`](README.md) §"Licensing".
 
 ## Questions
 

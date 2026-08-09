@@ -18,7 +18,7 @@ It reacts only *after* a PR is merged, so by definition all required checks have
 3. Appends a validated `task_completed` event (`source: merge-watcher`) to the orchestration
    repo's `events/<INITIATIVE>.jsonl` and pushes it (retries with rebase on concurrent merges).
 
-The orchestrator poller (`specfuse-poller`) picks up from there: it sees the feature done
+The orchestrator poller (`specfuse poller`) picks up from there: it sees the feature done
 (via the `state:done` label / closed issue) and recomputes dependents `pending → ready`.
 
 ### Install (per component repo)
@@ -40,5 +40,5 @@ The orchestrator poller (`specfuse-poller`) picks up from there: it sees the fea
   carry `Feature: …/FNN/TNN` trailers but the watcher operates at feature granularity.
 - Concurrent merges racing on the same `events/<INITIATIVE>.jsonl` are handled by push-retry
   with `--rebase`; pathological contention is not (acceptable at current scale).
-- Event validation requires `the specfuse-orchestrator package` (installed in the job). A validation
+- Event validation requires the `specfuse` package (installed in the job). A validation
   failure aborts the append (the event is never written half-formed).

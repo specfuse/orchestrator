@@ -18,7 +18,7 @@ The orchestrator assumes a specific multi-repo layout and tooling baseline befor
 
 - **Claude Code CLI** installed and authenticated. The specs agent runs as a session inside Claude Code with `agents/specs/CLAUDE.md` loaded as the role prompt.
 - **Specfuse validator CLI** installed and on `$PATH`. Phase 4 walkthroughs *simulated* validation because the binary wasn't installed (retrospective F4.1, marked Won't-fix at the orchestrator level — your responsibility as operator). The spec-validation skill invokes the real validator; without it, validation produces no signal.
-- **Python 3 with the deps in [`the specfuse-orchestrator package`](../the specfuse-orchestrator package).** Used by `validate-event.py` and `validate-frontmatter.py`, which the agent shells out to at every event emission.
+- **The `specfuse` suite installed** (`uv tool install specfuse`, or `pipx install specfuse`). Provides `specfuse validate-event` and `specfuse validate-frontmatter`, which the agent shells out to at every event emission.
 - **`gh` CLI** authenticated against the GitHub org hosting the component and generator repos. Required for spec-issue filing and (later) for the PM agent's issue creation.
 - **Writable `$TMPDIR`.** The agent uses `$TMPDIR` for staging events before validation. If you run inside a sandbox that blocks `/tmp` writes, ensure `$TMPDIR` is set and writable (Phase 4 retrospective F4.2).
 
@@ -58,8 +58,8 @@ The agent then:
 1. Reads `/features/FEAT-YYYY-*.md` to find the next available ordinal.
 2. Mints a correlation ID `FEAT-YYYY-NNNN` per [`shared/rules/correlation-ids.md`](../shared/rules/correlation-ids.md).
 3. Creates `/features/FEAT-YYYY-NNNN.md` from the [feature-registry template](../shared/templates/feature-registry.md) with `state: drafting` and your inputs in frontmatter; body sections carry placeholder text.
-4. Validates the frontmatter via `specfuse-validate-frontmatter`.
-5. Emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl`, validated via `specfuse-validate-event`.
+4. Validates the frontmatter via `specfuse validate-frontmatter`.
+5. Emits a `feature_created` event to `/events/FEAT-YYYY-NNNN.jsonl`, validated via `specfuse validate-event`.
 
 **Verify before continuing.** Re-read the feature file, confirm the correlation ID, and confirm the event landed. The agent does this automatically per [`shared/rules/verify-before-report.md`](../shared/rules/verify-before-report.md), but it's worth a glance — every downstream artifact threads through this correlation ID.
 

@@ -40,7 +40,7 @@ Out of scope (and therefore not touched by this skill):
 **Phase B (success):**
 
 - Update to `/features/<correlation_id>.md` frontmatter: `task_graph`, `involved_repos`, and `autonomy_default` synchronized with the plan file. `state` remains `plan_review`. `correlation_id` never changes.
-- One `template_coverage_checked` event appended to `/events/<correlation_id>.jsonl` (emitted by the template-coverage re-chain after structural validation; validated through `specfuse-validate-event` before append).
+- One `template_coverage_checked` event appended to `/events/<correlation_id>.jsonl` (emitted by the template-coverage re-chain after structural validation; validated through `specfuse validate-event` before append).
 
 **Phase B (escalation — structural validation):**
 
@@ -154,7 +154,7 @@ The skill confirms, by direct read:
    - `source`: `pm`.
    - `source_version`: from `python3 -m specfuse.orchestrator._version pm` at emission time.
    - `payload`: `{"plan_file_path": "features/<id>-plan.md", "task_count": <n>, "plan_pass": <pass>}`.
-6. Pipe the event through `specfuse-validate-event`; require exit 0; append to `/events/<correlation_id>.jsonl`. Re-read the appended line.
+6. Pipe the event through `specfuse validate-event`; require exit 0; append to `/events/<correlation_id>.jsonl`. Re-read the appended line.
 
 ### Phase A exit criteria
 
@@ -207,7 +207,7 @@ The re-chain procedure follows the full coverage-check discipline defined in [`.
 
 1. **Re-run the pre-flight check (Step 2.5 of template-coverage-check).** If any task in the post-edit graph is missing the `required_templates` field entirely (the human added a new task during their edit but did not populate the field), escalate `spec_level_blocker` exactly as the direct coverage-check invocation would:
    - Write the escalation file at `/inbox/human-escalation/<feature_correlation_id>-template-coverage.md` naming the tasks with the absent field.
-   - Append a `human_escalation` event with `reason: spec_level_blocker`, validated through `specfuse-validate-event` (exit 0) before append.
+   - Append a `human_escalation` event with `reason: spec_level_blocker`, validated through `specfuse validate-event` (exit 0) before append.
    - Return escalation to the caller. Do **not** proceed to emit `template_coverage_checked`. Phase B exits in escalation state; the feature frontmatter has already been written in step 8 — this is acceptable because the frontmatter write was structurally valid; the escalation is about the coverage contract, not structural integrity.
 
 2. **Re-run the coverage walk (Steps 3–5 of template-coverage-check).** Enumerate demand, fetch declarations, cross-reference tokens. A coverage gap found at this point triggers the same `spec_level_blocker` escalation as a primary coverage-check invocation: escalation file + `human_escalation` event. Same exit semantics as above — frontmatter has been written; escalation is on the coverage contract.
@@ -228,7 +228,7 @@ The re-chain procedure follows the full coverage-check discipline defined in [`.
    }
    ```
 
-   Pipe through `specfuse-validate-event` (top-level + per-type payload schema per [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json)); require exit 0 before appending. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line.
+   Pipe through `specfuse validate-event` (top-level + per-type payload schema per [`/shared/schemas/events/template_coverage_checked.schema.json`](../../../../shared/schemas/events/template_coverage_checked.schema.json)); require exit 0 before appending. Append to `/events/<feature_correlation_id>.jsonl`. Re-read the appended line.
 
 **Idempotency:** A Phase B pass on an unchanged plan file (e.g., prose-only edit, or identical structural re-submit) still emits a fresh `template_coverage_checked` event. This is correct — the event asserts "coverage held at `<timestamp>` for this graph shape"; multiple assertions are not harmful and make the audit trail dense rather than sparse.
 
@@ -282,7 +282,7 @@ Before returning from Phase A:
 - The plan file exists at the declared path.
 - The YAML block inside the plan file parses and matches the source frontmatter.
 - The feature frontmatter's `state` is `plan_review`.
-- The `plan_ready` event passed `specfuse-validate-event` (exit 0) and is the last line of the feature's event log.
+- The `plan_ready` event passed `specfuse validate-event` (exit 0) and is the last line of the feature's event log.
 - `source_version` on the event was produced by `python3 -m specfuse.orchestrator._version pm` at emission.
 - No path written is in [`never-touch.md`](../../../../shared/rules/never-touch.md).
 
@@ -295,7 +295,7 @@ Before returning from Phase B (success — full pass):
 - No duplicate task IDs.
 - The feature file's prose body is byte-identical to its pre-ingest content. The skill touches the frontmatter only.
 - The template-coverage re-chain (§"Template-coverage re-chain") ran against the post-edit graph and passed.
-- A `template_coverage_checked` event passed `specfuse-validate-event` (top-level + per-type payload schema) with exit 0, was appended to the event log, and was re-read.
+- A `template_coverage_checked` event passed `specfuse validate-event` (top-level + per-type payload schema) with exit 0, was appended to the event log, and was re-read.
 - `source_version` on the `template_coverage_checked` event was produced by `python3 -m specfuse.orchestrator._version pm` at emission time.
 
 Before returning from Phase B (escalation — structural validation failed):

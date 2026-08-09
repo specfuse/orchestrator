@@ -18,4 +18,4 @@ doc:
 
 plannext:
   - name: plan-lint
-    command: "specfuse-lint {feature_dir}"
+    command: "specfuse lint {feature_dir}"
