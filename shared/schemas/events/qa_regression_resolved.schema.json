@@ -16,8 +16,8 @@
   "properties": {
     "implementation_task_correlation_id": {
       "type": "string",
-      "description": "Task-level correlation ID of the ORIGINAL implementation task the resolved regression was attributed against. Matches the `implementation_task_correlation_id` field of the paired `qa_regression_filed` event exactly.",
-      "pattern": "^((FEAT-\\d{4}-\\d{4})|(INIT-\\d{4}-\\d{4}/F\\d{2}))/T\\d{2}$"
+      "description": "Task-level correlation ID of the ORIGINAL implementation task the resolved regression was attributed against. Matches the `implementation_task_correlation_id` field of the paired `qa_regression_filed` event exactly. The task-id segment accepts the substantive TNN and hygiene TNNH[N...] shapes. Closing-sequence G<n>-<NAME> IDs are deliberately not accepted here: this field names an implementation work unit, and a closing unit delivers no code to attribute a regression against.",
+      "pattern": "^((FEAT-\\d{4}-\\d{4})|(INIT-\\d{4}-\\d{4}/F\\d{2}))/T\\d{2}(H\\d*)?$"
     },
     "test_id": {
       "type": "string",

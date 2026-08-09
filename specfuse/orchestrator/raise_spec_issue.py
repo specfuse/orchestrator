@@ -33,7 +33,15 @@ from specfuse.orchestrator.validate_event import validate as validate_event
 DEFAULT_SPECS_REPO = "acme/specs-sample"
 
 REQUIRED_SECTIONS = ["## Observation", "## Location", "## Triggering task", "## Suggested resolution"]
-CORRELATION_RE = re.compile(r"Correlation ID:\s*((?:FEAT|INIT)-\d{4}-\d{4}(?:/F\d{2})?(?:/T\d{2})?)")
+# The task-id segment matches every shape .specfuse/rules/correlation-ids.md
+# documents — substantive TNN, hygiene TNNH[N...], closing G<n>-<NAME> — and not
+# just TNN. The segment is optional and the match is unanchored, so a narrower
+# alternation would not fail on a closing unit's ID: it would quietly capture the
+# feature-level prefix and drop the work unit the issue was raised from.
+CORRELATION_RE = re.compile(
+    r"Correlation ID:\s*((?:FEAT|INIT)-\d{4}-\d{4}(?:/F\d{2})?"
+    r"(?:/(?:T\d{2}(?:H\d*)?|G\d+-(?:RETRO|LESSONS|DOCS|PLAN|CLOSE-INTERMEDIATE|CLOSE)))?)"
+)
 ROOT_RE = re.compile(r"^((?:FEAT|INIT)-\d{4}-\d{4})")
 
 LABEL_SPEC_ISSUE = ("specfuse:spec-issue", "D93F0B", "Spec change request routed to the specs agent")
