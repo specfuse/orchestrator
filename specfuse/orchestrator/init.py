@@ -28,6 +28,7 @@ Requires pyyaml (bundled with the specfuse-orchestrator package); `gh` for label
 from __future__ import annotations
 
 import argparse
+import filecmp
 import os
 import re
 import shutil
@@ -97,6 +98,8 @@ def log(msg: str) -> None:
 # --------------------------------------------------------------------------- #
 
 def copy_file(src: Path, dst: Path, dry: bool) -> None:
+    if dst.is_file() and filecmp.cmp(src, dst, shallow=False):
+        return  # already current: nothing to write or report
     verb = "update" if dst.exists() else "add"
     if dry:
         log(f"    would {verb}: {dst}")
