@@ -4,6 +4,9 @@
 Checks the vocabulary, required fields, and the load-bearing invariants:
   - every (target, install path) slot is written by exactly one upgrader;
   - no slot is claimed by two entries (one source per slot);
+  - no slot sits inside a directory slot (path ending `/`) owned by a different upgrader
+    on the same target — the directory's upgrader overlays the whole tree, so a nested
+    writer is a second upgrader for those files even though the paths differ;
   - orchestrator-init ships only `stable` entries (charter §4).
 
 Exit 0 = valid; 1 = violations; 2 = setup error.
@@ -70,6 +73,18 @@ def main() -> int:
             errors.append(f"slot {slot}: multiple upgraders {sorted(ups)} (entries {slot_entries[slot]})")
         if len(slot_entries[slot]) > 1:
             errors.append(f"slot {slot}: claimed by multiple entries {slot_entries[slot]} (one source per slot)")
+
+    # invariant 1, nested: a directory slot owns everything under it
+    for (target, dir_path), dir_ups in slot_upgraders.items():
+        if not str(dir_path).endswith("/"):
+            continue
+        for (t, path), ups in slot_upgraders.items():
+            if t != target or path == dir_path or not str(path).startswith(dir_path):
+                continue
+            if ups != dir_ups:
+                errors.append(
+                    f"slot {(t, path)} ({sorted(ups)}, entries {slot_entries[(t, path)]}) is inside "
+                    f"directory slot {(target, dir_path)} owned by {sorted(dir_ups)}")
 
     if errors:
         for e in errors:

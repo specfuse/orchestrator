@@ -111,3 +111,56 @@ def test_check_manifest_missing_file(tmp_path, monkeypatch):
         check_manifest.paths, "substrate", lambda *parts: tmp_path / "missing.yaml"
     )
     assert check_manifest.main() == 2
+
+
+def _run_on(tmp_path, monkeypatch, entries: str) -> int:
+    manifest = tmp_path / "ownership-manifest.yaml"
+    manifest.write_text(textwrap.dedent("""\
+        categories: [shared-core]
+        authorities: [core-canonical]
+        stabilities: [stable]
+        upgraders: [orchestrator-init, loop-init, methodology]
+        targets: [component, specs]
+        entries:
+        """) + textwrap.indent(entries, "  "), encoding="utf-8")
+    monkeypatch.setattr(check_manifest.paths, "substrate", lambda *parts: manifest)
+    return check_manifest.main()
+
+
+def _entry(eid: str, upgrader: str, path: str, target: str = "component") -> str:
+    return textwrap.dedent(f"""\
+        - id: {eid}
+          category: shared-core
+          canonical_source: {{repo: specfuse, path: x}}
+          authority: core-canonical
+          stability: stable
+          upgrader: {upgrader}
+          install:
+            - {{target: {target}, path: {path}}}
+        """)
+
+
+def test_slot_inside_another_upgraders_directory_slot_fails(tmp_path, monkeypatch, capsys):
+    code = _run_on(tmp_path, monkeypatch,
+                   _entry("core-dir", "methodology", ".specfuse/methodology/")
+                   + _entry("intruder", "loop-init", ".specfuse/methodology/rules/x.md"))
+    assert code == 1
+    assert "inside" in capsys.readouterr().err
+
+
+def test_slot_inside_own_upgraders_directory_slot_passes(tmp_path, monkeypatch):
+    assert _run_on(tmp_path, monkeypatch,
+                   _entry("skills", "loop-init", ".specfuse/skills/")
+                   + _entry("one-skill", "loop-init", ".specfuse/skills/authoring/")) == 0
+
+
+def test_directory_nesting_is_per_target(tmp_path, monkeypatch):
+    assert _run_on(tmp_path, monkeypatch,
+                   _entry("core-dir", "methodology", ".specfuse/methodology/", "specs")
+                   + _entry("other", "loop-init", ".specfuse/methodology/x.md", "component")) == 0
+
+
+def test_sibling_prefix_is_not_nesting(tmp_path, monkeypatch):
+    assert _run_on(tmp_path, monkeypatch,
+                   _entry("rules", "loop-init", ".specfuse/rules/")
+                   + _entry("rules-local", "orchestrator-init", ".specfuse/rules-local/x.md")) == 0

@@ -28,8 +28,9 @@ Each entry also carries:
 - **stability** (charter §4 — *when* it ships): `stable` ships now; `moving` is deferred
   until the gate cycle is proven and `specfuse/methodology` is extracted. Charter §4 is
   explicit: do not build a vendoring graph around contracts still being revised by real runs.
-- **upgrader** — exactly one of `orchestrator-init` | `loop-init` | `methodology` (future) |
-  `manual`.
+- **upgrader** — exactly one of `orchestrator-init` | `loop-init` | `methodology` | `manual`.
+  `methodology` is executed by `specfuse` core's provisioning (into `.specfuse/methodology/`)
+  and by the loop for its `.specfuse/rules/` copies — never by orchestrator-init.
 - **install** — the target repo(s) (`component`, `specs`) and the path in each. The
   orchestrator repo is always a *source*, never a target.
 
@@ -38,7 +39,9 @@ Each entry also carries:
 1. **One upgrader per install slot.** Every `(target, install path)` pair across the whole
    manifest is written by exactly one `upgrader`. This is what lets loop-init and
    orchestrator-init overlay one component repo's `.specfuse/`/`.claude/`/`.github/` without
-   fighting — each only touches the slots it owns. (Validated by `check-manifest.py` below.)
+   fighting — each only touches the slots it owns. A directory slot (path ending `/`) owns
+   everything under it, so no slot of a different upgrader may sit inside one on the same
+   target. (Validated by `check_manifest` below.)
 2. **Overlap resolves to one canonical source.** Where an artifact exists on both surfaces
    (e.g. correlation-ids, never-touch, security-boundaries, the verify/result discipline),
    the orchestrator's frozen copy is canonical and is the single shipped source; the loop's
