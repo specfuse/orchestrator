@@ -30,16 +30,41 @@ def test_methodology_is_not_shipped():
     assert "methodology" not in init.SHIP_UPGRADERS
 
 
+METHODOLOGY_SLOT = ".specfuse/methodology/"
+
+
 def test_manifest_core_owned_component_slots_are_the_methodology_upgraders():
-    """The five paths the loop also writes are exactly the methodology entries' component slots."""
+    """Outside core's own slot, the methodology entries' component slots are exactly the five
+    paths the loop also writes."""
     slots = sorted(
         i["path"]
         for e in _manifest()["entries"]
         if e["upgrader"] == "methodology"
         for i in e.get("install", [])
-        if i["target"] == "component"
+        if i["target"] == "component" and not i["path"].startswith(METHODOLOGY_SLOT)
     )
     assert slots == CORE_OWNED_COMPONENT_PATHS
+
+
+def test_manifest_declares_cores_provisioned_slot_on_both_targets():
+    """`specfuse` provisions methodology/{rules,schemas} into .specfuse/methodology/ (#87)."""
+    slots = {
+        (i["target"], i["path"]): e
+        for e in _manifest()["entries"]
+        for i in e.get("install", [])
+        if i["path"].startswith(METHODOLOGY_SLOT)
+    }
+    expected = {
+        (t, f"{METHODOLOGY_SLOT}{sub}/")
+        for t in ("component", "specs")
+        for sub in ("rules", "schemas")
+    }
+    assert set(slots) == expected
+    for (_, path), e in slots.items():
+        assert e["upgrader"] == "methodology"
+        assert e["authority"] == "core-canonical"
+        sub = path[len(METHODOLOGY_SLOT):]
+        assert e["canonical_source"] == {"repo": "specfuse", "path": f"methodology/{sub}"}
 
 
 def test_upgrade_preserves_loop_copies_of_core_owned_files(tmp_path, monkeypatch):
@@ -65,6 +90,7 @@ def test_fresh_install_writes_no_core_owned_files_and_imports_only_owned_rules(t
 
     for rel in CORE_OWNED_COMPONENT_PATHS:
         assert not (target / rel).exists(), rel
+    assert not (target / METHODOLOGY_SLOT).exists()
     imports = [
         line for line in (target / ".claude" / "CLAUDE.md").read_text().splitlines()
         if line.startswith("@.specfuse/rules/")
