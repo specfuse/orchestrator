@@ -327,7 +327,7 @@ entries:
     authority: orchestrator-frozen
     stability: stable
     upgrader: orchestrator-init
-    note: Owns in_review->done; needs ORCH_TOKEN secret in the component repo. See shared/ci/README.md.
+    note: Owns in_review->done; needs the SPECFUSE_ORCH_REPO variable and the SPECFUSE_APP_ID / SPECFUSE_APP_PRIVATE_KEY secrets in the component repo. See shared/ci/README.md.
     install:
       - { target: component, path: .github/workflows/merge-watcher.yml }
 
