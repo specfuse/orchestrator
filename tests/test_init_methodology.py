@@ -1,6 +1,9 @@
 # Copyright 2026 Specfuse Contributors
 # Licensed under the Apache License, Version 2.0. See LICENSE.
-"""Track C2: orchestrator-init ships the core-methodology (`methodology` upgrader) entries."""
+"""orchestrator-init leaves core-owned (`methodology` upgrader) entries to core and the loop (#91).
+
+Core provisions them and the loop ships them into component repos; an orchestrator
+re-ship would overwrite the loop's newer copies with the orchestrator's vendored ones."""
 from __future__ import annotations
 
 import pytest
@@ -14,8 +17,61 @@ def _manifest() -> dict:
     return yaml.safe_load(init.MANIFEST.read_text())
 
 
-def test_methodology_is_shipped():
-    assert "methodology" in init.SHIP_UPGRADERS
+CORE_OWNED_COMPONENT_PATHS = [
+    ".specfuse/docs/methodology.md",
+    ".specfuse/rules/correlation-ids.md",
+    ".specfuse/rules/never-touch.md",
+    ".specfuse/rules/security-boundaries.md",
+    ".specfuse/rules/verification-discipline.md",
+]
+
+
+def test_methodology_is_not_shipped():
+    assert "methodology" not in init.SHIP_UPGRADERS
+
+
+def test_manifest_core_owned_component_slots_are_the_methodology_upgraders():
+    """The five paths the loop also writes are exactly the methodology entries' component slots."""
+    slots = sorted(
+        i["path"]
+        for e in _manifest()["entries"]
+        if e["upgrader"] == "methodology"
+        for i in e.get("install", [])
+        if i["target"] == "component"
+    )
+    assert slots == CORE_OWNED_COMPONENT_PATHS
+
+
+def test_upgrade_preserves_loop_copies_of_core_owned_files(tmp_path, monkeypatch):
+    target = tmp_path / "component"
+    for rel in CORE_OWNED_COMPONENT_PATHS:
+        f = target / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(f"loop copy of {rel}\n")
+    monkeypatch.setattr(init, "gitignore_guard", lambda _repo: None)
+
+    init.install_into("component", target, _manifest(), upgrade=True, dry=False)
+
+    for rel in CORE_OWNED_COMPONENT_PATHS:
+        assert (target / rel).read_text() == f"loop copy of {rel}\n", rel
+
+
+def test_fresh_install_writes_no_core_owned_files_and_imports_only_owned_rules(tmp_path, monkeypatch):
+    target = tmp_path / "component"
+    target.mkdir()
+    monkeypatch.setattr(init, "gitignore_guard", lambda _repo: None)
+
+    init.install_into("component", target, _manifest(), upgrade=False, dry=False)
+
+    for rel in CORE_OWNED_COMPONENT_PATHS:
+        assert not (target / rel).exists(), rel
+    imports = [
+        line for line in (target / ".claude" / "CLAUDE.md").read_text().splitlines()
+        if line.startswith("@.specfuse/rules/")
+    ]
+    assert imports, "orchestrator-owned rules should still be wired"
+    for rel in CORE_OWNED_COMPONENT_PATHS:
+        assert f"@{rel}" not in imports
 
 
 def test_resolve_source_remaps_methodology_to_vendored_substrate():
@@ -34,37 +90,6 @@ def test_resolve_source_remaps_methodology_to_vendored_substrate():
     assert p == paths.substrate("rules", "override-registry.md")
 
 
-def test_every_methodology_install_slot_has_a_real_source():
-    """The distributor must never hit a MISSING source: every scaffolded methodology
-    entry resolves to a file the orchestrator actually vendors locally."""
-    missing = []
-    for e in _manifest()["entries"]:
-        if e.get("upgrader") != "methodology":
-            continue
-        if not e.get("install"):
-            continue  # install: [] entries are documented-only, not scaffolded
-        src = init._resolve_source(e["canonical_source"])
-        if not src.exists():
-            missing.append((e["id"], str(src)))
-    assert not missing, f"methodology entries with no local source: {missing}"
-
-
-def test_install_entry_copies_a_methodology_rule(tmp_path):
-    target = tmp_path / "component"
-    entry = {
-        "id": "rule-correlation-ids",
-        "upgrader": "methodology",
-        "category": "shared-core",
-        "canonical_source": {"repo": "specfuse", "path": "methodology/rules/correlation-ids.md"},
-    }
-    install = {"target": "component", "path": ".specfuse/rules/correlation-ids.md",
-               "_target_repo": str(target)}
-    init.install_entry(entry, install, dry=False)
-    dst = target / ".specfuse" / "rules" / "correlation-ids.md"
-    assert dst.is_file()
-    # shipped content equals the orchestrator's vendored core copy
-    from specfuse.orchestrator import paths
-    assert dst.read_text() == paths.substrate("rules", "correlation-ids.md").read_text()
 
 
 def test_discover_repos_reads_from_state_root(tmp_path):
@@ -96,17 +121,3 @@ def test_no_agent_config_is_scaffolded():
     assert not [p for p in slots if p.startswith(".specfuse/agents/")], (
         "an agent config is still scaffolded; the plugin should be the sole home"
     )
-
-
-def test_install_entry_ships_methodology_doc(tmp_path):
-    target = tmp_path / "component"
-    entry = {
-        "id": "methodology-gate-cycle",
-        "upgrader": "methodology",
-        "category": "shared-core",
-        "canonical_source": {"repo": "specfuse", "path": "methodology/methodology.md"},
-    }
-    install = {"target": "component", "path": ".specfuse/docs/methodology.md",
-               "_target_repo": str(target)}
-    init.install_entry(entry, install, dry=False)
-    assert (target / ".specfuse" / "docs" / "methodology.md").is_file()
