@@ -6,15 +6,18 @@
 #
 # Model B (docs/naming-convention.md): one PR per feature. On feature-PR merge it:
 #   1. extracts the feature correlation ID from the PR head branch
-#      (feat/INIT-YYYY-NNNN-FNN-slug  ->  INIT-YYYY-NNNN/FNN; legacy FEAT-YYYY-NNNN too),
+#      (feat/INIT-YYYY-NNNN-FNN-slug  ->  INIT-YYYY-NNNN/FNN; loop-local FEAT-* branches are
+#      skipped — nothing in the orchestrator reads their event logs),
 #   2. flips the feature issue (this repo) to state:done and closes it,
 #   3. appends a validated `task_completed` event (source: merge-watcher) to the
 #      orchestration repo's events/<INITIATIVE>.jsonl and pushes it.
 # The orchestrator poller's next pass sees the feature done and recomputes dependents.
 #
 # INSTALL: copy to .github/workflows/merge-watcher.yml in the component repo.
+# VARIABLE (component repo or org): SPECFUSE_ORCH_REPO — the orchestration repo as owner/name.
+#   The file itself names no repo, so it is identical in every consumer and upgrades cleanly.
 # SECRETS (component repo): SPECFUSE_APP_ID + SPECFUSE_APP_PRIVATE_KEY — credentials for the
-#   `specfuse-merge-watcher` GitHub App (installed on acme/orchestration with
+#   `specfuse-merge-watcher` GitHub App (installed on the orchestration repo with
 #   contents:write). The workflow mints a short-lived, orchestrator-scoped installation token
 #   at runtime via actions/create-github-app-token. GITHUB_TOKEN (built-in) covers this repo's
 #   issues. (Replaces the former long-lived ORCH_TOKEN PAT.)
@@ -31,7 +34,7 @@ permissions:
   issues: write
 
 env:
-  ORCH_REPO: acme/orchestration
+  ORCH_REPO: ${{ vars.SPECFUSE_ORCH_REPO }}
 
 jobs:
   on-merge:
@@ -44,17 +47,29 @@ jobs:
           BRANCH: ${{ github.event.pull_request.head.ref }}
         run: |
           set -euo pipefail
-          fid=$(printf '%s' "$BRANCH" | grep -oE '(INIT-[0-9]{4}-[0-9]{4}-F[0-9]{2})|(FEAT-[0-9]{4}-[0-9]{4})' | head -1 || true)
+          fid=$(printf '%s' "$BRANCH" | grep -oE 'INIT-[0-9]{4}-[0-9]{4}-F[0-9]{2}' | head -1 || true)
           if [ -z "$fid" ]; then
             echo "branch '$BRANCH' carries no specfuse correlation ID — skipping"
             echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0
           fi
           cid=$(printf '%s' "$fid" | sed -E 's/(INIT-[0-9]{4}-[0-9]{4})-(F[0-9]{2})/\1\/\2/')
-          init=$(printf '%s' "$cid" | grep -oE '^(INIT|FEAT)-[0-9]{4}-[0-9]{4}')
+          init=$(printf '%s' "$cid" | grep -oE '^INIT-[0-9]{4}-[0-9]{4}')
           echo "cid=$cid"   >> "$GITHUB_OUTPUT"
           echo "init=$init" >> "$GITHUB_OUTPUT"
           echo "skip=false" >> "$GITHUB_OUTPUT"
           echo "resolved feature=$cid initiative=$init"
+
+      - name: Resolve the orchestration repo
+        if: steps.cid.outputs.skip == 'false'
+        id: orch
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$ORCH_REPO" | grep -qE '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'; then
+            echo "::error::set the SPECFUSE_ORCH_REPO repository variable to the orchestration repo as owner/name (got '${ORCH_REPO}')"
+            exit 1
+          fi
+          echo "owner=${ORCH_REPO%%/*}" >> "$GITHUB_OUTPUT"
+          echo "name=${ORCH_REPO#*/}"   >> "$GITHUB_OUTPUT"
 
       - name: Flip feature issue to state:done and close
         if: steps.cid.outputs.skip == 'false'
@@ -80,24 +95,24 @@ jobs:
       - name: Mint orchestrator installation token
         if: steps.cid.outputs.skip == 'false'
         id: orchtoken
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           app-id: ${{ secrets.SPECFUSE_APP_ID }}
           private-key: ${{ secrets.SPECFUSE_APP_PRIVATE_KEY }}
-          owner: acme
-          repositories: orchestrator
+          owner: ${{ steps.orch.outputs.owner }}
+          repositories: ${{ steps.orch.outputs.name }}
 
       - name: Checkout orchestration repo
         if: steps.cid.outputs.skip == 'false'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
-          repository: acme/orchestration
+          repository: ${{ env.ORCH_REPO }}
           token: ${{ steps.orchtoken.outputs.token }}
           path: orchestrator
 
       - name: Set up Python
         if: steps.cid.outputs.skip == 'false'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.x'
 

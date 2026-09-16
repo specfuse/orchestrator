@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import argparse
 import filecmp
+import hashlib
+import json
 import os
 import re
 import shutil
@@ -98,19 +100,82 @@ def log(msg: str) -> None:
 # copy helpers (overlay; preserve extras)
 # --------------------------------------------------------------------------- #
 
-def copy_file(src: Path, dst: Path, dry: bool) -> None:
+# Where orchestrator-init records the sha256 of every file it wrote into a target, keyed by
+# target-relative path. Tracked with the rest of .specfuse/, so an upgrade run from any
+# checkout can tell a file it shipped from one the consumer has since edited (#92).
+INSTALL_RECORD = ".specfuse/orchestrator-install.json"
+
+# Installs that predate INSTALL_RECORD have no record to compare against. For the paths
+# consumers are known to edit, a file matching any version a past release shipped is safe to
+# update; anything else is treated as a local edit. Paths absent here keep the old overwrite
+# behaviour. Frozen history — new versions are covered by the record, not by this table.
+LEGACY_SHIPPED_SHA256: dict[str, frozenset[str]] = {
+    ".github/workflows/merge-watcher.yml": frozenset({
+        "035844c9fbc6697d0cc4191d9dcc21844ba2830b6605f475ce1e1f6bbc087e5c",
+        "0b12dd1a14e673721b1775f811816907dcbac03b371f4f990c75ae6f35bc9e9a",
+        "7f29a1545a373cc88e9d112f60adb2e8d430885e84c24190b1970e1025eff879",
+        "c18d5b748a33135891085c5e08c0dce556346f6e8110067a26b4da13265520b7",
+        "d867f272ce82771814db9e3a059608816514b28a240e78d2193d483f9048da1f",
+    }),
+}
+
+
+def _sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+class InstallRecord:
+    """The hashes orchestrator-init last wrote into one target repo (see INSTALL_RECORD)."""
+
+    def __init__(self, target_repo: Path) -> None:
+        self.root = target_repo
+        self.path = target_repo / INSTALL_RECORD
+        self.hashes: dict[str, str] = json.loads(self.path.read_text()) if self.path.is_file() else {}
+        self._loaded = dict(self.hashes)
+
+    def _key(self, dst: Path) -> str:
+        return dst.relative_to(self.root).as_posix()
+
+    def locally_modified(self, dst: Path) -> bool:
+        key = self._key(dst)
+        current = _sha256(dst)
+        if key in self.hashes:
+            return current != self.hashes[key]
+        legacy = LEGACY_SHIPPED_SHA256.get(key)
+        return legacy is not None and current not in legacy
+
+    def note(self, dst: Path) -> None:
+        self.hashes[self._key(dst)] = _sha256(dst)
+
+    def save(self) -> None:
+        if self.hashes == self._loaded:
+            return
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.path.write_text(json.dumps(self.hashes, indent=2, sort_keys=True) + "\n")
+
+
+def copy_file(src: Path, dst: Path, dry: bool, record: InstallRecord | None = None) -> None:
     if dst.is_file() and filecmp.cmp(src, dst, shallow=False):
+        if record is not None and not dry:
+            record.note(dst)
         return  # already current: nothing to write or report
+    if record is not None and dst.is_file() and record.locally_modified(dst):
+        log(f"    {'would preserve' if dry else 'preserve'}: {dst} "
+            "(locally modified — delete it and re-run to take the shipped version)")
+        return
     verb = "update" if dst.exists() else "add"
     if dry:
         log(f"    would {verb}: {dst}")
         return
     dst.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(src, dst)
+    if record is not None:
+        record.note(dst)
     log(f"    {verb}: {dst}")
 
 
-def copy_tree(src: Path, dst: Path, dry: bool, exclude: set[str]) -> None:
+def copy_tree(src: Path, dst: Path, dry: bool, exclude: set[str],
+              record: InstallRecord | None = None) -> None:
     for root, dirs, files in os.walk(src):
         rel = Path(root).relative_to(src)
         # prune excluded top-level names
@@ -120,10 +185,11 @@ def copy_tree(src: Path, dst: Path, dry: bool, exclude: set[str]) -> None:
         if "__pycache__" in dirs:
             dirs.remove("__pycache__")
         for f in files:
-            copy_file(Path(root) / f, dst / rel / f, dry)
+            copy_file(Path(root) / f, dst / rel / f, dry, record)
 
 
-def install_entry(entry: dict, install: dict, dry: bool) -> None:
+def install_entry(entry: dict, install: dict, dry: bool,
+                  record: InstallRecord | None = None) -> None:
     cs = entry["canonical_source"]
     src = _resolve_source(cs)
     dst = Path(install["_target_repo"]) / install["path"]
@@ -149,12 +215,12 @@ def install_entry(entry: dict, install: dict, dry: bool) -> None:
         return
 
     if src.is_file():
-        copy_file(src, dst, dry)
+        copy_file(src, dst, dry, record)
     elif "files" in cs:
         for name in cs["files"]:
-            copy_file(src / name, dst / name, dry)
+            copy_file(src / name, dst / name, dry, record)
     else:
-        copy_tree(src, dst, dry, set(cs.get("exclude", [])))
+        copy_tree(src, dst, dry, set(cs.get("exclude", [])), record)
 
 
 # --------------------------------------------------------------------------- #
@@ -313,6 +379,7 @@ def install_into(target: str, target_repo: Path, doc: dict, upgrade: bool, dry: 
     log(f"orchestrator-init --target {target} {target_repo}"
         f"{' --upgrade' if upgrade else ''}{' [dry-run]' if dry else ''}")
     rule_paths: list[str] = []
+    record = InstallRecord(target_repo)
     log("  install:")
     for entry in doc["entries"]:
         if entry["upgrader"] not in SHIP_UPGRADERS:
@@ -321,9 +388,11 @@ def install_into(target: str, target_repo: Path, doc: dict, upgrade: bool, dry: 
             if install["target"] != target:
                 continue
             install = {**install, "_target_repo": str(target_repo)}
-            install_entry(entry, install, dry)
+            install_entry(entry, install, dry, record)
             if entry["category"] == "shared-core" and install["path"].startswith(".specfuse/rules/"):
                 rule_paths.append(install["path"])
+    if not dry:
+        record.save()
     log("  claude wiring:")
     wire_claude(target_repo, rule_paths, target, dry)
     log("  gitignore:")
