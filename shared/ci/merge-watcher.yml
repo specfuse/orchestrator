@@ -144,7 +144,12 @@ jobs:
           if git diff --cached --quiet; then echo "nothing to commit"; exit 0; fi
           git commit -m "event: task_completed ${CID} (merge-watcher)"
           # Tolerate concurrent merges racing on the event log
+          pushed=false
           for attempt in 1 2 3 4 5; do
-            if git push; then echo "pushed"; break; fi
+            if git push; then pushed=true; echo "pushed"; break; fi
             echo "push rejected (attempt $attempt) — rebasing"; git pull --rebase --autostash
           done
+          if [ "$pushed" != true ]; then
+            echo "::error::push rejected 5 times; task_completed ${CID} was not delivered"
+            exit 1
+          fi
