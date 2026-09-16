@@ -24,8 +24,9 @@ targets:      [component, specs]                     # orchestrator repo is a SO
 
 # canonical_source.repo is one of: orchestrator | loop | specfuse
 # `specfuse` is the core methodology repo; its substrate lives under the methodology/ subtree.
-# The `methodology` upgrader vendors specfuse/methodology/** into targets (and the orchestrator
-# and loop both vendor from it — the reserved extraction point, now live).
+# The `methodology` upgrader vendors specfuse/methodology/** into targets. It is executed by
+# core's provisioning and the loop, NOT by orchestrator-init, which skips these entries so it
+# never writes a slot the loop owns (#91).
 # Paths are relative to that repo's root.
 
 # GitHub labels the orchestrator expects on target repos. orchestrator-init's label-sync step
@@ -73,8 +74,9 @@ entries:
   # hand-synced per §4). authority and upgrader are independent axes.
 
   # shared-core rules extracted to specfuse/methodology (the reserved `methodology` upgrader,
-  # now live). Content authority is core-canonical; the loop and orchestrator both vendor these
-  # byte-identical from core — the §3 hand-sync content-master model is retired for them.
+  # now live). Content authority is core-canonical; the loop ships them into component repos
+  # from core — orchestrator-init does not (#91). The §3 hand-sync content-master model is
+  # retired for them.
 
   - id: rule-correlation-ids
     category: shared-core

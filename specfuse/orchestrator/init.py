@@ -45,10 +45,11 @@ except ImportError:
 from specfuse.orchestrator import paths
 
 MANIFEST = paths.substrate("distribution", "ownership-manifest.yaml")
-# orchestrator-init ships the orchestrator's frozen substrate + manual stubs, AND the
-# core-methodology (`methodology` upgrader) entries — the shared substrate the orchestrator
-# vendors from specfuse/methodology and re-ships to component/specs repos (Track C2).
-SHIP_UPGRADERS = {"orchestrator-init", "manual", "methodology"}
+# orchestrator-init ships the orchestrator's frozen substrate + manual stubs only. Core-owned
+# (`methodology` upgrader) entries are provisioned by `specfuse` and shipped into component
+# repos by the loop; re-shipping the orchestrator's vendored copies overwrote the loop's newer
+# ones on every upgrade (#91).
+SHIP_UPGRADERS = {"orchestrator-init", "manual"}
 
 
 def _resolve_source(cs: dict) -> Path:
