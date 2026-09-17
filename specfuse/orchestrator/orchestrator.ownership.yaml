@@ -78,13 +78,17 @@ entries:
       the orchestration repo; an agent emitting an event appends to the orchestration repo's
       /events log and validates there (same pattern as the merge-watcher checkout). Listed for
       completeness/authority. Additively widened for INIT-/FNN in the reframe migration.
-      FEATURE-FRONTMATTER SPLIT (agreed, specfuse/specfuse#119 decision 1; pending core): the
-      mint contract — the required `correlation_id`, `state`, `involved_repos`,
-      `autonomy_default` the specs agent writes at mint — moves to schemas-methodology, and
-      feature-frontmatter.schema.json here becomes the orchestrator extension (`allOf` + `$ref`)
-      adding the planning fields pm/component/qa author (`task_graph`, `feature_graph`,
-      `next_step`). Not split yet: core ships no mint schema to `$ref`, and a local stand-in
-      would be the second copy #88 removes. Until then the whole schema stays here.
+      FEATURE-FRONTMATTER SPLIT (specfuse/specfuse#119 decision 1; done, #87): the mint
+      contract — the required `correlation_id`, `state`, `involved_repos`, `autonomy_default`
+      the specs agent writes at mint — is core's methodology/schemas/feature-mint.schema.json
+      (specfuse/specfuse#179, specfuse 0.14.0), and feature-frontmatter.schema.json here is the
+      orchestrator extension (`allOf` + `$ref` by `$id`) adding the planning fields
+      pm/component/qa author (`task_graph`, `feature_graph`, `next_step`).
+      shared/schemas/feature-mint.schema.json is a byte-identical VENDORED COPY of core's,
+      resolved locally by validate_frontmatter; core's drift test fails if the two differ. A
+      guarded copy by decision: the orchestration repo is not a provisioning target and this
+      package does not depend on `specfuse`, so neither core's slot nor the umbrella package is
+      reachable where validation runs.
     install: []
 
   - id: event-validators

@@ -46,12 +46,18 @@ except ImportError:
 
 try:
     from jsonschema import Draft202012Validator
+    from referencing import Registry, Resource
 except ImportError:
     sys.stderr.write(
         "error: the 'jsonschema' package is required.\n"
         "       install it with: pip install specfuse-orchestrator\n"
     )
     sys.exit(2)
+
+# The core mint contract feature-frontmatter.schema.json composes by `$ref`
+# (specfuse/specfuse#179). A byte-identical vendored copy of core's file, resolved
+# from this package's substrate by its `$id` — never fetched over the network.
+MINT_SCHEMA_FILE = "feature-mint.schema.json"
 
 _UNSUPPORTED_HINT = (
     "Supported invocation patterns:\n"
@@ -61,15 +67,22 @@ _UNSUPPORTED_HINT = (
 )
 
 
-def load_validator() -> Draft202012Validator:
-    schema_path = paths.substrate("schemas", "feature-frontmatter.schema.json")
+def _load_schema(name: str) -> dict:
+    schema_path = paths.substrate("schemas", name)
     if not schema_path.is_file():
         sys.stderr.write(f"error: schema not found at {schema_path}\n")
         sys.exit(2)
     with schema_path.open("r", encoding="utf-8") as f:
         schema = json.load(f)
     Draft202012Validator.check_schema(schema)
-    return Draft202012Validator(schema)
+    return schema
+
+
+def load_validator() -> Draft202012Validator:
+    schema = _load_schema("feature-frontmatter.schema.json")
+    mint = _load_schema(MINT_SCHEMA_FILE)
+    registry = Registry().with_resource(mint["$id"], Resource.from_contents(mint))
+    return Draft202012Validator(schema, registry=registry)
 
 
 def extract_frontmatter(content: str, source: str) -> dict:
@@ -116,6 +129,34 @@ def extract_frontmatter(content: str, source: str) -> dict:
     return data
 
 
+def _is_mint_echo(err, validator: Draft202012Validator, frontmatter: dict) -> bool:
+    """Whether *err* is the misleading echo of a failed mint contract.
+
+    When the `$ref`'d mint schema fails (a bad `state`, a missing field), jsonschema
+    counts none of its properties as evaluated, so the root `unevaluatedProperties`
+    also reports `correlation_id`, `state`, … as unexpected — pointing at fields that
+    are allowed, next to the real error. Drop that error unless the frontmatter has a
+    key neither schema declares, in which case the report is genuine.
+    """
+    if err.validator != "unevaluatedProperties" or list(err.absolute_path):
+        return False
+    declared = set(validator.schema.get("properties", {}))
+    declared |= set(_load_schema(MINT_SCHEMA_FILE).get("properties", {}))
+    return set(frontmatter) <= declared
+
+
+def errors_for(validator: Draft202012Validator, frontmatter: dict, source: str) -> list[str]:
+    """Error strings for *frontmatter*, sorted by path; empty means it validated."""
+    errors = sorted(
+        validator.iter_errors(frontmatter), key=lambda e: list(e.absolute_path)
+    )
+    return [
+        f"{source} at {'/'.join(str(p) for p in err.absolute_path) or '(root)'}: {err.message}"
+        for err in errors
+        if not _is_mint_echo(err, validator, frontmatter)
+    ]
+
+
 def validate(path: Path | str) -> list[str]:
     """Validate a feature file's YAML frontmatter against feature-frontmatter.schema.json.
 
@@ -125,13 +166,7 @@ def validate(path: Path | str) -> list[str]:
     validator = load_validator()
     content = read_content_from_file(path)
     frontmatter = extract_frontmatter(content, str(path))
-    errors = sorted(
-        validator.iter_errors(frontmatter), key=lambda e: list(e.absolute_path)
-    )
-    return [
-        f"{path} at {'/'.join(str(p) for p in err.absolute_path) or '(root)'}: {err.message}"
-        for err in errors
-    ]
+    return errors_for(validator, frontmatter, str(path))
 
 
 def read_content_from_file(path: Path) -> str:
@@ -194,12 +229,7 @@ def main() -> int:
         content = read_content_from_stdin()
         validator = load_validator()
         frontmatter = extract_frontmatter(content, source)
-        errors = [
-            f"{source} at {'/'.join(str(p) for p in err.absolute_path) or '(root)'}: {err.message}"
-            for err in sorted(
-                validator.iter_errors(frontmatter), key=lambda e: list(e.absolute_path)
-            )
-        ]
+        errors = errors_for(validator, frontmatter, source)
 
     if errors:
         for err in errors:
