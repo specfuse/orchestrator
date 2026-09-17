@@ -63,9 +63,9 @@ def _resolve_source(cs: dict) -> Path:
 
     Core-methodology entries declare `repo: specfuse, path: methodology/...` — their
     canonical home is the specfuse/methodology core, but the orchestrator vendors that
-    substrate into its own `shared/` tree (rules → shared/rules, schemas → shared/schemas,
-    the gate-cycle doc → shared/docs). Remap those onto the local vendored copy so init can
-    ship them without a checkout of the core repo.
+    substrate into its own `shared/` tree (rules → shared/rules, schemas → shared/schemas).
+    Remap those onto the local vendored copy so init can ship them without a checkout of the
+    core repo.
     """
     path = cs["path"]
     if cs.get("repo") == "specfuse":
@@ -73,8 +73,6 @@ def _resolve_source(cs: dict) -> Path:
             rel = "rules/" + path[len("methodology/rules/"):]
         elif path.startswith("methodology/schemas/"):
             rel = "schemas/" + path[len("methodology/schemas/"):]
-        elif path in ("methodology/methodology.md", "methodology/glossary.md"):
-            rel = "docs/" + path[len("methodology/"):]
         else:
             rel = path[len("methodology/"):]
     else:

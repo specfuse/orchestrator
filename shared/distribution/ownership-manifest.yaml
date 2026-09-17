@@ -172,12 +172,42 @@ entries:
     upgrader: methodology
     note: >
       The whole core rule set, as `specfuse` init/upgrade provisions it into core's own slot on
-      both targets (specfuse/specfuse#136; PROVISIONED_SUBTREES = rules, schemas). The per-rule
-      entries above describe the loop's .specfuse/rules/ copies of a subset; those are separate
-      paths and retire once consumers read this slot.
+      both targets (specfuse/specfuse#136). Core's slot also carries schemas/, glossary.md and
+      overview.md, each declared below (PROVISIONED_SUBTREES = rules, schemas, glossary.md,
+      overview.md as of specfuse 0.15.0). The per-rule entries above describe the loop's
+      .specfuse/rules/ copies of a subset; those are separate paths and retire once consumers
+      read this slot.
     install:
       - { target: component, path: .specfuse/methodology/rules/ }
       - { target: specs, path: .specfuse/methodology/rules/ }
+
+  - id: glossary-methodology
+    category: shared-core
+    canonical_source: { repo: specfuse, path: methodology/glossary.md }
+    authority: core-canonical
+    stability: stable
+    upgrader: methodology
+    note: >
+      The cross-surface unit reference: lifecycle states with per-plane transition owners, the
+      plane handoff, correlation-ID shapes. Provisioned since specfuse 0.13.0. Distinct from the
+      loop's onboarding glossary at .specfuse/docs/glossary.md, which is a different document at
+      a different path. shared/rules/state-vocabulary.md cites it for the lifecycle spine.
+    install:
+      - { target: component, path: .specfuse/methodology/glossary.md }
+      - { target: specs, path: .specfuse/methodology/glossary.md }
+
+  - id: overview-methodology
+    category: shared-core
+    canonical_source: { repo: specfuse, path: methodology/overview.md }
+    authority: core-canonical
+    stability: stable
+    upgrader: methodology
+    note: >
+      Orientation read first: the bet, the five nouns, how the planes collaborate. Provisioned
+      since specfuse 0.15.0; its links outside core's slot are absolute URLs.
+    install:
+      - { target: component, path: .specfuse/methodology/overview.md }
+      - { target: specs, path: .specfuse/methodology/overview.md }
 
   - id: rule-verification-discipline
     category: shared-core
@@ -235,29 +265,34 @@ entries:
     category: shared-core
     canonical_source:
       repo: orchestrator
-      path: scripts/
-      files: [validate-event.py, validate-frontmatter.py, read-agent-version.sh, requirements.txt]
+      path: specfuse/orchestrator/
+      files: [validate_event.py, validate_frontmatter.py, _version.py]
     authority: orchestrator-frozen
     stability: stable
     upgrader: orchestrator-init
     note: >
-      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). validate-event.py
-      resolves its schema dir relative to the orchestration repo layout and is run from the
-      orchestration repo checkout when emitting events, not from a component-local copy.
+      ORCHESTRATOR-RESIDENT — NOT distributed (install empty by design). The validators are
+      package modules, run as `specfuse validate-event` / `specfuse validate-frontmatter`; they
+      resolve schemas from the installed package's substrate (paths.substrate), not from a
+      component-local copy. They replaced scripts/validate-*.py and
+      scripts/read-agent-version.sh (now _version.py), which are retired.
     install: []
 
   # ---- shared-core, gate layer -------------------------------------------------------------
-  # The gate-cycle methodology doc has been EXTRACTED to specfuse/methodology (Gate 1), so it
-  # is now core-canonical and vendored via the `methodology` upgrader — the reserved fold-in,
-  # now live. result-contract.md below stays loop-authored (the loop's surface RESULT shape).
+  # The gate-cycle methodology doc is LOOP-AUTHORED (specfuse/specfuse#137). It was extracted
+  # to specfuse/methodology at Gate 1, but the loop kept authoring it and core's copy went
+  # stale; core deleted its copy and the loop is the one owner. result-contract.md below is
+  # likewise loop-owned (the loop's surface RESULT shape).
 
   - id: methodology-gate-cycle
     category: shared-core
-    canonical_source: { repo: specfuse, path: methodology/methodology.md }
-    authority: core-canonical
-    stability: stable
-    upgrader: methodology
-    note: Gate-cycle definition; extracted to specfuse/methodology (Gate 1). Loop leaves a pointer in docs/ and vendors from core.
+    canonical_source: { repo: loop, path: docs/methodology.md }
+    authority: loop-authored
+    stability: moving
+    upgrader: loop-init
+    note: >
+      Gate-cycle definition, owned by the loop, which authors it and scaffolds it into component
+      repos (specfuse/specfuse#137). Neither core nor orchestrator-init ships a copy.
     install:
       - { target: component, path: .specfuse/docs/methodology.md }
 
