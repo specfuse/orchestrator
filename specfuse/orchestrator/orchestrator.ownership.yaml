@@ -67,18 +67,6 @@ entries:
     install:
       - { target: component, path: .specfuse/rules/override-registry.md }
 
-  - id: rule-role-switch-hygiene
-    category: shared-core
-    canonical_source: { repo: orchestrator, path: shared/rules/role-switch-hygiene.md }
-    authority: orchestrator-frozen
-    stability: stable
-    upgrader: orchestrator-init
-    note: >
-      MODEL-B REVIEW (Track B): multi-agent role-switch discipline; the component-loop uses
-      fresh-dispatch-per-WU and does not role-switch. Likely orchestrator-resident (install: []).
-    install:
-      - { target: component, path: .specfuse/rules/role-switch-hygiene.md }
-
   - id: schemas-core
     category: shared-core
     canonical_source: { repo: orchestrator, path: shared/schemas/ }   # *.schema.json + events/*.schema.json + labels.md

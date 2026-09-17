@@ -18,12 +18,17 @@ def _manifest() -> dict:
 
 
 CORE_OWNED_COMPONENT_PATHS = [
-    ".specfuse/docs/methodology.md",
     ".specfuse/rules/correlation-ids.md",
     ".specfuse/rules/never-touch.md",
     ".specfuse/rules/security-boundaries.md",
     ".specfuse/rules/verification-discipline.md",
 ]
+
+# Loop-owned since specfuse/specfuse#137: the loop authors the gate-cycle doc.
+GATE_CYCLE_DOC = ".specfuse/docs/methodology.md"
+
+# Every path the loop writes that orchestrator-init must leave alone.
+LOOP_WRITTEN_PATHS = [GATE_CYCLE_DOC, *CORE_OWNED_COMPONENT_PATHS]
 
 
 def test_methodology_is_not_shipped():
@@ -34,8 +39,8 @@ METHODOLOGY_SLOT = ".specfuse/methodology/"
 
 
 def test_manifest_core_owned_component_slots_are_the_methodology_upgraders():
-    """Outside core's own slot, the methodology entries' component slots are exactly the five
-    paths the loop also writes."""
+    """Outside core's own slot, the methodology entries' component slots are exactly the four
+    core rules the loop also writes."""
     slots = sorted(
         i["path"]
         for e in _manifest()["entries"]
@@ -46,8 +51,24 @@ def test_manifest_core_owned_component_slots_are_the_methodology_upgraders():
     assert slots == CORE_OWNED_COMPONENT_PATHS
 
 
+def test_gate_cycle_doc_is_owned_by_the_loop():
+    """specfuse/specfuse#137: the loop authors docs/methodology.md; core deleted its copy."""
+    [entry] = [e for e in _manifest()["entries"] if e["id"] == "methodology-gate-cycle"]
+    assert entry["canonical_source"] == {"repo": "loop", "path": "docs/methodology.md"}
+    assert entry["authority"] == "loop-authored"
+    assert entry["upgrader"] == "loop-init"
+    assert entry["install"] == [{"target": "component", "path": GATE_CYCLE_DOC}]
+    assert "loop-init" not in init.SHIP_UPGRADERS
+
+
+def test_orchestrator_carries_no_copy_of_the_gate_cycle_doc():
+    from specfuse.orchestrator import paths
+    assert not paths.substrate("docs", "methodology.md").exists()
+
+
 def test_manifest_declares_cores_provisioned_slot_on_both_targets():
-    """`specfuse` provisions methodology/{rules,schemas} into .specfuse/methodology/ (#87)."""
+    """`specfuse` provisions methodology/{rules,schemas,glossary.md,overview.md} into
+    .specfuse/methodology/ (#87; glossary since specfuse 0.13.0, overview since 0.15.0)."""
     slots = {
         (i["target"], i["path"]): e
         for e in _manifest()["entries"]
@@ -55,9 +76,9 @@ def test_manifest_declares_cores_provisioned_slot_on_both_targets():
         if i["path"].startswith(METHODOLOGY_SLOT)
     }
     expected = {
-        (t, f"{METHODOLOGY_SLOT}{sub}/")
+        (t, f"{METHODOLOGY_SLOT}{sub}")
         for t in ("component", "specs")
-        for sub in ("rules", "schemas")
+        for sub in ("rules/", "schemas/", "glossary.md", "overview.md")
     }
     assert set(slots) == expected
     for (_, path), e in slots.items():
@@ -69,7 +90,7 @@ def test_manifest_declares_cores_provisioned_slot_on_both_targets():
 
 def test_upgrade_preserves_loop_copies_of_core_owned_files(tmp_path, monkeypatch):
     target = tmp_path / "component"
-    for rel in CORE_OWNED_COMPONENT_PATHS:
+    for rel in LOOP_WRITTEN_PATHS:
         f = target / rel
         f.parent.mkdir(parents=True, exist_ok=True)
         f.write_text(f"loop copy of {rel}\n")
@@ -77,7 +98,7 @@ def test_upgrade_preserves_loop_copies_of_core_owned_files(tmp_path, monkeypatch
 
     init.install_into("component", target, _manifest(), upgrade=True, dry=False)
 
-    for rel in CORE_OWNED_COMPONENT_PATHS:
+    for rel in LOOP_WRITTEN_PATHS:
         assert (target / rel).read_text() == f"loop copy of {rel}\n", rel
 
 
@@ -88,7 +109,7 @@ def test_fresh_install_writes_no_core_owned_files_and_imports_only_owned_rules(t
 
     init.install_into("component", target, _manifest(), upgrade=False, dry=False)
 
-    for rel in CORE_OWNED_COMPONENT_PATHS:
+    for rel in LOOP_WRITTEN_PATHS:
         assert not (target / rel).exists(), rel
     assert not (target / METHODOLOGY_SLOT).exists()
     imports = [
@@ -105,9 +126,6 @@ def test_resolve_source_remaps_methodology_to_vendored_substrate():
     # rules → substrate/rules
     p = init._resolve_source({"repo": "specfuse", "path": "methodology/rules/correlation-ids.md"})
     assert p == paths.substrate("rules", "correlation-ids.md")
-    # the gate-cycle doc → substrate/docs
-    p = init._resolve_source({"repo": "specfuse", "path": "methodology/methodology.md"})
-    assert p == paths.substrate("docs", "methodology.md")
     # schemas → substrate/schemas
     p = init._resolve_source({"repo": "specfuse", "path": "methodology/schemas/event.schema.json"})
     assert p == paths.substrate("schemas", "event.schema.json")
