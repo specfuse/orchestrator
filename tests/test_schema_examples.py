@@ -24,6 +24,7 @@ from pathlib import Path
 
 import jsonschema
 import pytest
+from referencing import Registry, Resource
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCHEMAS = REPO_ROOT / "shared" / "schemas"
@@ -42,8 +43,16 @@ def _schema_for_stem(stem: str) -> Path | None:
     return None
 
 
+def _registry() -> Registry:
+    """Every schema here, by `$id` — feature-frontmatter `$ref`s the vendored core
+    mint schema that way (#87)."""
+    schemas = [_schema(p) for p in SCHEMAS.rglob("*.schema.json")]
+    return Registry().with_resources(
+        (s["$id"], Resource.from_contents(s)) for s in schemas if "$id" in s)
+
+
 def _errors(schema_path: Path, instance) -> list[str]:
-    validator = jsonschema.Draft202012Validator(_schema(schema_path))
+    validator = jsonschema.Draft202012Validator(_schema(schema_path), registry=_registry())
     return [f"{schema_path.relative_to(SCHEMAS)}: {e.message} at "
             f"/{'/'.join(map(str, e.absolute_path))}"
             for e in validator.iter_errors(instance)]
