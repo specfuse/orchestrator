@@ -31,5 +31,11 @@
       "depends_on": ["T02", "T03"],
       "assigned_repo": "specfuse/api"
     }
-  ]
+  ],
+  "next_step": {
+    "summary": "Finish T01 in specfuse/persistence and merge its PR; T02 becomes ready when it lands.",
+    "owner": "component-loop",
+    "owner_repo": "specfuse/persistence",
+    "updated": "2026-09-17"
+  }
 }
