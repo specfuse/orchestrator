@@ -42,6 +42,9 @@ Explicitly **not** responsibilities of this role:
 
 Per [`state-vocabulary.md`](../../shared/rules/state-vocabulary.md) and architecture §6.3:
 
+- **Initiative level**
+  - **Minting an `INIT-YYYY-NNNN` on receipt of a handoff manifest** — see [`skills/receive-handoff/SKILL.md`](skills/receive-handoff/SKILL.md). Under spec-before-mint (`specfuse/authoring#117`) the specs are authored upstream in a gated loop feature and published as a manifest; this repo registers the initiative and is the **sole writer** of its own registry.
+    *Phase 2 baseline justification:* this adds no new transition and no new owner. It relocates a write the **producer** used to perform through a sibling filesystem path — against this repo's *SOURCE, never a target* invariant — to the repo that owns the registry. The ordinal mint moves with it, which deletes the cross-repo race the producer documented rather than avoided. The initiative enters at `planning`: `drafting` and `validating` are transitions it has no work left in, since the specs were validated before the entry existed.
 - **Feature level**
   - `planning → plan_review` — once the task graph is drafted and Specfuse template coverage has been checked (architecture §9.2, implemented as a stub in Phase 2 per [`skills/template-coverage/SKILL.md`](skills/template-coverage/SKILL.md)), the PM agent flips the feature into `plan_review` for the human.
   - `generating → in_progress` — after the human approves the plan and Specfuse generates boilerplate across component repos, the PM agent opens the first round of issues and transitions the feature into `in_progress`.
@@ -78,6 +81,7 @@ The PM agent does not write to component-repo code paths, does not write to `/pr
 
 The PM agent's verification surface is decomposed across the five Phase 2 skills. Read the applicable skill before verifying any task:
 
+- [`skills/receive-handoff/SKILL.md`](skills/receive-handoff/SKILL.md) — the registry entry round-trips through `specfuse validate-frontmatter` **before** it is committed, and `involved_repos` is confirmed by the operator rather than taken from the manifest's advisory Tier-B hint. An entry that does not validate is never written.
 - [`skills/task-decomposition/SKILL.md`](skills/task-decomposition/SKILL.md) — the drafted task graph round-trips through `feature-frontmatter.schema.json`, contains no orphan `depends_on` references, and contains no cycles. Verified before `task_graph_drafted` is emitted.
 - [`skills/plan-review/SKILL.md`](skills/plan-review/SKILL.md) — after every human edit, the re-ingested plan re-validates against `feature-frontmatter.schema.json` and still contains no cycles or orphan deps; any malformation escalates `spec_level_blocker` rather than shipping.
 - [`skills/issue-drafting/SKILL.md`](skills/issue-drafting/SKILL.md) — every factual claim about target-repo state in an issue body is paired with a verification action taken at draft time, per the inherited contract [`issue-drafting-spec.md`](issue-drafting-spec.md). Evidence is recorded on the durable surface the skill designates; silent drafting is forbidden.
