@@ -64,7 +64,7 @@ autonomy_default: <the operator's choice>
 feature_graph: []
 next_step:
   summary: Decompose the manifest's component inventory into per-repo features.
-  owner: pm
+  owner: pm-agent
   updated: <today>
 specs_source: <manifest path, repo-relative in the producing specs repo>
 specs_authored_by: FEAT-YYYY-NNNN
@@ -73,7 +73,7 @@ specs_authored_by: FEAT-YYYY-NNNN
 
 **`state: planning`, not `drafting`.** The specs exist and were validated before this entry did; `drafting` and `validating` are transitions this initiative has no work left in. Skipping them is the point of spec-before-mint, not a shortcut around it.
 
-`state: planning` makes `next_step` required — see the root `allOf` in `feature-frontmatter.schema.json`. It is an object (`summary`, `owner`, `updated`), not a string.
+`state: planning` makes `next_step` required — see the root `allOf` in `feature-frontmatter.schema.json`. It is an object (`summary`, `owner`, `updated`), not a string, and `owner` is a **closed enum**: `human`, `specs-agent`, `pm-agent`, `component-loop`, `qa-agent`, `qa-dispatcher`, `runner`, `merge-watcher`. `pm` is not a member — Step 5 catches it, which is the point of validating before the write.
 
 `specs_source` and `specs_authored_by` are written **together or not at all**; the schema's `dependentRequired` enforces it, because half a provenance record is worse than none.
 
