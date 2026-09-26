@@ -93,7 +93,7 @@ the deltas landed.
 
 **Do not touch.** The skill files `agents/qa/skills/qa-execution/SKILL.md` (T03) and
 `agents/qa/skills/qa-authoring/SKILL.md` (T04) — read them to describe their versions, but
-edit only `agents/qa/version.md` and `agents/qa/CLAUDE.md`; `shared/schemas/**` and
+edit only `agents/qa/version.md` and `agents/qa/CLAUDE.md` (except `agents/qa/version.md`, this unit's own `produces:` deliverable) (except `agents/qa/CLAUDE.md`, this unit's own `produces:` deliverable); `shared/schemas/**` and
 `_substrate/`; `tests/**`; secrets, `.git/`, `PLAN.md status`. The driver owns all git —
 edit files only.
 
