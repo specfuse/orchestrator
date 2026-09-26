@@ -3,11 +3,12 @@ feature_id: FEAT-YYYY-NNNN
 title: <short feature title>
 slug: <feature-slug>
 branch: feat/FEAT-YYYY-NNNN-<feature-slug>
-roadmap_goal: <one line copied from the roadmap — the north star this feature serves;
-  plan-next anchors every drafted gate to this and flags if a retrospective implies
-  it should change>
-autonomy_default: review        # auto | review | supervised
-status: active                  # active | deferred | done | abandoned
+roadmap_goal: <one line copied from the roadmap — the north star this feature serves; plan-next anchors every drafted gate to this and flags if a retrospective implies it should change>
+autonomy_default: auto          # auto | review | supervised — auto is the recommended
+                                # default: a fresh judge session, not the close, writes
+                                # the terminal verdict. Tighten to review when a feature's
+                                # criteria cannot be judged from evidence (methodology §9).
+status: active                  # active | blocked | deferred | done | abandoned
                                 # deferred = parked pending an external decision/dependency; resumable, non-dispatchable
 # planned_cost_usd: 0.00        # OPTIONAL — sum of WU planned costs; lint warns when missing or when delta from WU sum > 10%
 ---
@@ -22,6 +23,32 @@ to each gate, and the dependency edges between them. It does **not** own status 
 each WU file owns its own status, and each GATE file owns its gate's status. Detail
 only as far as the next gate; plan-next drafts the gate after that from the
 retrospective and lessons.
+
+## Existing-mechanism search (mandatory — see `.specfuse/rules/planning-discipline.md` §1)
+
+Before any ADR or gate designs a validation rule, a severity level, an enforcement
+gate, or a measurement, establish that it does not already exist. **An ADR without
+this section is incomplete.** If this feature designs no such mechanism, write
+exactly `n/a — no enforcement or measurement designed` and stop — do not fabricate
+a grep to fill the section.
+
+- **Grep command run:** `<the exact command — e.g. grep -rl <concept>
+  src/main/java/.../validation/rules/>`
+- **Verdict:** `<"no existing mechanism, building new" | "found <X>, reusing/extending">`
+- **If reusing:** name `<X>` and quote the line of its javadoc/description that
+  confirms it covers the property. If building new despite a hit, say why the hit does
+  not suffice.
+
+## Escalation-predicate satisfiability (mandatory for any severity flip — §2)
+
+If this feature raises a check to `ERROR`, flips a `WARNING` to blocking, or asserts a
+"zero issues" close predicate, answer here:
+
+- **What does the rule report on an input already in its intended final state?**
+  `<answer>`
+- If that answer is **not zero**, the predicate is unsatisfiable — the rule fires on
+  correct inputs. **Redesign before drafting gates:** fix the rule so a correct input
+  reports zero, or route enforcement to the mechanism found in the search above.
 
 ## Task graph
 

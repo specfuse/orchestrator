@@ -7,10 +7,12 @@ single-repo with a driver script; the orchestrator runs it multi-repo with
 agents and a polling loop — but the *concepts* defined here mean the same thing
 on both surfaces.
 
-> **Authoring note.** While the gate cycle is being proven, the loop is its
-> near-term author: the loop runs real features first, and what it learns
-> revises these contracts before they are folded into the orchestrator's frozen
-> baselines. See [`concepts/architecture-addendum-gates-and-iterative-planning.md`](concepts/architecture-addendum-gates-and-iterative-planning.md)
+> **Ownership.** This document is owned by the loop (specfuse/specfuse#137).
+> Core carried a copy that had become a stale snapshot of this one — no lines of
+> its own, and wrong wherever this text had since been corrected — and deletes
+> it in favour of linking here. The loop runs real features first, and what it
+> learns revises these contracts; the orchestrator's frozen baselines follow
+> this document rather than the other way round. See [`concepts/architecture-addendum-gates-and-iterative-planning.md`](concepts/architecture-addendum-gates-and-iterative-planning.md)
 > for how the cycle maps onto the orchestrator's state machine and agent roles.
 
 ---
@@ -19,10 +21,18 @@ on both surfaces.
 
 - **Roadmap** — the master index of features for a repository/project, with each
   feature's status (`planned → active → done`/`abandoned`). A feature may also be
-  `deferred` — parked pending an external decision or dependency: nothing is
-  loop-dispatchable, so the driver skips it (like `abandoned`), but it stays
-  resumable — a human flips it back to `active` when the blocker clears. `deferred`
-  is distinct from `abandoned` (dead) and `done` (complete).
+  parked in one of two states — `blocked` or `deferred`. Nothing is
+  loop-dispatchable in either, so the driver skips them (like `abandoned`), but
+  both stay resumable: a human flips the feature back to `active` when the
+  obstacle clears. Both are distinct from `abandoned` (dead) and `done`
+  (complete).
+  - `blocked` — cannot proceed because a **named** dependency is unmet: an ADR
+    awaiting approval, or an upstream `FEAT-YYYY-NNNN` that must complete first.
+    A blocked feature always names and links its blocker, so the roadmap shows
+    the dependency at a glance. Only `planned` or `active` may be blocked.
+  - `deferred` — a *voluntary* park with no named blocker, pending an external
+    decision or dependency. The absence of a named blocker is the entire
+    difference from `blocked`.
 - **Feature** — a spec-driven *or directly-authored* unit of value, identified by
   a correlation ID `FEAT-YYYY-NNNN`. A feature owns an ordered list of gates.
 - **Gate** — a milestone partition of a feature: an ordered batch of substantive
@@ -56,15 +66,104 @@ needs to know its own dependencies — they are satisfied by the time the unit i
 handed to it. Dependency edges are scheduling metadata, and scheduling belongs to
 the driver/PM, not to the executing session.
 
+### 2.1 WU frontmatter fields — the one home
+
+`WU.template.md` carries the shape; the semantics live here, one line per field,
+so a drafting agent reads a 70-line template instead of 120 lines of field notes
+it mostly does not need. Author-set unless marked driver-owned.
+
+- `id` — task-level correlation ID; must match the PLAN.md graph entry. Pattern:
+  `.specfuse/rules/correlation-ids.md`.
+- `type` — one of the eight in §3; selects the gate set the driver runs
+  (`implementation` → `code`; `retrospective`/`lessons`/`docs` → `doc`;
+  `plan-next`/`close`/`close-intermediate` → `plannext`).
+- `status` — lifecycle position. Authors write `draft` (unarmed) or `pending`
+  (armed); the driver writes `in_progress`, `in_review`, `done`, `blocked_human`.
+- `model` — OPTIONAL. Family alias (`sonnet`/`opus`/`haiku`) or a full
+  `claude-*` ID to pin a release. Absent → the type default in `MODEL_BY_TYPE`.
+- `effort` — OPTIONAL. `low`|`medium`|`high`|`xhigh`|`max` thinking budget.
+  Absent → the type default; `low`/`medium` add a terseness directive.
+- `planned_cost_usd` — OPTIONAL estimate at draft time, compared against actual
+  in the close. Floors for planning WUs: `.specfuse/rules/planning-discipline.md` §5.
+- `generated_surfaces` — OPTIONAL. Generated files this unit's acceptance depends on.
+- `oracle_env` — OPTIONAL. Where the verifying oracle runs: `macos_local`,
+  `linux_docker`, `github_actions_ci`, or an operator-named string.
+- `feature_oracle` — GATE-level, not WU-level: lives in `GATE-NN.md`
+  frontmatter, one per gate. The executable proof of that gate's definition of
+  done, exercising the user-visible outcome end to end. Required to start
+  **red** and go **green** at the gate's walking skeleton (its first
+  implementation unit, permitted to stub anything off the thinnest end-to-end
+  path — `.specfuse/skills/authoring-work-units/SKILL.md` §14). The driver
+  runs it as part of every unit's verification in that gate and again at the
+  close, which records the verdict. `GATE.template.md` carries the key;
+  `/draft-feature` refuses to draft a gate without one
+  (`.specfuse/rules/close-discipline.md` §5, FEAT-2026-0101).
+- `produces` — OPTIONAL. Path(s) or glob(s) this unit must yield; the driver's
+  presence gate refuses `complete` when one is missing or empty.
+- `produces_driver_helper` — OPTIONAL. Symbol(s) this unit adds to the driver.
+  Lint WARNs when the body mentions driver wiring and the field is absent.
+- `prep` — OPTIONAL. A `verification.yml` set run **before dispatch**, fail-fast:
+  the first non-zero exit halts dispatch, no session runs.
+- `oracles` — OPTIONAL. A `verification.yml` set run before dispatch, capture-all;
+  its output is injected into the session prompt as real repo state.
+- `extra_gates` — OPTIONAL. A `verification.yml` set unioned onto the
+  type-selected gate set **at exit**, ANDed into the same pass/fail verdict.
+- `max_attempts` — OPTIONAL. Attempt ceiling for this unit, overriding the
+  project default and the built-in 3. Below 1, non-integer, or `true` is an error.
+- `iterate_on_failure` — OPTIONAL, default false. Opt in only when the oracle is
+  a convergent whole-tree validator emitting a `FINDINGS: <n>` line: an attempt
+  that lowers findings keeps its tree, one that does not is rolled back, and two
+  non-improving attempts escalate `convergence_plateau`.
+- `auto_close_disabled` — OPTIONAL. Set `true` on a load-bearing close so the
+  auto-close predicate cannot skip it (`.specfuse/rules/close-discipline.md`).
+- `human_only` — OPTIONAL, veto-only: the planner's self-flag on a draft it knows
+  needs a human. Never grants autonomy, only subtracts it.
+- `provenance` — OPTIONAL, veto-only: a string citing the retrospective item or
+  `events.jsonl` event that motivated a unit added beyond the plan baseline.
+- `open_questions` — lives in `GATE-{N+1}-REVIEW.md` frontmatter, not here. A
+  required explicit list; `[]` means nothing blocks, and a **missing field is not
+  an empty list** — it parks the feature under `auto`.
+- Driver-owned, written at dispatch and outcome time (authors leave them absent):
+  `attempts`, `cost_usd`, `input_tokens`, `output_tokens`, `duration_seconds`,
+  `cumulative_*`, `re_arm_count`, `re_arm_history`, `folded_through_re_arm`,
+  `model`/`effort` as resolved, `gate_set`, `driver_version`, `started_at`.
+- `produces_dropped` — driver-owned. Written when a RESULT's `produces_amended:`
+  entries are accepted (`defaults.produces_amendable: true`): the paths dropped
+  from this unit's recorded `produces:` (`.specfuse/rules/result-contract.md`).
+- `covers` — driver-seeded, on a `GATE-NN-CRITERIA.md` entry, not WU frontmatter.
+  The path(s) that criterion's oracle actually exercises; absent when no path is
+  derivable, in which case the criterion is never carried forward.
+- `carried_from_attempt` — driver-owned, on a carried `GATE-NN-CRITERIA.md`
+  entry. The attempt number whose run proved the green being carried.
+- `invalidated_by` — driver-owned, on a `GATE-NN-CRITERIA.md` entry whose
+  carried green was invalidated. Names the path in `covers:` the gate diff
+  touched since `proved_at_sha`.
+
+`defaults.carry_forward_narrow_greens` (`verification.yml`, default `true`) —
+whether a re-close may carry forward a prior attempt's `narrow` green at all;
+see `.specfuse/verification.yml.example` and
+`.specfuse/rules/close-discipline.md` §5.
+
 ## 3. Work unit types
 
-Eight types share one state machine; type affects only who handles the unit and
+Nine types share one state machine; type affects only who handles the unit and
 what its prompt contains.
 
 Substantive:
 - `implementation` — code.
 - `qa_authoring` / `qa_execution` / `qa_curation` — test-plan authoring,
   execution, and regression-suite curation.
+
+Performed by a person (FEAT-2026-0085):
+- `human` — a step no agent can take: reply on an issue, sign something, click
+  through a console, run something interactively. The driver never dispatches
+  it; when it is ready the driver prints the operator brief and halts. The
+  operator performs the step and marks it `done` with `evidence:`
+  (`/unblock-wu <WU-ID> --done --evidence "<what you did>"`), and the run
+  resumes; a `done` `human` unit with no `evidence` is a lint ERROR. It has no
+  model and no gate set, and needs only Objective, Context, and Acceptance
+  criteria. Place it *before* the close that depends on it, so the human step
+  is recorded as work rather than softened into the verdict afterwards.
 
 Closing sequence — every gate ends with **one** of three forms:
 
@@ -104,6 +203,16 @@ For the full design rationale see `PLAN.md` for FEAT-2026-0018.
    FEAT-2026-0016, if present, is also inspected — any prior `blocked_human`
    cycle disables auto.
 2. **No replan** — no `replan` event in `events.jsonl` for this gate's WUs.
+   A replan fires when a unit's next attempt would be its last permitted one
+   (the ceiling `resolve_max_attempts` resolves for that unit, not a bare
+   count of two) — the driver runs a fresh re-plan session instead of
+   retrying the same failing body verbatim. Units with `iterate_on_failure:
+   true` are exempt: they fail on purpose against a convergent validator, and
+   a replan there would misread deliberate iteration as spinning. Seeing this
+   check disable auto-close means a unit was mis-sized at authoring time (see
+   `/authoring-work-units` §6), not that anything is broken. A unit that
+   still spins out after this automatic re-plan escalates to a human — see
+   the escalation brief below for what that escalation tells the operator.
 3. **Per-WU cost ≤ 1.5× planned** — every substantive WU's `cost_usd` ≤
    `planned_cost_usd × 1.5`. If `planned_cost_usd` absent: skip this check for
    that WU (graceful degrade — emits a warning reason in the decision but doesn't
@@ -120,6 +229,28 @@ For the full design rationale see `PLAN.md` for FEAT-2026-0018.
    final attempt's `attempt_outcome` must be `passed`. Earlier attempts may have
    failed (already governed by check 1 if blocked), but the FINAL outcome on
    each WU must be clean.
+
+**The escalation brief (FEAT-2026-0104)** — **every** `blocked_human`
+escalation of a work unit, not only the spin-out that follows the automatic
+re-plan above, halts with a six-part operator brief
+(`.specfuse/rules/operator-escalation.md`'s six parts, in order), printed to
+the console and recorded verbatim in the `human_escalation` event's `message`
+field in `events.jsonl`. Gate-level halts — a gate budget exceeded, a
+pre-existing gate failure, a failing broad run — are excluded: those are keyed
+on the feature rather than on one unit, and there is no single unit to brief
+about. The escalation `reason` decides
+whether the brief's first option is re-planning the remaining gate:
+`spinning_detected`, `spinning_signature_repeat`, `convergence_plateau`, and
+`replan_unchanged_body` carry it, because for those a wider re-scope is the
+remedy; `all_attempts_zero_token`, `deterministic_refusal_repeat`,
+`produces_shape_invalid`, `spinning_reproduction_missing`, `prep_halted`, and
+`agent_reported_blocked` do not, because re-planning would fix nothing about
+that reason's actual cause (`REPLAN_OPTION_SCOPE` in `loop.py` is the single
+table both the brief and its tests consult). When it applies, the option is a
+recommendation, not an action the driver performs: the brief names
+`/unblock-wu` for the operator to run, re-arming the unit(s) so the driver's
+own automatic re-plan trigger (check 2 above) becomes reachable again for
+each — it resets `attempts`, it does not itself rewrite a body.
 
 **Auto-close terminal** — when the predicate fires on a terminal gate, the driver
 writes a stub `RETROSPECTIVE.md`, marks the close WU `status: done` with
@@ -139,7 +270,128 @@ auto-close only eliminates the reflective overhead, not the forward-design step.
 full close ceremony regardless of predicate outcome. Alternatively, set
 `auto_close_disabled: true` in a feature's `PLAN.md` frontmatter to disable
 auto-close permanently for that feature (e.g., for features that are inherently
-exploratory and expect off-plan behavior).
+exploratory and expect off-plan behavior). For a single **substantive close**
+— a `close` (or `close-intermediate`) WU whose acceptance criteria assert on the
+source tree, reconcile prior gates, or observe runtime behaviour rather than
+just writing the retrospective stub — set `auto_close_disabled: true` in **that
+WU's** frontmatter. The predicate keys on the implementation WUs' cost and
+plan-conformance and cannot see what a close verifies, so a substantive close
+must be marked must-run or its verification is silently skipped (#189).
+
+**The verdict is binary** (FEAT-2026-0085) — a close records `met` or
+`not_met`, and nothing in between. Across 273 features in 12 repositories, 48%
+of verdict-bearing closes ended on one of the two soft-success verdicts this
+release retired, and 59 of those were later flipped to `met` by an acceptance
+skill with nothing re-run: the hedge had become a polite synonym for "unknown".
+A `not_met` close leaves every terminal surface un-flipped (gate
+`awaiting_review`, roadmap row `active`, PLAN.md `active`) and must write
+`FOLLOW-UPS.md` in the feature folder — one `### `-headed entry per failed
+criterion, carrying the criterion verbatim, the evidence (the command run and
+its exit code or output line), and the re-run condition that would satisfy it.
+`close-m` refuses a `not_met` close whose `FOLLOW-UPS.md` is absent or empty,
+pre-squash and via `specfuse lint --closing`.
+
+**What a hedge used to carry now has three honest channels.** Of 101 hedged
+features, 42 hedged because a criterion asked the loop to observe production,
+16 because a human had to sign or act, and 9 because auto-closed gates had
+seeded every criterion into the retrospective as debt the terminal close could
+not reconcile. So: a criterion that needs a person is a `type: human` work unit
+placed before the close; a criterion that can only be observed in production is
+a `## Post-merge checklist` line in `PLAN.md`, never an acceptance criterion;
+and work that simply did not get done is `not_met` plus a follow-up entry. See
+`.specfuse/rules/close-discipline.md` §2 for the close-time obligations.
+
+### The judge writes the verdict (FEAT-2026-0100)
+
+A binary verdict is only worth what its author's independence is worth, and
+until this feature the close wrote its own — the same kind of session that did
+the work, reading its own retrospective while deciding whether the work was
+done. Every surveyed loop that holds up moves that decision elsewhere, for the
+plain reason that models skew positive on their own output.
+
+So on a **terminal** gate the driver dispatches a **judge**: a short, fresh
+session (`judge.py`, dispatched from `judge_close` in `loop.py`) that runs
+*after* the close's closing-deliverable guards — never judging a structurally
+incomplete close — and *before* the driver re-reads `verdict:` for the flips.
+Both readings therefore go through the one field every downstream consumer
+already reads; the flips, the `FOLLOW-UPS.md` filing, and `gate-status` needed
+no change.
+
+**What the judge reads** is evidence and nothing else: the gate's
+`## Definition of done`, the `GATE-NN-CRITERIA.md` per-criterion state (via the
+shipped `criteria_state` parser), the gate's diff from the gate-start SHA, and
+the close's `## Measurements` section. **What it never reads** is the close's
+opinion of its own work — any `Verdict` or `Retrospective` section is stripped
+out of every evidence string before the prompt is rendered, including when it
+arrives inside a diff hunk. A judge that reads "verdict: met — every criterion
+holds" before deciding is the same session grading itself with extra steps.
+
+**It can lower a verdict and never raise one.** On `not_met` over a close's
+`met`, the driver rewrites the close WU's `verdict:`, appends the judge's
+per-criterion findings verbatim to `FOLLOW-UPS.md` (appending, never
+overwriting the close's own entries), and fires no terminal flips. On `met`
+over a close's `not_met` the disagreement is recorded and *not* acted on: a
+second opinion must not overrule the session that actually ran the oracles and
+found them red. A judge that times out, cannot be run, or returns unreadable
+output leaves the close's verdict standing — the judge is a check, not a
+dependency, and a defect in its path fails open, loudly.
+
+**The `judged` event** is written for every terminal close, including the ones
+where no judge ran, so "the judge never fired" is an auditable record rather
+than a silence. It carries the gate number, `close_verdict`, `judge_verdict`,
+the `verdict` that stands, `lowered`, `disagreed`, the finding count, the diff
+base and its source, the session's usage, and a one-line `reason` on every
+path that skipped or failed. Reading `close_verdict` against `judge_verdict`
+across features is how the judge itself is evaluated: one that never disagrees
+is not reading, and one that is usually wrong needs a better evidence bundle.
+
+**`judge_disabled: true`** in `PLAN.md` frontmatter opts a feature out. It is
+for the narrow case where a feature's criteria genuinely cannot be judged from
+the evidence above — a criterion whose only proof is something the bundle
+cannot carry. It is not an escape hatch for a close expected to be
+inconvenient; a criterion a judge cannot evaluate from evidence is usually a
+criterion that needs rewriting, a `type: human` WU, or a post-merge checklist
+line.
+
+**Unfinished work becomes tracked issues, not prose.** After a `not_met`
+close's squash, `file_followup_issues` files one GitHub issue per
+`FOLLOW-UPS.md` entry under `specfuse:follow-up`, titled from the entry's
+heading text (`[FEAT-2026-0155 follow-up] <heading>`), carrying the entry body
+verbatim behind a `<!-- specfuse:followup id=… -->` marker, and writing
+`**Tracked as #N.**` back under the heading so the entry is filed once across
+every later attempt — an entry that already carries that line, by the driver's
+hand or a person's, is skipped; on a `met` close it files the optional
+`## Post-merge checklist` section as one `specfuse:post-merge` issue and writes
+the same line under that heading in `PLAN.md`. `gh` absent or failing leaves
+`FOLLOW-UPS.md` itself as the record — the driver never deletes or rewrites an
+entry, it only adds the tracked line — and emits one `followups_recorded` event naming
+the `filed` and `unfiled` counts.
+
+**Re-firing the flips out of band** (FEAT-2026-0070) — `fire_terminal_flips`
+runs at close-WU-*outcome* time and the driver never re-dispatches a `done`
+close WU, so a verdict corrected after the fact needs an entry point.
+`specfuse run --recheck-verdict <FEATURE_ID>` re-reads the terminal close WU's
+verdict from disk and fires the flips if it now permits them, without
+re-dispatching the WU. It **does not write terminal state itself** — it routes
+through the one owner. It is a no-op (exit `0`, printing why) when the feature
+is already `done` or the verdict on disk does not permit the flips. This is
+also the path a migrated legacy close takes; see
+[Migrating a hedged close](#migrating-a-hedged-close).
+
+**The row flips from any non-`done` status** (FEAT-2026-0070) — the terminal
+roadmap-row flip previously fired only on `active → done`, so an `autonomy: auto`
+feature that self-dispatched from a `planned` row stayed `planned` through a
+correct close and escalated `roadmap_row_not_done`. Any non-`done` row now flips.
+
+**Terminal state has exactly one writer.** `fire_terminal_flips` in
+`specfuse/loop/loop.py` owns the gate → `passed`, roadmap row → `done`, PLAN.md →
+`done`, and auto-archive transitions. Every close path — dispatched, auto-closed,
+and out-of-band re-check — calls that one function; no skill and no agent writes
+those surfaces. Issue #49 exists because two paths once diverged, and
+`[FEAT-2026-0023/G1-CLOSE]` is the rule that came out of it: do **not** add a "flip
+PLAN.md to done" acceptance criterion to a close WU, and do not let a skill
+hand-edit a terminal surface — if a new path needs the flip, give the driver an
+entry point and call it.
 
 **Predicate-version transparency** — every `auto_close_decision` event in
 `events.jsonl` carries a `predicate_version` field (e.g., `predicate_version:
@@ -152,21 +404,122 @@ after v2+ revisions ship.
 Every dispatched attempt emits exactly one `attempt_outcome` event to
 `events.jsonl`. The payload carries a standardized set of fields:
 `outcome`, `failure_class`, `failure_signature`, `failure_excerpt`,
-`cost_usd`, `duration_seconds`, `attempt`, and `re_arm_count`. For
-the field-by-field schema see
+`failing_tests`, `cost_usd`, `duration_seconds`, `attempt`, and
+`re_arm_count`. For the field-by-field schema see
 `.specfuse/features/FEAT-2026-0016-attempt-outcome-rearm-contract/PLAN.md`
 § "Event payload shape — `attempt_outcome` v1". The full payload is
 not restated here (one fact, one home).
 
-`outcome` taxonomy is **locked at v1**: `passed | failed | blocked |
-zero_token | files_changed_mismatch | post_pass_invariant_failed |
-closing_deliverable_missing | smoke_import_failed`. Extending the
-taxonomy requires a deliberate versioning decision.
+`failing_tests` is the sorted, de-duplicated list of failing test ids
+`extract_failing_tests` recognised in the gate report (empty when no
+runner-recognised per-test id was found); for `failure_class: tests`,
+`detect_spinning_signature_repeat` treats two non-empty `failing_tests`
+sets as the same failure iff they are equal as sets, ahead of the
+`(failure_class, failure_signature)` comparison (FEAT-2026-0116).
+
+`outcome` taxonomy, as `loop.py` actually emits it — thirteen values,
+bound to the emitter by `tests/test_attempt_outcome_contract.py`:
+
+| outcome | meaning |
+|---|---|
+| `passed` | verify + all driver-side guards clean |
+| `failed` | a verification gate failed |
+| `blocked` | the agent reported `status: blocked` |
+| `prep_halted` | a declared `prep`/`oracles` set halted before dispatch — no session spawned (FEAT-2026-0057/T04) |
+| `zero_token_skip` | the session produced no tokens; nothing ran |
+| `files_changed_mismatch` | RESULT declared paths that show no diff |
+| `closing_deliverable_missing` | a closing-WU guard refused (see `close-discipline.md` §4) |
+| `deliverable_missing` | a declared `produces:` path is absent |
+| `no_deliverable_files` | the squash names only the WU file / events |
+| `produces_not_in_diff` | `produces:` path exists but is not in the squash, and the RESULT's `produces_unchanged:` did not justify it |
+| `squash_commit_failed` | `git commit` for the squash was rejected |
+| `smoke_import_failed` | a declared smoke-import line failed post-squash |
+| `learnings_not_staged` | a closing WU under `autonomy_default: auto` touched `.specfuse/LEARNINGS.md` directly instead of staging to `LEARNINGS-pending.md` (FEAT-2026-0053/T09) |
+
+Extending it is a breaking change for every consumer below and requires a
+deliberate versioning decision — **and an update here in the same commit.**
+Five of the values above shipped without that step, and the drift was
+found only when someone mined the corpus (#270).
 
 `failure_class` taxonomy is **locked at v1**: `tests | lint |
 security | coverage | symbol_existence | bandit | other | null`.
 `failure_class: other` is the explicit catch-all for paths not yet
 classified; `null` means the outcome was `passed` (no failure).
+
+**Where the diagnostic lives depends on the outcome.** This is the part that
+misleads readers of the "standardized set" above: `failure_class` /
+`failure_excerpt` are not populated on every non-`passed` outcome, and a
+consumer that queries only those concludes the record is empty when it is not.
+
+| outcome | carries its reason in |
+|---|---|
+| `failed`, `files_changed_mismatch`, `produces_not_in_diff` | `failure_class` + `failure_signature` + `failure_excerpt` |
+| `blocked` | **`agent_blocked_reason`** (plus a sibling `human_escalation` event) |
+| `prep_halted` | **`halt_class`** + **`summary`** (plus a sibling `human_escalation` event) |
+| `closing_deliverable_missing`, `no_deliverable_files`, `deliverable_missing`, `squash_commit_failed`, `learnings_not_staged` | **`summary`** |
+| `files_changed_mismatch` (pre-0.3.23) | **`unchanged_paths`** only — `failure_*` was added by #182 |
+| `zero_token_skip` | nothing, correctly — no attempt ran |
+
+**Read every field in that table before concluding a record is undiagnosable.**
+A cross-repo audit reported three separate "missing diagnostic" findings that
+were all query errors against this contract, none of which existed (#270).
+
+**Retain-and-repair (FEAT-2026-0103).** `files_changed_mismatch`,
+`produces_not_in_diff`, `deliverable_missing`, and `no_deliverable_files` —
+the guard-refusal outcomes — record `tree_retained: true` in `extras` by
+default: the driver uncommits the squash but leaves the working tree exactly
+as the refused attempt left it, so the next attempt repairs in place instead
+of re-authoring from scratch. Controlled by `defaults.retain_on_guard_refusal`
+in `verification.yml` (default `true`; set `false` to restore the pre-0.18
+discard-and-restart behaviour) — see `specfuse/loop/data/verification.yml.example`
+for the four covered outcomes and the exact default. A `passed` outcome may
+separately carry `auto_repaired_files_changed` in `extras`: the list of
+declared-but-unchanged `files_changed` paths the driver dropped on the
+WU's behalf rather than failing the attempt over.
+
+**Dispatch without the skills index (#3423).** A dispatched session runs
+`claude -p --disable-slash-commands` by default: a work unit invokes no
+skill, and the project's skills index (34 skills, 1,534 words of descriptions
+in the loop repository) is fixed context carried in every turn's cache read.
+`defaults.dispatch_skills: true` in `verification.yml` restores the index for
+a project whose units do call `/skill-name` in-session.
+
+**The post-merge checklist travels with the archive (#3424).** A `met`
+terminal close no longer files PLAN.md's `## Post-merge checklist` as a
+`specfuse:post-merge` issue (ten filed across two repositories, eight never
+actioned); `auto_archive_feature` appends it under the feature's archived
+detail section in `roadmap-archive.md`. `defaults.post_merge_issue: true` in
+`verification.yml` restores the issue.
+
+**A RESULT may amend the plan, never add to it (FEAT-2026-0114).** A session's
+`produces_amended:` entry claims a planned `produces:` path the solution did
+not need; `defaults.produces_amendable: true` in `verification.yml` lets the
+driver accept it, dropping the path into `produces_dropped` on the unit.
+Default `false` — an unrecognized amendment is judged as an unjustified
+unchanged deliverable (`.specfuse/rules/result-contract.md`).
+
+**A block may name its own fix (FEAT-2026-0115).** A `blocked` RESULT's
+`blocked_next:` names a drafted fix unit; once the arm checks clear, the
+driver inserts it ahead of the blocked unit and emits `fix_unit_inserted` to
+`events.jsonl` on re-arm. `defaults.fix_unit_insertion: true` in
+`verification.yml` gates the feature accepting one at all;
+`defaults.max_fix_units_per_unit: 2` caps insertions per blocked unit.
+
+**Closing sessions run on sonnet (#3425).** `close`, `close-intermediate`
+and `plan-next` default to `sonnet` at effort `high`, the same model as the
+judge that checks them (lower-only, about $0.46 per close). Opus was 56% of
+all spend while implementation ran on sonnet. A unit's own
+`model:` still overrides the default, and every `judged` event carries
+`close_model` so judge agreement can be read per close model.
+
+Retention interacts with spinning detection, not around it:
+`detect_deterministic_refusal_repeat` (#1415) escalates a WU to
+`blocked_human` when two consecutive attempts emit an identical refusal
+summary over an identical touched-paths set. A retained tree that the repair
+attempt leaves untouched reproduces exactly that signature on its next
+refusal, so a session that ignores the retained-tree brief still escalates
+after two refusals rather than grinding to the attempt ceiling — retention
+does not weaken the spinning guard, it feeds it a cleaner signal.
 
 Consumers that read `attempt_outcome` events (the auto-close
 predicate, `/gate-status`, the spinning-detector hook, close-ceremony
@@ -213,6 +566,46 @@ A unit that passes its own checks but would fail the real gate has done the wron
 thing. Keep the loop's `verification.yml` `code` set in lock-step with branch
 protection wherever both exist.
 
+### 5.1 Operator scripts are software, not docs
+
+A unit that ships an **executable artifact for human operators** — a committed
+`.sh` script, an installer helper, a runbook whose body is a sequence an operator
+copy-pastes — is not exercised by a default `code` gate set: no unit test, no
+syntax check, nothing that catches the quirks shell ships with on a fresh
+workstation. The unit passes on "the file exists with these sections" and the
+operator finds the bugs against real systems, post-merge.
+
+Such a unit's acceptance criteria must include all three, each phrased so a gate
+can check it mechanically:
+
+1. **`shellcheck <script>` produces zero warnings**, or every
+   `# shellcheck disable=SCxxxx` carries an inline justification naming the reason.
+2. **`bash -n <script>` parses clean** — catches typos and unterminated
+   constructs a shellcheck pass skips when it cannot parse.
+3. **At least one bats-core test against the happy path**, with every external
+   command (`az`, `kubectl`, `curl`, `gh`, `terraform`, …) replaced by a
+   PATH-shimmed stub. The stubs assert the call shape; the test asserts exit code
+   and observable output. The happy path alone catches the lifecycle bugs
+   (trap-revoke ordering, `set -e` silent abort, premature exit); error-branch
+   coverage is a bonus, not a requirement.
+
+Name the corresponding gate command in the unit's Verification section — usually
+a `code` gate entry like `bash -n scripts/<name>.sh && shellcheck
+scripts/<name>.sh && bats tests/<name>.bats`. If `verification.yml` declares no
+bats gate yet, adding one is the hygiene precursor.
+
+The rule fires on the presence of a committed executable, not on the unit's type:
+a markdown-only runbook, a Terraform module, a Helm chart, or a config file is
+out of scope.
+
+> **Provenance.** An Argo CD session shipped two ~500-LoC bootstrap scripts as
+> docs artifacts; post-merge the operator spent ~3.5hr over 10 patches on
+> portability (`${VAR,,}` does not work on stock macOS bash 3.2), lifecycle
+> (trap-revoke fired before the revoke was needed, a KV read aborted silently
+> under `set -e`), and surface (`az ad sp create` raced with re-runs).
+> `shellcheck` flags the portability issue statically; one bats happy-path test
+> with `az` stubbed catches the rest. ~15min per script at authoring time.
+
 ## 6. The gate cycle
 
 For each gate, in order:
@@ -244,7 +637,7 @@ completion.
 
 Closing ceremony cost should scale with feature size. A feature whose
 **planned substantive** WU count (types `implementation`, `qa_authoring`,
-`qa_execution`, `qa_curation`) is **≤ 4** drafts as a **single gate** with
+`qa_execution`, `qa_curation`) is **≤ 12** drafts as a **single gate** with
 a **single terminal `close` WU** — no `close-intermediate`, no `plan-next`.
 This is the proportional shape: small features do not pay multi-WU closing
 overhead sized for large ones.
@@ -262,7 +655,26 @@ reflective session. Ceremony proportionality trades reflection only on
 features that stay small **and** on-plan. The `gate_eval.py` predicate is
 the safety net; this rule does not replace it.
 
-The canonical threshold is **4** (stated here, in `docs/methodology.md`;
+The line moved from 8 to 12 on 2026-09-26 (#3426): post-review features
+average 10.7 substantive units, every extra gate costs a `plan-next` plus a
+`close-intermediate` and an `awaiting_review` wait, and the arm predicate
+would have armed only 18 of 74 gate boundaries it evaluated — the wait was a
+human redraft, not a review. A feature goes multi-gate when a human decision
+sits between its gates, not because it is large.
+
+**Reflective prose is conditional too (FEAT-2026-0106).** The roadmap once
+asked for a retrospective "only on `not_met` or on request" — superseded,
+for an ordering reason: the close writes `RETROSPECTIVE.md` before the judge
+produces a verdict, so there is nothing to condition on at write time. The
+close instead keys its reflective sections (`## Cost analysis`,
+`### Failure-class breakdown`) on the same off-plan signal named above
+(blocked WU, replan event, cost overrun) rather than on the verdict. Every
+other closing obligation — measurements above all, since the judge's evidence
+bundle depends on them regardless of how the gate went — stays unconditional;
+see [`close-discipline.md`](../.specfuse/rules/close-discipline.md) §1a for
+which is which.
+
+The canonical threshold is **8** (stated here, in `docs/methodology.md`;
 referenced, not re-defined, in `.specfuse/skills/draft-feature/SKILL.md`).
 
 ### Fresh context per dispatch
@@ -291,6 +703,15 @@ a roadmap-anchor check (with a loud flag if the goal itself seems to be drifting
 and open questions — each mapped to the draft WU it affects. The summary is
 advisory and owns no state.
 
+**The oracle-progression obligation.** `plan-next` also drafts the next gate's
+`feature_oracle`, and its review summary must state how the drafted oracle
+advances the prior gate's oracle — in prose, as a judgment call, not as a
+lint rule. Nothing can decide mechanically whether one shell command is a
+"stronger" proof than another, so this is the one place an
+unenforceable-but-important question belongs: the summary is already weighted
+toward doubt and already carries the roadmap-anchor check above it
+(FEAT-2026-0101).
+
 ## 8. LEARNINGS — the cross-feature feedback loop
 
 `LEARNINGS.md` is an append-only, cross-feature log of durable, reusable rules
@@ -300,17 +721,101 @@ feature's `RETROSPECTIVE.md`; only rules that would change how a *future* WU is
 written or executed graduate to `LEARNINGS.md`. This is the human-scale analogue
 of the Ralph loop feeding errors back into the prompt.
 
+### The binding-block word budget (FEAT-2026-0111)
+
+The `.claude/CLAUDE.md` "Specfuse binding rules" block — every `@`-referenced
+file a dispatched work-unit session is held to — is capped at 2,500 words
+(`BINDING_BLOCK_WORD_CAP` in `specfuse/loop/loop.py`), enforced by
+`check_binding_block_budget`. Every rule added to that block, including a
+project-authored entry under `.specfuse/rules-local/`, is counted against this
+one shared cap; a project adding a local rule spends the same allowance the
+loop's own rules already draw from.
+
+`.specfuse/rules-local/learnings-distilled.md` — the LEARNINGS-derived
+distillate wired into the block — carries its own 500-word sub-budget
+(`LEARNINGS_DISTILLED_WORD_CAP`) inside the 2,500-word total. `score_learnings_entries`
+ranks candidate entries and a human accept step (`apply_distilled_decisions`)
+cuts the accepted set to that 500-word sub-budget, not to an entry count.
+
+The ranking's `reach` field — the count of other feature files that cite an
+entry — is **a tiebreaker with an age bias, not a ranking signal**: it counts
+citations in planning documents, and planning agents cite what they have
+already read in `LEARNINGS.md`, so visibility inflates its own count, and it
+favors older entries that have had more features' worth of planning sessions
+in which to be cited. Neither `reach` nor `cost_usd` measures whether a rule
+actually improves a session's work — that is a judgment the accept step still
+has to make by reading the entry, not a property either weight computes.
+
 ## 9. Autonomy
 
-Three levels — `auto`, `review`, `supervised` — set as a feature default and
-overridable per gate (tightening only; a gate may be more supervised than the
-feature default, never less). Under `auto`, the per-gate stop may be skipped
-(plan-next auto-arms the next gate) **only when all of**: the structural lint
-passes, the not-yet-reached skeleton was not revised, no task in the gate carries
-a `supervised`/auto-forbidden override, and plan-next raised no escalation. If any
-fails, the cycle stops for the human regardless of mode. Auto-arm advances toward
-execution; it never auto-merges — the merge gate stays human until the QA loop is
-trusted. Escalation always overrides autonomy.
+Three levels — `auto`, `review`, `supervised` — set once as a feature default
+in `PLAN.md` frontmatter (`autonomy_default`). No consumer reads a per-gate
+autonomy field: the per-gate, tightening-only override described in earlier
+drafts of this section is designed but **unbuilt**. Likewise `review` and
+`supervised` are, today, the same behavior — every consumer branches only on
+`== "auto"`; the three-way distinction is a name, not yet a mechanism.
+
+At every gate close the driver evaluates `evaluate_arm_predicate` (see
+`specfuse/loop/arm_eval.py`) and emits its verdict as an `arm_predicate_evaluated`
+event, regardless of autonomy level. Under `review` and `supervised` that
+verdict is recorded and nothing acts on it — the gate always halts
+`awaiting_review` for a human. Under `auto`, the verdict is acted on at exactly
+one flip site in `loop.py`: if the predicate's `would_arm` is `True`, the same
+bookkeeping commit that would otherwise just mark the gate `awaiting_review`
+instead also flips every next-gate WU `draft` -> `pending` and the just-closed
+gate `awaiting_review` -> `passed`, logging a `gate_auto_armed` event. If
+`would_arm` is `False`, `auto` takes the same halt-for-human path as the other
+two levels — nothing in the predicate distinguishes an `auto` feature from a
+`review` one except whether the verdict is consulted.
+
+The predicate itself is eight named stop classes (`budget_projection`,
+`judge_editing`, `decision_class_paths`, `retroactive_edits`, `drift_caps`,
+`missing_provenance`, `open_questions_human_only`, `plan_next_lint`), each
+returning `fired` / `clean` / `not_evaluable`; `would_arm` is `True` only if
+none fired. Three of the eight — `missing_provenance`, `open_questions_human_only`,
+`plan_next_lint` — are veto channels fed by model-authored output; the rest
+are mechanical counters, path checks, and hardcoded caps. The full per-class
+meaning is T11's stop-class reference, not restated here.
+
+Escalation overrides autonomy by control flow, not by a checked condition: the
+two escalation flip sites (`blocked_human` after `MAX_ATTEMPTS`, and the
+dry-run/blocked early returns) return before the arm branch in `loop.py` is
+ever reached, so an escalated gate cannot be armed regardless of
+`autonomy_default` — there is no autonomy check to forget. Given that, the
+human checkpoints on an `auto` feature are exactly: any escalation during the
+gate, the PR review, and the merge. Auto-arm advances a feature toward the
+*next* gate's execution; it never auto-merges — the merge gate stays human
+until the QA loop is trusted.
+
+**`auto` is the recommended default (FEAT-2026-0100).** `PLAN.template.md`
+carries `autonomy_default: auto`, and `/draft-feature` recommends it unless
+the feature gives a reason to tighten. The reason it can be recommended is the
+judge in §3, not a change to the mechanism above: **the arm predicate is
+untouched** — the same eight stop classes, the same `would_arm`, the same
+single flip site. What changed is what an armed gate is armed *on*. Before the
+judge, an `auto` feature let the session that did the work write the verdict
+that advanced the feature; now a fresh evaluator that never sees that session's
+prose writes it, and can only lower it. The `judge_editing` stop class still
+vetoes any gate that edited the loop's own driver, so a feature that changes
+the machinery keeps its human checkpoint regardless of this default.
+
+Tighten to `review` when the judge cannot do its job — a feature whose criteria
+are not judgeable from the evidence bundle (see `judge_disabled` in §3), or one
+whose blast radius makes a wrong arm expensive to undo. That is a decision to
+make deliberately, per feature, with a reason recorded; it is no longer the
+posture every feature starts from by default.
+
+An auto-arm is exactly one commit. Before that commit is written, the driver
+tags the pre-arm `HEAD` as `pre-arm/<feature-id>/gate-<N>`, so an arm crash
+leaves the repository in exactly one of two recoverable states — armed, or not
+armed — never a partial third. See `docs/dev/auto-arm-recovery.md` for the
+recovery procedure; that concept lives here, the procedure lives there.
+
+An `auto` feature also produces two artifacts a `review` feature does not:
+`FEATURE-REVIEW.md` (the closing-gate review a human would otherwise have
+written by hand) and `LEARNINGS-pending.md` (staged LEARNINGS entries held for
+human promotion instead of landing directly). See T12's migration guide for
+when and how these get created.
 
 ## 10. The two execution surfaces
 
@@ -319,8 +824,74 @@ trusted. Escalation always overrides autonomy.
 | State backend  | WU / GATE file frontmatter          | GitHub issue labels + feature registry |
 | Dispatch       | driver shells out (`claude -p`)     | inbox files + polling loop             |
 | Branch / merge | one branch, squash per WU            | branch + PR per task, merge watcher    |
-| Spec front-end | optional; task graph authored directly | spec-first (specs agent + codegen)  |
+| Spec front-end | one of: **none** (task graph authored directly), **consumed** (specs authored upstream, the loop implements against a handoff manifest), or **authored** (the spec tree is the deliverable — work units author spec files) | spec-first (specs agent + codegen), from a dossier **or** from an upstream handoff manifest |
+
+The loop's spec front-end is three-valued because a repository whose entire
+deliverable **is** the spec tree fits neither of the two values this row
+carried before (#3407): it is not "optional", and the task graph is not
+"authored directly" — the work units author spec files. One consumer carried
+that third case in about forty lines of project `CLAUDE.md` because the row
+could not express it. In the **authored** mode the work-unit contract picks up
+two constraints that do not apply to code units — see
+`authoring-work-units` §6 (the whole tree validates) and §12 (a structural
+assertion substitutes for the red test).
 
 Everything above those rows — the unit hierarchy, ownership split, WU contract,
 verification-as-oracle, the gate cycle, plan-next, LEARNINGS, and autonomy — is
 shared and means the same thing on both surfaces.
+
+## Migrating a hedged close
+
+FEAT-2026-0085 retired the two soft-success verdicts, `met_locally` and
+`partially_met`. They stay **readable**: 42 closes across the corpus are
+`status: done` carrying one, `load_wu` and `recheck_terminal_verdict` parse
+them rather than crash, and `lint_plan` validates `verdict` only on a non-`done`
+close — so a standing hedged close reports no new error and needs no urgent
+action. They are not **writable**: `assert_verdict_well_formed` rejects them on
+any close dispatched from now on, and `recheck_terminal_verdict` refuses the
+terminal flips on one, naming this section in the refusal.
+
+`/accept-hedged-close` no longer exists. There is no path that softens a verdict
+to get past `/wrap-feature`'s refusal; migrate the close instead.
+
+Pick one of two routes per standing hedged close. Find them with:
+
+```bash
+grep -l "^verdict: met_locally\|^verdict: partially_met" .specfuse/features/*/WU-9*.md
+```
+
+**Route A — discharge, then record `met`.** Use this when the old follow-up
+record's re-run condition is reachable today, or when it was an
+`acceptance-discharged` entry that a signature was always going to settle. Run
+the re-run condition and read the exit code. If it passes, edit the close WU's
+`verdict:` to `met`, then:
+
+```bash
+specfuse run --recheck-verdict <FEATURE_ID>
+```
+
+That re-reads the verdict from disk and fires the terminal flips through their
+one owner — gate `passed`, roadmap row `done`, PLAN.md `done`, auto-archive.
+It never writes those surfaces itself, and it does not re-dispatch the close.
+
+**Route B — record `not_met` and track what is left.** Use this when the work is
+genuinely unfinished. Edit the close WU's `verdict:` to `not_met`, then write
+`FOLLOW-UPS.md` in the feature folder from the old `## Hedged-verdict follow-up
+record` — one `### `-headed entry per unmet criterion, carrying the criterion
+verbatim, the evidence, and the re-run condition. Then re-arm the unit that
+failed (`/unblock-wu <WU-ID>`) so the loop can finish it, or leave the close
+`not_met` and let the driver file the follow-up issues on its next pass.
+
+Translating the old `kind:` values, which no longer exist:
+
+| Old `kind:` | Where it goes now |
+|---|---|
+| `acceptance-discharged` | a `type: human` unit placed before the close (route A after it is `done` with `evidence:`) |
+| `externally-verifiable-later` | a `## Post-merge checklist` line in `PLAN.md` if it needs production; otherwise a `FOLLOW-UPS.md` entry |
+| `routed-finding` | already tracked elsewhere — link that issue from the `FOLLOW-UPS.md` entry |
+| `inherent` | not assertable, ever: it was never a legitimate acceptance criterion. Delete it from the criteria and say so in the retrospective |
+
+**Do not rewrite the history.** Existing `RETROSPECTIVE.md` files keep their
+`## Hedged-verdict follow-up record` sections as written — they are the record
+of what was true at the time. Migration edits the close WU's `verdict:` and adds
+`FOLLOW-UPS.md`; it does not revise past retrospectives.

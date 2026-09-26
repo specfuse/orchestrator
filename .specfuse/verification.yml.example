@@ -8,7 +8,8 @@
 # Keep the `code` set in lock-step with your GitHub branch-protection checks — if
 # they drift, an agent can pass locally and still be unmergeable.
 #
-# AUTHORING RULE: gate commands SHOULD be self-contained. Avoid `--no-build`,
+# AUTHORING RULE: a gate command must be self-contained UNLESS it declares
+# `needs:` (see below). Outside a declared `needs:` edge, avoid `--no-build`,
 # `--no-restore`, or any equivalent "skip-build" flag — those make the gate run
 # against whatever binaries are on disk, and stale artifacts can make a gate pass
 # falsely. If a build step is genuinely required before tests are runnable, fold
@@ -28,17 +29,176 @@
 #
 # cost_tracking: true
 
+# PER-GATE `wu_must_reference: true` (optional, default false). Flag a gate
+# whose fix is MECHANICAL over a work unit's own output — a formatter, an
+# auto-fixable linter (`spotless:check`, `black --check`, `gofmt -l`,
+# `prettier --check`). The plan linter (`specfuse lint`) then WARNs when an
+# implementation WU's Verification section names none of that gate's command —
+# catching, at authoring time and zero model cost, the case where a WU forgets
+# a mechanical gate and the driver spins retries on the identical failure until
+# the attempt budget is exhausted. Leave it off for project-global gates
+# (leak-scan, hygiene checks) that an individual WU has no reason to name.
+
+# PER-GATE `needs: [<gate>]` (optional, default none). Declares that this gate
+# depends on another gate in the SAME set. The driver runs the set in dependency
+# order and a gate whose dependency FAILED is reported SKIP — never run, never
+# counted as a pass — so a failure is still attributed to the gate that caused
+# it and `failure_class` stays distinguishable per gate. Because the runner
+# guarantees the named dependency ran, clean, in this same invocation, the
+# declaring gate MAY reuse artifacts that dependency just produced: the
+# `coverage` gate below reports over the `.coverage` data `tests` wrote instead
+# of re-executing the suite. That guarantee is per-invocation and is never
+# cached across attempts, so `needs:` never licenses a `--no-build` /
+# `--no-restore` / "skip-build" flag on the DEPENDENCY's own command — it only
+# licenses a DEPENDENT reusing what the dependency just produced. An
+# unresolvable `needs:` target and a dependency cycle are both refused as
+# CONFIGURATION ERRORs before any gate runs, never as a silent skip or a silent
+# pass. `scripts/smoke-test.sh` and CI derive the same order from this file, so
+# they cannot disagree with the driver about whether a prerequisite ran
+# (FEAT-2026-0102).
+#
+# PER-GATE `tier: broad` (optional, FEAT-2026-0109/T04). A per-attempt
+# verification runs only the gates in the `code:` list that do NOT declare
+# `tier: broad`; the once-per-gate broad run runs all of them, tiered or not.
+# ABSENT KEY MEANS "RUNS IN BOTH TIERS" — a gate with no `tier:` line runs per
+# attempt exactly as it does today, so leaving this key out everywhere keeps
+# your driver's behaviour byte-identical to before this feature existed.
+# Opting a gate OUT of the per-attempt run is therefore always an explicit
+# declaration, never a silent demotion. A gate may separately declare
+# `narrow_command` — see `tests` below — to run a cheaper command per attempt
+# while `command` still runs whole in the broad run; that is orthogonal to
+# `tier` and most gates need only one or the other, not both.
+#
+# PER-GATE `narrow_selection` (optional, FEAT-2026-0110). Controls how a
+# dispatched unit's own `produces:` entries are turned into the
+# `{selected_test_modules}` a `narrow_command` substitutes — for repos whose
+# tests are not Python modules under `tests/`. Four keys, each independently
+# defaulted (an absent `narrow_selection` block, or an absent key within one
+# that IS declared, resolves to the value shown):
+#   test_roots: ["tests/"]     # produces: entries under one of these roots
+#                               # are what gets selected; entries elsewhere are
+#                               # ignored by this gate's narrow tier.
+#   format: python_module      # how a selected path is turned into an item:
+#                               #   python_module — dotted module name
+#                               #     (src/foo/bar.py -> src.foo.bar)
+#                               #   class_name — bare file stem
+#                               #     (FooTest.java -> FooTest)
+#                               #   path — the path itself, unchanged
+#                               # An unrecognized format is a CONFIGURATION
+#                               # ERROR, never a silent fallback.
+#   item_template: "{module}"  # each rendered item is substituted into this
+#                               # template before joining; default is verbatim.
+#   separator: " "              # how rendered items are joined before
+#                               # replacing {selected_test_modules}.
+# An empty selection (no produces: entry under any test_root) falls back to
+# the gate's full `command` — fail safe, never open.
+#
+# Example for a Maven repo (#3281), where tests are JUnit classes under
+# src/test/java rather than tests/, selected by class name, space-separated
+# for `-Dtest=`:
+#   - name: tests
+#     command: "mvn -q test"
+#     narrow_command: "mvn -q test -Dtest={selected_test_modules}"
+#     narrow_selection:
+#       test_roots: ["src/test/java/"]
+#       format: class_name
+#       separator: ","
+
+# TOP-LEVEL `defaults:` block (optional). Project-wide fallbacks a work unit's
+# own frontmatter can override.
+#   max_attempts: 3            # attempt ceiling when a WU declares none of
+#                               # its own; the constant MAX_ATTEMPTS is the
+#                               # fallback when this key is also absent.
+#   retain_on_guard_refusal: true  # whether a bookkeeping-guard refusal keeps
+#                               # the working tree instead of uncommitting it
+#                               # back to a blank slate. Covers four outcomes:
+#                               # `deliverable_missing`, `no_deliverable_files`,
+#                               # `produces_not_in_diff`, `files_changed_mismatch`
+#                               # (FEAT-2026-0103). Defaults to true: the next
+#                               # attempt repairs the retained tree in place
+#                               # instead of re-authoring from scratch. Set to
+#                               # false to restore the pre-0.18 discard behaviour.
+#   dispatch_skills: false      # whether a dispatched session loads the
+#                               # project's skills index. Defaults to false:
+#                               # a work unit invokes no skill, and the index
+#                               # is fixed context paid on every turn (#3423).
+#                               # Set true for a project whose units call
+#                               # `/skill-name` in-session.
+#   post_merge_issue: false     # whether a `met` terminal close files PLAN.md's
+#                               # `## Post-merge checklist` as a tracked issue.
+#                               # Defaults to false (#3424): the checklist is
+#                               # appended under the feature's archived detail
+#                               # section in roadmap-archive.md instead.
+#   produces_amendable: false  # whether the driver accepts a RESULT's
+#                               # `produces_amended:` entries, dropping those
+#                               # paths from the unit's recorded `produces:`.
+#                               # Defaults to false: an amendment claim is
+#                               # ignored and the path is judged as an
+#                               # unjustified unchanged deliverable instead
+#                               # (FEAT-2026-0114).
+#   fix_unit_insertion: true   # whether a blocked RESULT's `blocked_next:`
+#                               # may insert its drafted fix unit instead of
+#                               # escalating. Defaults to true (FEAT-2026-0115).
+#   max_fix_units_per_unit: 2  # cap on `fix_unit_inserted` insertions per
+#                               # blocked unit before it escalates instead
+#                               # (FEAT-2026-0115). Defaults to 2.
+#   carry_forward_narrow_greens: true  # whether a re-close may carry forward a
+#                               # prior attempt's `narrow` GATE-NN-CRITERIA.md
+#                               # green instead of re-measuring it. Defaults to
+#                               # true. A carried green still invalidates when
+#                               # the gate diff since its `proved_at_sha`
+#                               # touches a path in its `covers:` — see
+#                               # `.specfuse/rules/close-discipline.md` §5.
+# defaults:
+#   max_attempts: 3
+#   retain_on_guard_refusal: true
+#   dispatch_skills: false
+#   post_merge_issue: false
+#   produces_amendable: false
+#   fix_unit_insertion: true
+#   max_fix_units_per_unit: 2
+#   carry_forward_narrow_greens: true
+#
+# The re-plan-after-two-failures behaviour (FEAT-2026-0104) reads this same
+# `max_attempts` resolution and adds no config key of its own — a unit's
+# next-to-last attempt re-plans instead of retrying verbatim, governed
+# entirely by the ceiling above (or a WU's own `max_attempts`) plus that WU's
+# `iterate_on_failure` flag.
+
 code:
   - name: tests
-    command: "pytest -q"
+    # Run the suite UNDER `coverage run` so the `coverage` gate below can reuse
+    # this run's data rather than executing the suite a second time.
+    command: "coverage run -m pytest -q"
+    # PER-ATTEMPT NARROWING (optional): the command a per-attempt verification
+    # runs INSTEAD of `command` above, with `{selected_test_modules}`
+    # substituted for the dispatched unit's own declared test paths (its
+    # `produces:` entries under your test directory). `command` still runs
+    # whole, under `coverage run`, in the once-per-gate broad run. An empty
+    # selection falls back to the full `command` above — fail safe, never open.
+    # narrow_command: "python3 -m pytest {selected_test_modules} -q"
   - name: coverage
+    needs: [tests]
+    # Only reports; `tests` produced the data, and the runner guarantees it ran
+    # clean in this same invocation. Without `needs:` this command would report
+    # over whatever `.coverage` file happened to be on disk.
+    # tier: broad — needs: [tests] only has to resolve when both run in the
+    # same invocation, i.e. the once-per-gate broad run.
+    tier: broad
     command: "coverage report --fail-under=90"
   - name: warnings
     command: "python3 -W error -c 'pass'"    # replace with your build's -Werror equivalent
   - name: lint
     command: "ruff check ."
+  - name: format
+    command: "black --check ."               # deterministic formatter: fix with `black .`
+    wu_must_reference: true                   # WUs must name it (see note above)
   - name: security
+    tier: broad                              # once per gate, not per attempt
     command: "bandit -r src -ll"             # or your OWASP-aligned scanner
+  # Uncomment after running /derive-monitoring to draft .specfuse/monitoring.yml.
+  # - name: monitoring-example-lint
+  #   command: "specfuse monitor-lint .specfuse/monitoring.yml"
 
 # Reflective units (retrospective, lessons, docs): the artifact exists / something
 # changed. Tighten as you like.
@@ -50,4 +210,12 @@ doc:
 # a malformed next-gate draft fails here, where you are already reviewing.
 plannext:
   - name: plan-lint
-    command: "specfuse-lint {feature_dir}"
+    command: "specfuse lint {feature_dir}"
+
+# Pre-dispatch sets, referenced by a WU's `prep`/`oracles` frontmatter keys —
+# they run BEFORE the session is dispatched, not at exit. Entries here are
+# informational captures, not pass/fail gates; see
+# .specfuse/skills/verification/SKILL.md § Pre-dispatch for prep vs oracles.
+# oracles:
+#   - name: recent-history
+#     command: "git log --oneline -10 && git diff --stat main"
