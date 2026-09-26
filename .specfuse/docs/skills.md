@@ -23,7 +23,7 @@ A feature moves through these phases. The skill for each phase is named.
 ```
 roadmap ──/pick-feature──▶ active ──/draft-feature──▶ gate 1 detailed
                                                             │
-                                                   specfuse-loop
+                                                   specfuse run
                                                             │
                                    ┌────────────────────────┴───────────────┐
                                    ▼                                         ▼
@@ -48,6 +48,11 @@ roadmap ──/pick-feature──▶ active ──/draft-feature──▶ gate 1
   `/draft-feature`.
 - **`/roadmap-add`** — add a new feature row to the roadmap before it's ready to
   pick.
+- **`/block-feature`** — flip a roadmap feature to `blocked` (or clear it) with a
+  linked `**Blocked by.**` blocker — an ADR awaiting approval or an upstream
+  FEAT-ID that must complete first. Writes the row status, the detail block, and
+  PLAN frontmatter, keeping intra-page feature links resolvable.
+  `/block-feature FEAT-ID --unblock` clears the block and restores the status.
 
 ### 2. Draft — turn a picked feature into a runnable gate
 
@@ -61,12 +66,26 @@ roadmap ──/pick-feature──▶ active ──/draft-feature──▶ gate 1
 - **`/derive-verification`** — draft a `.specfuse/verification.yml` for a project
   by inspecting its CI, tooling manifests, and code. Run this once when
   bootstrapping the loop in a repo that already has CI worth deriving gates from.
+- **`/derive-monitoring`** — draft a `.specfuse/monitoring.yml` (plus a local
+  overrides file and a filled secrets checklist) for a project by discovering
+  deployed components from repo evidence and auditing them against the
+  design-for-diagnosis rule. Run this once a project has real components to
+  monitor.
 
 ### 3. Run — the driver (not a skill)
 
-`specfuse-loop` (the pip-installed driver) walks the active gate, dispatches each
+`specfuse run` (the pip-installed driver) walks the active gate, dispatches each
 WU as a fresh session, verifies, and commits. It is a command, not a skill. It
 either auto-closes a clean gate or halts at the gate boundary for review.
+
+It also owns every terminal flip (gate → `passed`, roadmap row → `done`, PLAN.md →
+`done`, auto-archive) — no skill writes those surfaces. When a verdict is upgraded
+*after* its close WU is already `done`, re-fire them with
+`specfuse run --recheck-verdict <FEATURE_ID>`: it re-reads the terminal close WU's
+verdict from disk and flips only if it now permits, printing why when it does not.
+Safe to run on a feature whose verdict does not permit the flips — it writes
+nothing. This is also how a migrated legacy hedged close gets its flips: edit
+the verdict to `met` or `not_met`, then re-fire.
 
 ### 4. Arm — the human checkpoint at each gate
 
@@ -85,6 +104,19 @@ either auto-closes a clean gate or halts at the gate boundary for review.
   underlying cause (credentials, spec ambiguity, missing dep). Flips
   `blocked_human → pending`, resets attempts, re-opens the gate if needed, prints
   the resume command.
+- **`/answer-escalation`** — work the `needs-human` GitHub queue one issue at a
+  time. Reads one parked escalation, explains in plain English what stopped the
+  agent, and records one of four dispositions: **hand off** to the skill that
+  owns the escalation's category, **answer** with guidance recorded as a marked
+  issue comment, **close** as won't-fix, or **skip**. Every disposition except
+  `skip` releases the `needs-human` *and* `blocked-wu` labels — both, because
+  `BugsProvider` skips an issue carrying either, so releasing one leaves the
+  issue answered and still parked. Human-invoked only; it triggers no fix and no
+  retry. Its product is guidance the next agent run reads, carried in a comment
+  marked `<!-- specfuse:operator-guidance id=… -->` so a later reader can find it
+  mechanically. Write order is deliberate — comment first, labels second — so a
+  failed label release leaves an issue correctly answered and merely still
+  parked, never unparked with no guidance.
 - **`/abandon-feature`** — cleanly abandon the active feature when retry isn't
   worth it. Flips every non-terminal WU/gate/PLAN/roadmap surface to its
   abandoned state behind a single up-front confirmation.
@@ -93,7 +125,9 @@ either auto-closes a clean gate or halts at the gate boundary for review.
 
 - **`/wrap-feature`** — after the terminal gate is `done`, push the feature
   branch, open a PR, optionally watch CI, and point at the next pick. Refuses if
-  PLAN.md isn't `done` yet.
+  PLAN.md isn't `done` yet. There is no skill that softens a verdict to get past
+  that refusal: a close either records `met`, or records `not_met` and leaves
+  `FOLLOW-UPS.md` behind for the loop to file as tracked issues.
 - **`/roadmap-archive`** — move a done or abandoned feature's detail section from
   `roadmap.md` to `roadmap-archive.md`, leaving a back-link.
 
@@ -107,6 +141,14 @@ either auto-closes a clean gate or halts at the gate boundary for review.
 - **`/fix-bug`** — triage and fix a reported bug *outside* the feature
   methodology: 1 bug = 1 branch = 1 PR, test-first. Refuses and proposes
   promoting to a feature if the work is large or risky.
+- **`/diagnose-issue NN`** — read a harvester finding issue and the component
+  source it implicates, then post one structured diagnosis comment: root cause,
+  evidence trail, candidate fix, plus machine-readable `confidence` and
+  `fix_scope`. It diagnoses; it does not decide whether to fix anything. Runs
+  interactively, or headlessly via `python3 -m specfuse.monitor.diagnose_cli`,
+  which renders through the same renderer so both entry points emit a
+  byte-identical body. Nothing fires it automatically yet — the per-component
+  `diagnose: auto` dial is a separate, later feature.
 - **`/feature-conversion`** — bring an existing feature folder into conformance
   with the current scaffold's structural contract. Runs after `specfuse upgrade`
   flags a feature as `FAIL`. Interactive, lint-driven.

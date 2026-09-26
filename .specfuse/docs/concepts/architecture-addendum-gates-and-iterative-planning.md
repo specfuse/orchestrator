@@ -24,7 +24,7 @@ implementation feature == a loop feature**: the receiving component's loop decom
 So gates are **internal to the loop**, not orchestrator state. The orchestrator owns
 `initiative → feature` decomposition, cross-repo dependency ordering, and the spec/generated
 interface contracts between features; it does **not** identify gates, run `plan-next`, or hold a
-per-gate `plan_review`. The loop owns all of that, per [`methodology.md`](methodology.md).
+per-gate `plan_review`. The loop owns all of that, per [`methodology.md`](../methodology.md).
 
 **Why Model B (summary).** The loop is single-repo + edit-and-commit; codegen freezes the
 cross-repo interface (generated `emit-*`/`on-*` contracts are immutable `_generated/`), so
@@ -45,7 +45,7 @@ The orchestrator change is the **initiative/feature reframe**, already folded in
   the orchestrator's state machines — they are loop-internal.
 - **PM agent (reframed, not gate-extended):** `feature-decomposition` (was task-decomposition)
   produces a `feature_graph`; `issue-drafting` files feature issues labelled by type;
-  `plan-review` reviews the `feature_graph`; `dependency-recomputation` (runtime `specfuse-poller`)
+  `plan-review` reviews the `feature_graph`; `dependency-recomputation` (runtime `scripts/poller.py`)
   flips features `pending → ready`. **No** gate identification, `plan-next`, or per-gate
   `plan_review` in the PM — those were the Model-A additions and are dropped.
 - **Dispatch by feature type:** `implementation` → the component-loop (loop GitHub feature-pick on
@@ -60,7 +60,7 @@ gates were placed in the loop instead.
 
 ## 3. What the loop owns (the gate layer)
 
-Per [`methodology.md`](methodology.md): the gate cycle (plan → execute → close → review&arm), the
+Per [`methodology.md`](../methodology.md): the gate cycle (plan → execute → close → review&arm), the
 four-type closing sequence (`retrospective → lessons → docs → plan-next`), `plan-next` drafting
 the next gate (never arming it), `LEARNINGS.md`, and per-gate autonomy. These are **loop-internal**
 to each dispatched feature; the orchestrator sees only the feature's overall state (via issue
