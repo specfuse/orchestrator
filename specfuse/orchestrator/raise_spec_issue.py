@@ -27,7 +27,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-from specfuse.orchestrator import paths
+from specfuse.orchestrator import ids, paths
 from specfuse.orchestrator.validate_event import validate as validate_event
 
 DEFAULT_SPECS_REPO = "acme/specs-sample"
@@ -39,10 +39,10 @@ REQUIRED_SECTIONS = ["## Observation", "## Location", "## Triggering task", "## 
 # alternation would not fail on a closing unit's ID: it would quietly capture the
 # feature-level prefix and drop the work unit the issue was raised from.
 CORRELATION_RE = re.compile(
-    r"Correlation ID:\s*((?:FEAT|INIT)-\d{4}-\d{4}(?:/F\d{2})?"
+    rf"Correlation ID:\s*({ids.ROOT_ID}(?:/F\d{{2}})?"
     r"(?:/(?:T\d{2}(?:H\d*)?|G\d+-(?:RETRO|LESSONS|DOCS|PLAN|CLOSE-INTERMEDIATE|CLOSE)))?)"
 )
-ROOT_RE = re.compile(r"^((?:FEAT|INIT)-\d{4}-\d{4})")
+ROOT_RE = re.compile(rf"^({ids.ROOT_ID})")
 
 LABEL_SPEC_ISSUE = ("specfuse:spec-issue", "D93F0B", "Spec change request routed to the specs agent")
 LABEL_INITIATIVE_COLOR = "5319E7"

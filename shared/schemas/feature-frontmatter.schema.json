@@ -107,7 +107,7 @@
     },
     "specs_authored_by": {
       "type": "string",
-      "pattern": "^FEAT-\\d{4}-\\d{4}$",
+      "pattern": "^FEAT-(?:[A-Z][A-Z0-9]{1,5}-)?\\d{4}-\\d{4}$",
       "description": "The upstream loop feature that authored the specs this initiative dispatches \u2014 the id the manifest carries. Rides with `specs_source`; one piece of work keeps one id per registry rather than being re-minted at the seam."
     }
   },

@@ -62,7 +62,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from specfuse.orchestrator import paths
+from specfuse.orchestrator import ids, paths
 from specfuse.orchestrator._version import resolve_agent_version
 from specfuse.orchestrator.cli import self_provision_if_stale
 from specfuse.orchestrator.validate_event import validate as validate_event
@@ -107,7 +107,7 @@ NEXT_STEP_DEFAULTS = {
     },
 }
 
-TITLE_ID_RE = re.compile(r"\[((?:FEAT|INIT)-\d{4}-\d{4}(?:/F\d{2})?)\]")
+TITLE_ID_RE = re.compile(rf"\[({ids.ROOT_ID}(?:/F\d{{2}})?)\]")
 SUBID_RE = re.compile(r"^(F\d{2}|T\d{2})$")
 
 STATE_LABELS = {

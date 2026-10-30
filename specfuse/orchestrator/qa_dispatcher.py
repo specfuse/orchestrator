@@ -29,7 +29,7 @@ import sys
 import time
 from pathlib import Path
 
-from specfuse.orchestrator import paths
+from specfuse.orchestrator import ids, paths
 
 try:
     import yaml
@@ -39,7 +39,7 @@ except ImportError:
 
 QA_LABEL = "specfuse:qa-feature"
 QA_CLAUDE = "agents/qa/CLAUDE.md"
-TITLE_ID_RE = re.compile(r"\[((?:FEAT|INIT)-\d{4}-\d{4}(?:/F\d{2})?)\]")
+TITLE_ID_RE = re.compile(rf"\[({ids.ROOT_ID}(?:/F\d{{2}})?)\]")
 
 
 def involved_repos(registry: Path) -> list[str]:

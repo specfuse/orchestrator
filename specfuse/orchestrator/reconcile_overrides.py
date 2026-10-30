@@ -33,10 +33,10 @@ import sys
 import tempfile
 from pathlib import Path
 
-from specfuse.orchestrator import paths
+from specfuse.orchestrator import ids, paths
 from specfuse.orchestrator.validate_event import validate as validate_event
 
-ROOT_RE = re.compile(r"^((?:FEAT|INIT)-\d{4}-\d{4})")
+ROOT_RE = re.compile(rf"^({ids.ROOT_ID})")
 
 
 def issue_state(ref: str) -> str | None:

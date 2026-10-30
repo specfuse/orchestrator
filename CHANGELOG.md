@@ -25,3 +25,7 @@ only ever go to Unreleased.
 -->
 
 ## [Unreleased]
+
+### Changed
+
+- **Project-keyed feature IDs, `FEAT-<KEY>-YYYY-NNNN`, are accepted wherever an unkeyed `FEAT-YYYY-NNNN` is.** The `[FEAT-…]` issue-title lookups in `poller` and `qa_dispatcher`, the `Correlation ID:` and root parsing in `raise_spec_issue` and `reconcile_overrides`, every orchestrator-owned schema pattern (feature frontmatter `specs_authored_by`, overrides, test plans, `feature_created` and the `qa_*`, `test_plan_authored` and `regression_suite_curated` events), the QA skills' branch-name matchers and `correlation-ids.md` now use core's grammar (specfuse/specfuse#232), spelled once in `specfuse.orchestrator.ids`. Before, a keyed ID passed event-envelope validation but was then rejected by these schemas or skipped silently by the Python matchers. Every unkeyed ID stays valid; `INIT-` IDs take no key. A keyed feature cannot be minted yet: `feature-mint.schema.json` is core's and is widened there first. (#111)
