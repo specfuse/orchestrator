@@ -83,7 +83,7 @@ The skill takes one input from the invoker: the qa_curation task's correlation I
 
 ### Post-merge-mode trigger
 
-A PR on the product specs repo whose branch name matches `^qa-curation/FEAT-\d{4}-\d{4}-T\d{2}$` has been merged into main. Candidate invokers:
+A PR on the product specs repo whose branch name matches `^qa-curation/FEAT-(?:[A-Z][A-Z0-9]{1,5}-)?\d{4}-\d{4}-T\d{2}$` has been merged into main. Candidate invokers:
 
 - A GitHub webhook on `pull_request.closed` with `merged == true` on the specs repo, routed to the skill when the branch name matches the pattern.
 - A polling loop tailing recent merges across repos the orchestrator watches.
@@ -351,7 +351,7 @@ Before returning from any invocation, the skill confirms the following. **The fi
 - `source_version` on the emitted event was produced by `python3 -m specfuse.orchestrator._version` at emission time, not eye-cached from `version.md`.
 - Every file modified on the curation branch is re-read after write; its post-write content matches the intended frontmatter and the test-plan schema validates it.
 - No path written is in [`/shared/rules/never-touch.md`](../../../../shared/rules/never-touch.md). Specifically: `/product/test-plans/*.md` is QA-owned per [`../../CLAUDE.md`](../../CLAUDE.md) §"Output artifacts", and `/events/<feature>.jsonl` is the feature event log.
-- The curation branch's name matches `^qa-curation/FEAT-\d{4}-\d{4}-T\d{2}$` exactly. A malformed branch name breaks the post-merge trigger's matcher and is rejected.
+- The curation branch's name matches `^qa-curation/FEAT-(?:[A-Z][A-Z0-9]{1,5}-)?\d{4}-\d{4}-T\d{2}$` exactly. A malformed branch name breaks the post-merge trigger's matcher and is rejected.
 - The PR body contains the five required sections (`## Summary`, `## Accepted candidates`, `## Refused candidates`, `## Scan summary`, `## How to review`) — a missing section means the curation report is unreviewable and fails this check.
 
 Failure handling follows [`/shared/rules/verify-before-report.md`](../../../../shared/rules/verify-before-report.md) §3: locally correctable (e.g., `source_version` emission script returned a stale value) → retry once with re-read; three failed cycles on the same invocation → escalate `spinning_detected` **on the qa_curation task itself** (authoring-style task-level escalation per [`../../CLAUDE.md`](../../CLAUDE.md) §"Role-specific escalation"), NOT on any implementation task; spec-level blocker (e.g., a scan-cohort plan file is fundamentally unparseable at a level beyond per-plan skip) → escalate `spec_level_blocker` at the qa_curation task level.

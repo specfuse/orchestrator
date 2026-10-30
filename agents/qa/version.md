@@ -1,10 +1,12 @@
 # QA agent version
 
-Current version: **1.6.1**
+Current version: **1.6.2**
 
 **Frozen as the Phase 3 baseline on 2026-04-24 (WU 3.13).** Changes during Phase 4+ require architectural justification. Source of record: [`docs/walkthroughs/phase-3/retrospective.md`](../../docs/walkthroughs/phase-3/retrospective.md) §"Phase 3 freeze declaration".
 
 ## Changelog
+
+- `1.6.2` — #111: the `qa-authoring` and `qa-curation` branch-name matchers admit a project-keyed feature ID (`FEAT-<KEY>-YYYY-NNNN`, specfuse/specfuse#232) alongside the unkeyed one: `^qa-authoring/FEAT-(?:[A-Z][A-Z0-9]{1,5}-)?\d{4}-\d{4}-T\d{2}$`, and the same for `qa-curation`. **Architectural justification:** a keyed component repository's QA PR would otherwise never pair back to its task, so the change is required for keyed IDs to work at all. Every branch name the old pattern matched still matches. No other change to the QA skills, the role surface or `test-plan.schema.json` beyond the same widening.
 
 - `1.6.1` — Suite command migration (specfuse 0.11.0). The suite is now driven through the single `specfuse` command; the flat `specfuse-*` console scripts are deprecated aliases until the coordinated 1.0.0 release train removes them. Every `specfuse-validate-event` / `specfuse-validate-frontmatter` reference in `CLAUDE.md` and the four QA skills rewritten to `specfuse validate-event` / `specfuse validate-frontmatter`. Doc-only change: no procedural step body, event contract, or schema is modified. Phase 3 freeze contract preserved. Patch-level bump.
 

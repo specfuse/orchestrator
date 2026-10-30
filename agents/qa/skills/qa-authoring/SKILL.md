@@ -158,7 +158,7 @@ The authoring pass's deliverable is a **PR on the product specs repo** containin
 
 Create the branch `qa-authoring/<task_correlation_id>` in the **product specs repo**, branching from `main`'s current HEAD. The task-correlation-ID separator `/` is replaced with `-` in the branch name. Example: a `qa_authoring` task with correlation ID `FEAT-2026-0006/T02` produces branch `qa-authoring/FEAT-2026-0006-T02`.
 
-Branch-name format is grep-able: `^qa-authoring/FEAT-\d{4}-\d{4}-T\d{2}$`. A malformed branch name prevents the merge watcher from matching the PR back to the `qa_authoring` task issue; the skill does not invent alternative patterns.
+Branch-name format is grep-able: `^qa-authoring/FEAT-(?:[A-Z][A-Z0-9]{1,5}-)?\d{4}-\d{4}-T\d{2}$`. A malformed branch name prevents the merge watcher from matching the PR back to the `qa_authoring` task issue; the skill does not invent alternative patterns.
 
 ### Commit
 
