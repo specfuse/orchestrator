@@ -15,8 +15,8 @@ from specfuse.orchestrator import poller, qa_dispatcher, raise_spec_issue, recon
 ROOT = Path(__file__).resolve().parent.parent
 KEYED = "FEAT-ACME-2026-0042"
 
-# Core-owned and vendored byte for byte: widened in core first, then re-vendored.
-CORE_PENDING = {"feature-mint.schema.json"}
+# Core-owned schemas are vendored byte for byte; none is pending.
+CORE_PENDING: set[str] = set()
 
 # An unkeyed-only FEAT pattern: FEAT immediately followed by the year, with no
 # optional key group anywhere in the same alternative.
